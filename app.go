@@ -3,7 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+
+	"github.com/joho/godotenv"
 )
+
+var database Database
 
 // App struct
 type App struct {
@@ -15,10 +20,24 @@ func NewApp() *App {
 	return &App{}
 }
 
+func init() {
+	db, err := InitializeDatabase()
+	if err != nil {
+		log.Fatal("Error initializing database:", err)
+	}
+	database = db
+	fmt.Println(db, database)
+}
+
 // startup is called at application startup
 func (a *App) startup(ctx context.Context) {
 	// Perform your setup here
+	fmt.Println("Hello World")
 	a.ctx = ctx
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 }
 
 // domReady is called after front-end resources have been loaded
@@ -36,9 +55,4 @@ func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 // shutdown is called at application termination
 func (a *App) shutdown(ctx context.Context) {
 	// Perform your teardown here
-}
-
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
