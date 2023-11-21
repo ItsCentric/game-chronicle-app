@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/joho/godotenv"
@@ -26,13 +25,11 @@ func init() {
 		log.Fatal("Error initializing database:", err)
 	}
 	database = db
-	fmt.Println(db, database)
 }
 
 // startup is called at application startup
 func (a *App) startup(ctx context.Context) {
 	// Perform your setup here
-	fmt.Println("Hello World")
 	a.ctx = ctx
 	err := godotenv.Load()
 	if err != nil {
