@@ -4,7 +4,13 @@
 	export let data: main.IgdbGame;
 </script>
 
-<div class="w-full max-w-xs relative aspect-[3/4] group">
+<div
+	class="w-full max-w-xs relative aspect-[3/4] group"
+	on:click
+	on:keydown
+	role="button"
+	tabindex="0"
+>
 	<img
 		src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' + data.cover.image_id + '.jpg'}
 		alt="cover"
