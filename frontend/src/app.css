@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  height: 100%;
+:root {
+	/* date picker styles */
+	--date-picker-background: oklch(var(--b1));
+	--date-picker-foreground: oklch(var(--bc));
+
+	/* svelte-select styles */
+	--background: oklch(var(--b1));
+	--border: 1px solid oklch(var(--bc) / 0.2);
+	--border-hover: 1px solid oklch(var(--bc) / 0.4);
+	--list-background: oklch(var(--b2));
+	--item-active-background: oklch(var(--p));
+	--item-is-active-color: oklch(var(--pc));
+	--item-hover-bg: oklch(var(--n));
+	--item-hover-color: oklch(var(--nc));
+}
+
+html,
+body {
+	height: 100%;
 }

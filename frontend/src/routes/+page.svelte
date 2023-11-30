@@ -4,7 +4,7 @@
 
 	let openGameSearchModal = false;
 	let selectedGame: main.IgdbGame | undefined;
-    console.log(selectedGame);
+	console.log(selectedGame);
 </script>
 
 <main class="flex justify-center items-center h-full">
