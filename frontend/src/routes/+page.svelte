@@ -1,10 +1,14 @@
 <script lang="ts">
 	import GameSearchModal from '$lib/components/GameSearchModal.svelte';
+	import LogModal from '$lib/components/LogModal.svelte';
 	import type { main } from '$lib/wailsjs/go/models';
 
 	let openGameSearchModal = false;
 	let selectedGame: main.IgdbGame | undefined;
-	console.log(selectedGame);
+	$: openLogModal = !!selectedGame;
+    $: if (openLogModal && openGameSearchModal) {
+        openGameSearchModal = false;
+    }
 </script>
 
 <main class="flex justify-center items-center h-full">
@@ -14,6 +18,14 @@
 		on:open={() => (openGameSearchModal = true)}
 		on:close={() => (openGameSearchModal = false)}
 	/>
+	{#if selectedGame}
+		<LogModal
+			game={selectedGame}
+			open={openLogModal}
+			on:open={() => (openLogModal = true)}
+			on:close={() => (openLogModal = false)}
+		/>
+	{/if}
 	<button class="btn" on:click={() => (openGameSearchModal = !openGameSearchModal)}
 		>Create Log</button
 	>

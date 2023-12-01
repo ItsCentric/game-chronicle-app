@@ -4,4 +4,4 @@ import {main} from '../models';
 
 export function GetAllGameLogs():Promise<Array<main.Log>>;
 
-export function InsertGameLog(arg1:main.LogData):Promise<main.Log>;
+export function InsertGameLog(arg1:main.LogData):Promise<main.InsertGameLogResponse>;

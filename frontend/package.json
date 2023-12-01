@@ -34,6 +34,12 @@
   },
   "type": "module",
   "dependencies": {
-    "lucide-svelte": "^0.294.0"
+    "@felte/validator-zod": "^1.0.17",
+    "date-picker-svelte": "^2.10.0",
+    "felte": "^1.2.12",
+    "lucide-svelte": "^0.294.0",
+    "svelte-french-toast": "^1.2.0",
+    "svelte-select": "^5.8.1",
+    "zod": "^3.22.4"
   }
 }

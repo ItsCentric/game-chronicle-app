@@ -23,20 +23,28 @@ func InitializeDatabase() (Database, error) {
 	}
 	database.client.AutoMigrate(&Log{})
 	for i, status := range logStatuses {
-		database.client.Clauses(clause.OnConflict{DoNothing: true}).Create(&LogStatus{Status: status, Seq: uint(i * 10)})
+		database.client.Clauses(clause.OnConflict{DoNothing: true}).Create(&LogStatus{Status: status, Order: uint(i * 10)})
 	}
 
 	return database, nil
 }
 
-func (d *Database) InsertGameLog(data LogData) (Log, error) {
-	gameLog, err := newLog(data)
-	if err != nil {
-		return Log{}, err
+type InsertGameLogResponse struct {
+	Log    Log               `json:"log"`
+	Errors map[string]string `json:"errors"`
+}
+
+func (d *Database) InsertGameLog(data LogData) InsertGameLogResponse {
+	response := InsertGameLogResponse{}
+	gameLog, validationErrors := newLog(data)
+	if len(validationErrors) > 0 {
+		response.Errors = validationErrors
+		return response
 	}
 	database.client.Create(&gameLog)
+	response.Log = *gameLog
 
-	return *gameLog, nil
+	return response
 }
 
 func (d *Database) GetAllGameLogs() []*Log {

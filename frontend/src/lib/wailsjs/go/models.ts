@@ -69,8 +69,11 @@ export namespace main {
 	    // Go type: LogStatus
 	    status: any;
 	    statusId: string;
-	    finished: number;
-	    timePlayed: number;
+	    // Go type: time
+	    startedOn: any;
+	    // Go type: time
+	    finishedOn: any;
+	    timePlayedMinutes: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Log(source);
@@ -83,8 +86,9 @@ export namespace main {
 	        this.notes = source["notes"];
 	        this.status = this.convertValues(source["status"], null);
 	        this.statusId = source["statusId"];
-	        this.finished = source["finished"];
-	        this.timePlayed = source["timePlayed"];
+	        this.startedOn = this.convertValues(source["startedOn"], null);
+	        this.finishedOn = this.convertValues(source["finishedOn"], null);
+	        this.timePlayedMinutes = source["timePlayedMinutes"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -105,6 +109,39 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class InsertGameLogResponse {
+	    log: Log;
+	    errors: {[key: string]: string};
+	
+	    static createFrom(source: any = {}) {
+	        return new InsertGameLogResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.log = this.convertValues(source["log"], Log);
+	        this.errors = source["errors"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class TimePlayed {
 	    hours: number;
 	    minutes: number;
@@ -124,7 +161,10 @@ export namespace main {
 	    rating: number;
 	    notes: string;
 	    status: string;
-	    finished: number;
+	    // Go type: time
+	    startedOn: any;
+	    // Go type: time
+	    finishedOn: any;
 	    timePlayed: TimePlayed;
 	
 	    static createFrom(source: any = {}) {
@@ -137,7 +177,8 @@ export namespace main {
 	        this.rating = source["rating"];
 	        this.notes = source["notes"];
 	        this.status = source["status"];
-	        this.finished = source["finished"];
+	        this.startedOn = this.convertValues(source["startedOn"], null);
+	        this.finishedOn = this.convertValues(source["finishedOn"], null);
 	        this.timePlayed = this.convertValues(source["timePlayed"], TimePlayed);
 	    }
 	
