@@ -3,6 +3,7 @@ dist/
 .vscode/
 .DS_Store
 .idea
+*.db
 
 # Binaries for programs and plugins
 *.exe
