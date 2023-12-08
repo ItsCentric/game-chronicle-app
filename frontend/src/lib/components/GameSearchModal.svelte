@@ -4,35 +4,44 @@
 	import { slide } from 'svelte/transition';
 	import type { main } from '$lib/wailsjs/go/models';
 	import Modal from './Modal.svelte';
+	import { createForm } from 'felte';
+	import { z } from 'zod';
+	import { validator } from '@felte/validator-zod';
 
 	export let open = false;
 	export let selectedGame: main.IgdbGame | undefined;
 
-	let queriedGame = '';
-	let searchPromise: ReturnType<typeof SearchForGame> | undefined;
-
-	async function handleSearch() {
-		if (queriedGame === '') {
-			return;
+	const formSchema = z.object({
+		game: z.string().min(1)
+	});
+	const { form, reset } = createForm<z.infer<typeof formSchema>>({
+		extend: validator({ schema: formSchema }),
+		onSubmit: async (data) => {
+			const accessTokenResponse = await AuthenticateWithTwitch();
+			searchPromise = SearchForGame(data.game, accessTokenResponse.access_token);
 		}
-
-		const accessTokenResponse = await AuthenticateWithTwitch();
-		searchPromise = SearchForGame(queriedGame, accessTokenResponse.access_token);
+	});
+	function resetModal() {
+		reset();
+		searchPromise = undefined;
 	}
+	let searchPromise: ReturnType<typeof SearchForGame> | undefined;
 </script>
 
-<Modal {open} on:open on:close>
+<Modal {open} on:open on:close on:close={resetModal}>
 	<p class="text-2xl font-semibold mb-4">Search for a Game</p>
-	<div class="flex flex-col gap-4" transition:slide={{ axis: 'x' }}>
-		<div class="join mx-auto">
-			<input
-				class="input input-bordered join-item"
-				type="text"
-				placeholder="The latest game"
-				bind:value={queriedGame}
-			/>
-			<button class="btn join-item rounded-r-full" on:click={handleSearch}>Search</button>
-		</div>
+	<div class="flex flex-col gap-4">
+		<form method="post" class="flex justify-center" use:form>
+			<div class="join">
+				<input
+					name="game"
+					class="input input-bordered join-item"
+					type="text"
+					placeholder="The latest game"
+				/>
+				<button class="btn join-item rounded-r-full">Search</button>
+			</div>
+		</form>
 		<div class="flex gap-4">
 			{#if searchPromise}
 				{#await searchPromise}
