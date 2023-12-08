@@ -6,9 +6,9 @@
 	let openGameSearchModal = false;
 	let selectedGame: main.IgdbGame | undefined;
 	$: openLogModal = !!selectedGame;
-    $: if (openLogModal && openGameSearchModal) {
-        openGameSearchModal = false;
-    }
+	$: if (openLogModal && openGameSearchModal) {
+		openGameSearchModal = false;
+	}
 </script>
 
 <main class="flex justify-center items-center h-full">
@@ -24,6 +24,10 @@
 			open={openLogModal}
 			on:open={() => (openLogModal = true)}
 			on:close={() => (openLogModal = false)}
+			on:back={() => {
+				selectedGame = undefined;
+				openGameSearchModal = true;
+			}}
 		/>
 	{/if}
 	<button class="btn" on:click={() => (openGameSearchModal = !openGameSearchModal)}

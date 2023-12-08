@@ -17,8 +17,8 @@ type AccessTokenResponse struct {
 }
 
 type SimplifiedIgdbCover struct {
-	Id       int    `json:"id"`
-	Image_id string `json:"image_id"`
+	Id       int     `json:"id"`
+	Image_id *string `json:"image_id"`
 }
 
 type IgdbGame struct {

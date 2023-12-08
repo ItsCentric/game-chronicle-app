@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { AuthenticateWithTwitch, SearchForGame } from '$lib/wailsjs/go/main/App';
 	import GameCard from './GameCard.svelte';
-	import { slide } from 'svelte/transition';
 	import type { main } from '$lib/wailsjs/go/models';
 	import Modal from './Modal.svelte';
 	import { createForm } from 'felte';
@@ -29,41 +28,43 @@
 </script>
 
 <Modal {open} on:open on:close on:close={resetModal}>
-	<p class="text-2xl font-semibold mb-4">Search for a Game</p>
-	<div class="flex flex-col gap-4">
-		<form method="post" class="flex justify-center" use:form>
-			<div class="join">
-				<input
-					name="game"
-					class="input input-bordered join-item"
-					type="text"
-					placeholder="The latest game"
-				/>
-				<button class="btn join-item rounded-r-full">Search</button>
+	<svelte:fragment slot="heading">Search for a Game</svelte:fragment>
+	<svelte:fragment slot="content">
+		<div class="flex flex-col gap-4">
+			<form method="post" class="flex justify-center" use:form>
+				<div class="join">
+					<input
+						name="game"
+						class="input input-bordered join-item"
+						type="text"
+						placeholder="The latest game"
+					/>
+					<button class="btn join-item rounded-r-full input-bordered">Search</button>
+				</div>
+			</form>
+			<div class="flex gap-4">
+				{#if searchPromise}
+					{#await searchPromise}
+						<span class="loading loading-spinner loading-lg mx-auto"></span>
+					{:then searchResult}
+						{#if searchResult.length === 0}
+							<p>No results found</p>
+						{:else}
+							{#each searchResult as game}
+								<GameCard
+									data={game}
+									on:click={() => {
+										selectedGame = game;
+									}}
+								/>
+							{/each}
+						{/if}
+					{:catch error}
+						<p>Something went wrong</p>
+						<p>{error}</p>
+					{/await}
+				{/if}
 			</div>
-		</form>
-		<div class="flex gap-4">
-			{#if searchPromise}
-				{#await searchPromise}
-					<p>Searching...</p>
-				{:then searchResult}
-					{#if searchResult.length === 0}
-						<p>No results found</p>
-					{:else}
-						{#each searchResult as game}
-							<GameCard
-								data={game}
-								on:click={() => {
-									selectedGame = game;
-								}}
-							/>
-						{/each}
-					{/if}
-				{:catch error}
-					<p>Something went wrong</p>
-					<p>{error}</p>
-				{/await}
-			{/if}
 		</div>
-	</div>
+	</svelte:fragment>
 </Modal>

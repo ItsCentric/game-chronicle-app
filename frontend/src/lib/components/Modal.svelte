@@ -17,12 +17,15 @@
 
 <dialog bind:this={dialogElement} on:close class="modal">
 	<div class="modal-box container max-w-3xl">
-		<div>
-			<button class="float-right" on:click={() => (open = false)}>
-				<X size={24} />
+		<div class="flex justify-between items-center mb-4">
+			<div class="flex gap-2 items-center text-2xl font-semibold">
+				<slot name="heading" />
+			</div>
+			<button on:click={() => (open = false)}>
+				<X size={32} />
 			</button>
 		</div>
-		<slot />
+		<slot name="content" />
 	</div>
 	<form method="dialog" class="modal-backdrop">
 		<button>close</button>

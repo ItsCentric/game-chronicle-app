@@ -10,6 +10,8 @@
 	import { reporter, ValidationMessage } from '@felte/reporter-svelte';
 	import { z } from 'zod';
 	import toast from 'svelte-french-toast';
+	import { ArrowLeft } from 'lucide-svelte';
+	import { createEventDispatcher } from 'svelte';
 
 	export let open = false;
 	export let game: main.IgdbGame;
@@ -73,111 +75,121 @@
 		'Retired',
 		'Abandoned'
 	];
+	const backDispatcher = createEventDispatcher();
 </script>
 
-<Modal {open} on:close on:close={() => reset()}>
-	<p class="text-2xl font-semibold mb-4">Create a Log</p>
-	<form id="log" method="post" class="grid-cols-[25%,_1fr] grid gap-4" use:form>
-		<div>
-			<img
-				src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' +
-					game.cover.image_id +
-					'.jpg'}
-				alt="cover"
-				class="aspect-[3/4] rounded-3xl mb-4"
-			/>
-			<Select
-				id="status"
-				name="status"
-				placeholder="Game status"
-				bind:justValue={$data.status}
-				items={statusSelectOptions}
-			/>
-			<ValidationMessage for="status" let:messages={message}>
-				<span class="text-sm text-red-500">{message ? 'Please select a status' : ''}</span>
-			</ValidationMessage>
-		</div>
-		<div class="grid grid-cols-2 gap-2">
-			<div class="col-span-2">
-				<p class="text-3xl font-semibold">{game.name}</p>
-				<RatingInput />
-			</div>
+<Modal {open} on:back on:close on:close={() => reset()}>
+	<svelte:fragment slot="heading">
+				<button
+					on:click={() => backDispatcher('back', true)}
+				>
+					<ArrowLeft size={32} />
+				</button>
+		<p>Create a Log</p>
+	</svelte:fragment>
+	<svelte:fragment slot="content">
+		<form id="log" method="post" class="grid-cols-[25%,_1fr] grid gap-4" use:form>
 			<div>
-				<label for="startedOn">Started on</label>
-				<DateInput
-					id="startedOn"
-					bind:value={$data.startedOn}
-					max={new Date()}
-					placeholder="I started on..."
-					{...dateInputProps}
+				<img
+					src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' +
+						game.cover.image_id +
+						'.jpg'}
+					alt="cover"
+					class="aspect-[3/4] rounded-3xl mb-4"
 				/>
-				<ValidationMessage for="startedOn" let:messages={message}>
-					<span class="text-sm text-red-500">{message || ''}</span>
+				<Select
+					id="status"
+					name="status"
+					placeholder="Game status"
+					bind:justValue={$data.status}
+					items={statusSelectOptions}
+				/>
+				<ValidationMessage for="status" let:messages={message}>
+					<span class="text-sm text-red-500">{message ? 'Please select a status' : ''}</span>
 				</ValidationMessage>
 			</div>
-			<div>
-				<label for="finishedOn">Finished on</label>
-				<DateInput
-					id="finishedOn"
-					bind:value={$data.finishedOn}
-					min={$data.startedOn}
-					max={new Date()}
-					placeholder="I finished on..."
-					{...dateInputProps}
-					required={false}
-				/>
-				<ValidationMessage for="finishedOn" let:messages={message}>
-					<span class="text-sm text-red-500">{message || ''}</span>
-				</ValidationMessage>
-			</div>
-			<div>
+			<div class="grid grid-cols-2 gap-2">
+				<div class="col-span-2">
+					<p class="text-3xl font-semibold">{game.name}</p>
+					<RatingInput />
+				</div>
 				<div>
-					<label for="timePlayedHours">Time Played</label>
-				</div>
-				<div class="inline-block w-20">
-					<input
-						type="number"
-						id="timePlayedHours"
-						name="timePlayedHours"
-						class="input input-bordered w-full"
-						placeholder="HH"
-						min="0"
+					<label for="startedOn">Started on</label>
+					<DateInput
+						id="startedOn"
+						bind:value={$data.startedOn}
+						max={new Date()}
+						placeholder="I started on..."
+						{...dateInputProps}
 					/>
-					<ValidationMessage for="timePlayedHours" let:messages={message}>
+					<ValidationMessage for="startedOn" let:messages={message}>
 						<span class="text-sm text-red-500">{message || ''}</span>
 					</ValidationMessage>
 				</div>
-				<div class="inline-block w-20">
-					<input
-						type="number"
-						id="timePlayedMinutes"
-						name="timePlayedMinutes"
-						class="input input-bordered w-full"
-						placeholder="MM"
-						max="59"
-						min="0"
+				<div>
+					<label for="finishedOn">Finished on</label>
+					<DateInput
+						id="finishedOn"
+						bind:value={$data.finishedOn}
+						min={$data.startedOn}
+						max={new Date()}
+						placeholder="I finished on..."
+						{...dateInputProps}
+						required={false}
 					/>
-					<ValidationMessage for="timePlayedMinutes" let:messages={message}>
+					<ValidationMessage for="finishedOn" let:messages={message}>
+						<span class="text-sm text-red-500">{message || ''}</span>
+					</ValidationMessage>
+				</div>
+				<div>
+					<div>
+						<label for="timePlayedHours">Time Played</label>
+					</div>
+					<div class="inline-block w-16">
+						<input
+							type="number"
+							id="timePlayedHours"
+							name="timePlayedHours"
+							class="input input-bordered w-full"
+							placeholder="HH"
+							min="0"
+						/>
+						<ValidationMessage for="timePlayedHours" let:messages={message}>
+							<span class="text-sm text-red-500">{message || ''}</span>
+						</ValidationMessage>
+					</div>
+					<div class="inline-block w-16">
+						<input
+							type="number"
+							id="timePlayedMinutes"
+							name="timePlayedMinutes"
+							class="input input-bordered w-full"
+							placeholder="MM"
+							max="59"
+							min="0"
+						/>
+						<ValidationMessage for="timePlayedMinutes" let:messages={message}>
+							<span class="text-sm text-red-500">{message || ''}</span>
+						</ValidationMessage>
+					</div>
+				</div>
+				<div class="col-span-2">
+					<label for="notes">Notes</label>
+					<textarea
+						id="notes"
+						name="notes"
+						class="textarea textarea-bordered w-full"
+						placeholder="Notes"
+					></textarea>
+					<ValidationMessage for="notes" let:messages={message}>
 						<span class="text-sm text-red-500">{message || ''}</span>
 					</ValidationMessage>
 				</div>
 			</div>
-			<div class="col-span-2">
-				<label for="notes">Notes</label>
-				<textarea
-					id="notes"
-					name="notes"
-					class="textarea textarea-bordered w-full"
-					placeholder="Notes"
-				></textarea>
-				<ValidationMessage for="notes" let:messages={message}>
-					<span class="text-sm text-red-500">{message || ''}</span>
-				</ValidationMessage>
-			</div>
+		</form>
+		<div class="modal-action">
+			<button type="submit" form="log" class="btn btn-primary" disabled={!$isValid}>Save</button>
+			<button type="button" class="btn" on:click={() => (open = false)}>Cancel</button>
 		</div>
-	</form>
-	<div class="modal-action">
-		<button type="submit" form="log" class="btn btn-primary" disabled={!$isValid}>Save</button>
-		<button type="button" class="btn" on:click={() => (open = false)}>Cancel</button>
-	</div>
+	</svelte:fragment>
 </Modal>

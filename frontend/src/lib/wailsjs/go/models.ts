@@ -18,7 +18,7 @@ export namespace main {
 	}
 	export class SimplifiedIgdbCover {
 	    id: number;
-	    image_id: string;
+	    image_id?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new SimplifiedIgdbCover(source);
