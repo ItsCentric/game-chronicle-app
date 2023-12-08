@@ -42,7 +42,7 @@
 					<button class="btn join-item rounded-r-full input-bordered">Search</button>
 				</div>
 			</form>
-			<div class="flex gap-4">
+			<div class="flex justify-center gap-4 max-h-96">
 				{#if searchPromise}
 					{#await searchPromise}
 						<span class="loading loading-spinner loading-lg mx-auto"></span>
