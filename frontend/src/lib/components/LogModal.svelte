@@ -21,11 +21,9 @@
 		status: z.enum(['Playing', 'Completed', 'Abandoned']),
 		notes: z.string().max(1000, { message: 'Notes must be less than 1000 characters' }).optional(),
 		startedOn: z.date().max(new Date(), { message: 'Started on cannot be in the future' }),
-		finishedOn: z
-			.date()
-			.max(new Date(new Date().setDate(new Date().getDate() + 1)), {
-				message: 'Finished on cannot be in the future'
-			}),
+		finishedOn: z.date().max(new Date(new Date().setDate(new Date().getDate() + 1)), {
+			message: 'Finished on cannot be in the future'
+		}),
 		timePlayedHours: z.number({ invalid_type_error: 'Invalid value for hour' }).min(0),
 		timePlayedMinutes: z.number({ invalid_type_error: 'Invalid value for minute' }).min(0)
 	});
@@ -43,9 +41,7 @@
 			candidateLog.startedOn = data.startedOn;
 			candidateLog.finishedOn = data.finishedOn;
 			candidateLog.timePlayed = candidateTimePlayed;
-            console.log(candidateLog);
 			const res = await InsertGameLog(candidateLog);
-            console.log(res);
 
 			if (res.errors?.server) {
 				toast.error(res.errors.server);
@@ -68,9 +64,14 @@
 		dynamicPositioning: true
 	};
 	const statusSelectOptions = [
-		{ value: 'Playing', label: 'Playing' },
-		{ value: 'Completed', label: 'Completed' },
-		{ value: 'Abandoned', label: 'Abandoned' }
+		'Wishlist',
+		'Backlog',
+		'Playing',
+		'Completed',
+		'Played',
+		'Shelved',
+		'Retired',
+		'Abandoned'
 	];
 </script>
 

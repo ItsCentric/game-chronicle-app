@@ -34,6 +34,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@felte/reporter-svelte": "^1.1.11",
     "@felte/validator-zod": "^1.0.17",
     "date-picker-svelte": "^2.10.0",
     "felte": "^1.2.12",
