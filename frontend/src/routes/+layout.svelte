@@ -3,7 +3,7 @@
 	import { Toaster } from 'svelte-french-toast';
 </script>
 
-<main>
+<main class="h-full">
 	<Toaster />
 	<slot />
 </main>
