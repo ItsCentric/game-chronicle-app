@@ -159,12 +159,12 @@ export namespace main {
 	export class LogData {
 	    title: string;
 	    rating: number;
-	    notes: string;
+	    notes?: string;
 	    status: string;
 	    // Go type: time
 	    startedOn: any;
 	    // Go type: time
-	    finishedOn: any;
+	    finishedOn?: any;
 	    timePlayed: TimePlayed;
 	
 	    static createFrom(source: any = {}) {

@@ -13,7 +13,7 @@ type Log struct {
 	Notes             string    `json:"notes"`
 	Status            LogStatus `gorm:"not null" json:"status"`
 	StatusID          string    `gorm:"not null" json:"statusId"`
-	StartedOn         time.Time `gorm:"not null" json:"startedOn"`
+	StartedOn         time.Time `gorm:"check:started_on <= finished_on" json:"startedOn"`
 	FinishedOn        time.Time `gorm:"check:finished_on >= started_on" json:"finishedOn"`
 	TimePlayedMinutes uint      `gorm:"not null" json:"timePlayedMinutes"`
 }
@@ -21,10 +21,10 @@ type Log struct {
 type LogData struct {
 	Title      string     `json:"title"`
 	Rating     uint       `json:"rating"`
-	Notes      string     `json:"notes"`
+	Notes      *string    `json:"notes"`
 	StatusID   string     `json:"status"`
 	StartedOn  time.Time  `json:"startedOn"`
-	FinishedOn time.Time  `json:"finishedOn"`
+	FinishedOn *time.Time `json:"finishedOn"`
 	TimePlayed TimePlayed `json:"timePlayed"`
 }
 
@@ -40,12 +40,12 @@ type LogStatus struct {
 
 func newLog(data LogData) (*Log, map[string]string) {
 	logValidationError := validateCandidateLog(data)
-	if logValidationError != nil {
+	if len(logValidationError) > 0 {
 		return nil, logValidationError
 	}
 	timePlayedMinutes := data.TimePlayed.Hours*60 + data.TimePlayed.Minutes
 
-	return &Log{Title: data.Title, Rating: data.Rating, Notes: data.Notes, StatusID: data.StatusID, StartedOn: data.StartedOn, FinishedOn: data.FinishedOn, TimePlayedMinutes: timePlayedMinutes}, nil
+	return &Log{Title: data.Title, Rating: data.Rating, Notes: *data.Notes, StatusID: data.StatusID, StartedOn: data.StartedOn, FinishedOn: *data.FinishedOn, TimePlayedMinutes: timePlayedMinutes}, nil
 }
 
 func validateCandidateLog(data LogData) map[string]string {
@@ -56,7 +56,7 @@ func validateCandidateLog(data LogData) map[string]string {
 	if data.Rating > 10 || data.Rating < 0 {
 		validationErrors["rating"] = "Rating must be between 0 and 10"
 	}
-	if data.StartedOn.After(data.FinishedOn) {
+	if data.StartedOn.After(*data.FinishedOn) {
 		validationErrors["finishedOn"] = "Finished on cannot be before started on"
 	}
 	if data.FinishedOn.Before(data.StartedOn) {
