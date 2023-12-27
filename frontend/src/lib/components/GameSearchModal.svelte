@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { AuthenticateWithTwitch, SearchForGame } from '$lib/wailsjs/go/main/App';
-	import GameCard from './GameCard.svelte';
 	import type { main } from '$lib/wailsjs/go/models';
 	import Modal from './Modal.svelte';
 	import { createForm } from 'felte';
 	import { z } from 'zod';
 	import { validator } from '@felte/validator-zod';
+	import GameCarousel from './GameCarousel.svelte';
 
 	export let open = false;
 	export let selectedGame: main.IgdbGame | undefined;
@@ -42,7 +42,7 @@
 					<button class="btn join-item rounded-r-full input-bordered">Search</button>
 				</div>
 			</form>
-			<div class="flex justify-center gap-4 max-h-96">
+			<div class="flex justify-center gap-4">
 				{#if searchPromise}
 					{#await searchPromise}
 						<span class="loading loading-spinner loading-lg mx-auto"></span>
@@ -50,14 +50,10 @@
 						{#if searchResult.length === 0}
 							<p>No results found</p>
 						{:else}
-							{#each searchResult as game}
-								<GameCard
-									data={game}
-									on:click={() => {
-										selectedGame = game;
-									}}
-								/>
-							{/each}
+							<GameCarousel
+								games={searchResult}
+								on:gameClick={({ detail: game }) => (selectedGame = game)}
+							/>
 						{/if}
 					{:catch error}
 						<p>Something went wrong</p>

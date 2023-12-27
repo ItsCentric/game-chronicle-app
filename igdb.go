@@ -76,7 +76,7 @@ func SendIgdbRequest(endpoint string, accessToken string, body string) ([]byte, 
 }
 
 func (a *App) SearchForGame(title string, accessToken string) ([]IgdbGame, error) {
-	responseBody, err := SendIgdbRequest("games", accessToken, fmt.Sprintf("search \"%s\"; fields name, cover.image_id; limit 3; where category = 0;", title))
+	responseBody, err := SendIgdbRequest("games", accessToken, fmt.Sprintf("search \"%s\"; fields name, cover.image_id; limit 9; where category = 0;", title))
 	if err != nil {
 		return []IgdbGame{}, err
 	}
