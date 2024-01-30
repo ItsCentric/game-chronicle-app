@@ -47,8 +47,8 @@ func (d *Database) InsertGameLog(data LogData) InsertGameLogResponse {
 	return response
 }
 
-func (d *Database) GetAllGameLogs() []*Log {
+func (d *Database) GetGameLogs(sortBy string, sortOrder string, filter []string) []*Log {
 	var logs []*Log
-	database.client.Find(&logs)
+	database.client.Where("status_id IN ?", filter).Order(sortBy + " " + sortOrder).Find(&logs)
 	return logs
 }

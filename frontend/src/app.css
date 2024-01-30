@@ -16,6 +16,10 @@
 	--item-is-active-color: oklch(var(--pc));
 	--item-hover-bg: oklch(var(--n));
 	--item-hover-color: oklch(var(--nc));
+    --multi-item-bg: oklch(var(--b1));
+    --multi-item-color: oklch(var(--bc));
+    --multi-item-clear-icon-color: oklch(var(--bc));
+    --multi-item-outline: 1px solid oklch(var(--bc) / 0.4);
 }
 
 html,
@@ -34,4 +38,9 @@ input::-webkit-inner-spin-button {
 input[type=number] {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+[type='text']:focus {
+    --tw-ring-color: none;
+    --tw-ring-shadow: none;
 }

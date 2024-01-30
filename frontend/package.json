@@ -37,6 +37,7 @@
   "dependencies": {
     "@felte/reporter-svelte": "^1.1.11",
     "@felte/validator-zod": "^1.0.17",
+    "@sveltestack/svelte-query": "^1.6.0",
     "date-picker-svelte": "^2.10.0",
     "felte": "^1.2.12",
     "lucide-svelte": "^0.294.0",

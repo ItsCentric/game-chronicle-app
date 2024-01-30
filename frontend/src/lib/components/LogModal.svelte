@@ -12,9 +12,12 @@
 	import toast from 'svelte-french-toast';
 	import { ArrowLeft } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';
+	import { useMutation, useQueryClient } from '@sveltestack/svelte-query';
 
 	export let open = false;
 	export let game: main.IgdbGame;
+	const newLogMutation = useMutation(InsertGameLog);
+	const queryClient = useQueryClient();
 	const formSchema = z.object({
 		rating: z
 			.number()
@@ -43,14 +46,7 @@
 			candidateLog.startedOn = data.startedOn;
 			candidateLog.finishedOn = data.finishedOn;
 			candidateLog.timePlayed = candidateTimePlayed;
-			const res = await InsertGameLog(candidateLog);
-
-			if (res.errors?.server) {
-				toast.error(res.errors.server);
-			} else {
-				open = false;
-				toast.success('Log created!');
-			}
+			$newLogMutation.mutate(candidateLog);
 		},
 		transform: (data) => {
 			const formData = data as z.infer<typeof formSchema>;
@@ -60,6 +56,14 @@
 			};
 		}
 	});
+	$: if ($newLogMutation.isSuccess) {
+		open = false;
+		queryClient.invalidateQueries('logs');
+		toast.success('Log created!');
+	}
+	$: if ($newLogMutation.isError) {
+		toast.error('Something went wrong!');
+	}
 	const dateInputProps = {
 		format: 'MM/dd/yyyy',
 		required: true,
@@ -80,11 +84,9 @@
 
 <Modal {open} on:back on:close on:close={() => reset()}>
 	<svelte:fragment slot="heading">
-				<button
-					on:click={() => backDispatcher('back', true)}
-				>
-					<ArrowLeft size={32} />
-				</button>
+		<button on:click={() => backDispatcher('back', true)}>
+			<ArrowLeft size={32} />
+		</button>
 		<p>Create a Log</p>
 	</svelte:fragment>
 	<svelte:fragment slot="content">
