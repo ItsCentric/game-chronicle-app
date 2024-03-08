@@ -19,3 +19,9 @@ export type FilterFormData = z.infer<typeof filterFormSchema>;
 export const filterFormSchema = z.object({
     status: z.array(z.enum(statusOptions))
 });
+
+export type SettingsFormData = z.infer<typeof settingsSchema>;
+export const settingsSchema = z.object({
+    executablePaths: z.array(z.string()),
+    processMonitoringEnabled: z.boolean(),
+});

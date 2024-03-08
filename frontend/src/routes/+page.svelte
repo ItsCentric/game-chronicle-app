@@ -3,6 +3,7 @@
 	import LogModal from '$lib/components/LogModal.svelte';
 	import LogsGrid from '$lib/components/LogsGrid.svelte';
 	import type { main } from '$lib/wailsjs/go/models';
+	import { Settings } from 'lucide-svelte';
 
 	let openGameSearchModal = false;
 	let selectedGame: main.IgdbGame | undefined;
@@ -13,6 +14,7 @@
 </script>
 
 <main class="flex flex-col justify-center items-center h-full p-12">
+    <a href="/settings" class='btn mb-2'><Settings /></a>
 	<GameSearchModal
 		open={openGameSearchModal}
 		bind:selectedGame

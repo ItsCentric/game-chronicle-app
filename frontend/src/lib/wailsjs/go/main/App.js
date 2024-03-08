@@ -6,6 +6,10 @@ export function AuthenticateWithTwitch() {
   return window['go']['main']['App']['AuthenticateWithTwitch']();
 }
 
+export function OpenDirectoryDialog() {
+  return window['go']['main']['App']['OpenDirectoryDialog']();
+}
+
 export function SearchForGame(arg1, arg2) {
   return window['go']['main']['App']['SearchForGame'](arg1, arg2);
 }

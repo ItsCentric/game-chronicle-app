@@ -4,4 +4,8 @@ import {main} from '../models';
 
 export function GetGameLogs(arg1:string,arg2:string,arg3:Array<string>):Promise<Array<main.Log>>;
 
+export function GetUserSettings():Promise<main.GetUserSettingsResponse>;
+
 export function InsertGameLog(arg1:main.LogData):Promise<main.InsertGameLogResponse>;
+
+export function SaveUserSettings(arg1:main.UserSettingsData):Promise<void>;
