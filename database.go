@@ -21,6 +21,12 @@ type UserSettings struct {
 	ProcessMonitoringEnabled bool   `json:"processMonitoringEnabled" gorm:"default:false"`
 }
 
+type ExecutableDetails struct {
+	ExecutableName string `gorm:"primaryKey" json:"executableName"`
+	GameTitle      string `json:"title"`
+	MinutesPlayed  int    `json:"minutesPlayed"`
+}
+
 func InitializeDatabase() (Database, error) {
 	var err error
 	database := Database{}
@@ -30,6 +36,7 @@ func InitializeDatabase() (Database, error) {
 	}
 	database.client.AutoMigrate(&Log{})
 	database.client.AutoMigrate(&UserSettings{})
+	database.client.AutoMigrate(&ExecutableDetails{})
 	for i, status := range logStatuses {
 		database.client.Clauses(clause.OnConflict{DoNothing: true}).Create(&LogStatus{Status: status, Order: uint(i * 10)})
 	}
@@ -50,6 +57,11 @@ type GetUserSettingsResponse struct {
 type UserSettingsData struct {
 	ExecutablePaths          string `json:"executablePaths"`
 	ProcessMonitoringEnabled bool   `json:"processMonitoringEnabled"`
+}
+
+type InsertExecutableDetailsResponse struct {
+	Details ExecutableDetails `json:"details"`
+	Error   error             `json:"error"`
 }
 
 func (d *Database) InsertGameLog(data LogData) InsertGameLogResponse {
@@ -77,6 +89,12 @@ func (d *Database) GetUserSettings() GetUserSettingsResponse {
 	return GetUserSettingsResponse{Preferences: preferences, Error: res.Error}
 }
 
+func (d *Database) getExecutableDetails(queriedExecutable string) (ExecutableDetails, error) {
+	var details ExecutableDetails
+	res := database.client.First(&details).Where("executable_name = ?", queriedExecutable)
+	return details, res.Error
+}
+
 func (d *Database) SaveUserSettings(newSettings UserSettingsData) {
 	var preferences UserSettings
 	res := database.client.FirstOrCreate(&preferences)
@@ -89,4 +107,9 @@ func (d *Database) SaveUserSettings(newSettings UserSettingsData) {
 	if res.Error != nil {
 		log.Fatal("Error updating user preferences:", res.Error.Error())
 	}
+}
+
+func (d *Database) InsertExecutableDetails(newExecutableDetails ExecutableDetails) InsertExecutableDetailsResponse {
+	res := database.client.Create(&newExecutableDetails)
+	return InsertExecutableDetailsResponse{Details: newExecutableDetails, Error: res.Error}
 }

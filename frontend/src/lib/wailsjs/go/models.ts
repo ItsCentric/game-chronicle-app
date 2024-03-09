@@ -16,6 +16,22 @@ export namespace main {
 	        this.token_type = source["token_type"];
 	    }
 	}
+	export class ExecutableDetails {
+	    executableName: string;
+	    title: string;
+	    minutesPlayed: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExecutableDetails(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.executableName = source["executableName"];
+	        this.title = source["title"];
+	        this.minutesPlayed = source["minutesPlayed"];
+	    }
+	}
 	export class UserSettings {
 	    executablePaths: string;
 	    processMonitoringEnabled: boolean;
@@ -88,6 +104,38 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
 	        this.cover = this.convertValues(source["cover"], SimplifiedIgdbCover);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class InsertExecutableDetailsResponse {
+	    details: ExecutableDetails;
+	    error: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new InsertExecutableDetailsResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.details = this.convertValues(source["details"], ExecutableDetails);
+	        this.error = source["error"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

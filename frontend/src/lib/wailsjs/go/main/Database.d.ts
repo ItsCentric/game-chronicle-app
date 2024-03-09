@@ -6,6 +6,8 @@ export function GetGameLogs(arg1:string,arg2:string,arg3:Array<string>):Promise<
 
 export function GetUserSettings():Promise<main.GetUserSettingsResponse>;
 
+export function InsertExecutableDetails(arg1:main.ExecutableDetails):Promise<main.InsertExecutableDetailsResponse>;
+
 export function InsertGameLog(arg1:main.LogData):Promise<main.InsertGameLogResponse>;
 
 export function SaveUserSettings(arg1:main.UserSettingsData):Promise<void>;

@@ -10,6 +10,10 @@ export function GetUserSettings() {
   return window['go']['main']['Database']['GetUserSettings']();
 }
 
+export function InsertExecutableDetails(arg1) {
+  return window['go']['main']['Database']['InsertExecutableDetails'](arg1);
+}
+
 export function InsertGameLog(arg1) {
   return window['go']['main']['Database']['InsertGameLog'](arg1);
 }

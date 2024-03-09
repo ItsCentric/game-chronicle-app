@@ -4,7 +4,7 @@
 	import { DateInput } from 'date-picker-svelte';
 	import Select from 'svelte-select';
 	import { main } from '$lib/wailsjs/go/models';
-	import { InsertGameLog } from '$lib/wailsjs/go/main/Database';
+	import { InsertExecutableDetails, InsertGameLog } from '$lib/wailsjs/go/main/Database';
 	import { createForm } from 'felte';
 	import { validator } from '@felte/validator-zod';
 	import { reporter, ValidationMessage } from '@felte/reporter-svelte';
@@ -16,6 +16,7 @@
 
 	export let open = false;
 	export let game: main.IgdbGame;
+    export let executableData: { title: string, minutesPlayed: number };
 	const newLogMutation = useMutation(InsertGameLog);
 	const queryClient = useQueryClient();
 	const formSchema = z.object({
@@ -47,6 +48,9 @@
 			candidateLog.finishedOn = data.finishedOn;
 			candidateLog.timePlayed = candidateTimePlayed;
 			$newLogMutation.mutate(candidateLog);
+            if (executableData.title != "") {
+                await InsertExecutableDetails({ executableName: executableData.title, minutesPlayed: executableData.minutesPlayed, title: game.name })
+            }
 		},
 		transform: (data) => {
 			const formData = data as z.infer<typeof formSchema>;
@@ -80,6 +84,13 @@
 		'Abandoned'
 	];
 	const backDispatcher = createEventDispatcher();
+
+    var hoursPlayed = 0;
+    var leftoverMinutesPlayed = 0;
+    if (executableData.minutesPlayed) {
+        hoursPlayed = Math.floor(executableData.minutesPlayed / 60);
+        leftoverMinutesPlayed = executableData.minutesPlayed % 60;
+    }
 </script>
 
 <Modal {open} on:back on:close on:close={() => reset()}>
@@ -155,6 +166,7 @@
 							class="input input-bordered w-full"
 							placeholder="HH"
 							min="0"
+                            value={hoursPlayed}
 						/>
 						<ValidationMessage for="timePlayedHours" let:messages={message}>
 							<span class="text-sm text-red-500">{message || ''}</span>
@@ -169,6 +181,7 @@
 							placeholder="MM"
 							max="59"
 							min="0"
+                            value={leftoverMinutesPlayed}
 						/>
 						<ValidationMessage for="timePlayedMinutes" let:messages={message}>
 							<span class="text-sm text-red-500">{message || ''}</span>

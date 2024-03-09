@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"log"
+	"math"
+	"path"
 	"strings"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/process"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"gorm.io/gorm"
 )
 
 type Process struct {
@@ -19,6 +22,11 @@ type Process struct {
 type ProcessMap map[string]Process
 type ProcessMonitor struct {
 	previousRunningProcesses ProcessMap
+}
+type GameStoppedEventData struct {
+	GameTitle     string `json:"title"`
+	MinutesPlayed int    `json:"minutesPlayed"`
+	IsNewGame     bool   `json:"isNewGame"`
 }
 
 func NewProcess(pid int32, name string, path string, createTime int64) *Process {
@@ -78,16 +86,21 @@ func (pm *ProcessMonitor) MonitorProcesses(pathsToMonitorString string, context 
 				log.Fatal("Error filtering running processes:", err.Error())
 			}
 		}
-
-		for runningProcessPath, runningProcess := range runningProcesses {
-			if _, isStillRunning := pm.previousRunningProcesses[runningProcessPath]; !isStillRunning {
-				log.Println("PROCESS", runningProcess.Pid, "(", runningProcess.Name, ") STARTED AT", time.UnixMilli(runningProcess.CreateTime))
-			}
-		}
-
 		for previousProcessPath, previousProcess := range pm.previousRunningProcesses {
 			if _, isStillRunning := runningProcesses[previousProcessPath]; !isStillRunning {
-				log.Println("PROCESS", previousProcess.Pid, "(", previousProcess.Name, ") STOPPED, LASTED FOR", time.Now().UnixMilli()-previousProcess.CreateTime, "MILLISECONDS")
+				milisecondsPlayed := time.Now().UnixMilli() - previousProcess.CreateTime
+				minutesPlayed := math.Floor(float64(milisecondsPlayed / 60000))
+				executableName := path.Base(previousProcessPath)
+				details, err := database.getExecutableDetails(executableName)
+				couldFindExecutable := err != gorm.ErrRecordNotFound
+				if err != nil && couldFindExecutable {
+					log.Fatal("Error getting executable details:", err.Error())
+				}
+				if couldFindExecutable {
+					runtime.EventsEmit(context, "game-stopped", GameStoppedEventData{GameTitle: details.GameTitle, MinutesPlayed: int(minutesPlayed), IsNewGame: false})
+				} else {
+					runtime.EventsEmit(context, "game-stopped", GameStoppedEventData{GameTitle: executableName, MinutesPlayed: int(minutesPlayed), IsNewGame: true})
+				}
 				runtime.Show(context)
 			}
 		}
