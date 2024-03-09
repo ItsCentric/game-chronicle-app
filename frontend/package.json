@@ -37,11 +37,14 @@
     "@felte/reporter-svelte": "^1.1.11",
     "@felte/validator-zod": "^1.0.17",
     "@sveltestack/svelte-query": "^1.6.0",
+    "clsx": "^2.1.0",
     "date-picker-svelte": "^2.10.0",
     "felte": "^1.2.12",
-    "lucide-svelte": "^0.294.0",
+    "lucide-svelte": "^0.354.0",
     "svelte-french-toast": "^1.2.0",
     "svelte-select": "^5.8.1",
+    "tailwind-merge": "^2.2.1",
+    "tailwind-variants": "^0.2.0",
     "zod": "^3.22.4"
   }
 }
