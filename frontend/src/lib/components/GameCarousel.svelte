@@ -30,7 +30,7 @@
 
 <div class="h-full w-full flex items-center gap-2" bind:this={swipeContainer}>
 	{#if paginatedGames.length > 1}
-		<button class="btn btn-circle btn-outline" on:click={() => swipeElement.prevItem()}
+		<button class="" on:click={() => swipeElement.prevItem()}
 			><ArrowLeft size={32} /></button
 		>
 	{/if}
@@ -46,7 +46,7 @@
 		{/each}
 	</Swipe>
 	{#if paginatedGames.length > 1}
-		<button class="btn btn-circle btn-outline" on:click={() => swipeElement.nextItem()}
+		<button class="" on:click={() => swipeElement.nextItem()}
 			><ArrowRight size={32} /></button>
 	{/if}
 </div>

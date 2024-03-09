@@ -5,27 +5,27 @@
 
 	switch (status) {
 		case 'Wishlist':
-			statusColor = 'badge-secondary';
+			statusColor = '';
 			break;
 		case 'Backlog':
-			statusColor = 'badge-info';
+			statusColor = '';
 			break;
 		case 'Playing':
-			statusColor = 'badge-primary';
+			statusColor = '';
 			break;
 		case 'Completed':
-			statusColor = 'badge-success';
+			statusColor = '';
 			break;
 		case 'Abandoned':
-			statusColor = 'badge-error';
+			statusColor = '';
 			break;
 		case 'Shelved':
-			statusColor = 'badge-warning';
+			statusColor = '';
 			break;
 		default:
-			statusColor = 'badge-neutral';
+			statusColor = '';
 			break;
 	}
 </script>
 
-<span class="badge {statusColor}">{status}</span>
+<span class=" {statusColor}">{status}</span>

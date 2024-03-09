@@ -15,8 +15,8 @@
 	}
 </script>
 
-<dialog bind:this={dialogElement} on:close class="modal">
-	<div class="modal-box container max-w-3xl">
+<dialog bind:this={dialogElement} on:close class="">
+	<div class="container max-w-3xl">
 		<div class="flex justify-between items-center mb-4">
 			<div class="flex gap-2 items-center text-2xl font-semibold">
 				<slot name="heading" />
@@ -27,7 +27,4 @@
 		</div>
 		<slot name="content" />
 	</div>
-	<form method="dialog" class="modal-backdrop">
-		<button>close</button>
-	</form>
 </dialog>

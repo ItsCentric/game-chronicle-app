@@ -64,7 +64,7 @@
 
 <main>
 	<div class="flex justify-end gap-2 mb-2">
-		<div class="dropdown">
+		<div class="">
 			<div tabindex="0" role="button" class="btn">
 				<ArrowDownUp size={16} />
 				<p>Sort</p>
@@ -76,66 +76,65 @@
 				class="dropdown-content bg-base-100 z-10 p-2 shadow rounded-box"
 				use:sortForm
 			>
-				<div class="form-control">
-					<label class="label">
-						<input type="radio" name="sortBy" value="title" class="radio" />
+				<div class="">
+					<label class="">
+						<input type="radio" name="sortBy" value="title" class="" />
 						<span class="label-text">Alphabetical</span>
 					</label>
 				</div>
-				<div class="form-control">
-					<label class="label">
-						<input type="radio" name="sortBy" value="time_played_minutes" class="radio" />
-						<span class="label-text">Time Played</span>
+				<div class="">
+					<label class="">
+						<input type="radio" name="sortBy" value="time_played_minutes" class="" />
+						<span class="">Time Played</span>
 					</label>
 				</div>
-				<div class="form-control">
-					<label class="label">
-						<input type="radio" name="sortBy" value="started_on" class="radio" />
-						<span class="label-text">Date Started</span>
+				<div class="">
+					<label class="">
+						<input type="radio" name="sortBy" value="started_on" class="" />
+						<span class="">Date Started</span>
 					</label>
 				</div>
-				<div class="form-control">
-					<label class="label">
-						<input type="radio" name="sortBy" value="finished_on" class="radio mr-2" />
-						<span class="label-text">Date Finished</span>
+				<div class="">
+					<label class="">
+						<input type="radio" name="sortBy" value="finished_on" class=" mr-2" />
+						<span class="">Date Finished</span>
 					</label>
 				</div>
-				<div class="form-control">
-					<label class="label">
-						<input type="radio" name="sortBy" value="created_at" class="radio" checked />
-						<span class="label-text">Entry Added</span>
+				<div class="">
+					<label class="">
+						<input type="radio" name="sortBy" value="created_at" class="" checked />
+						<span class="">Entry Added</span>
 					</label>
 				</div>
-				<span class="divider" />
-				<div class="form-control">
-					<label class="label">
-						<input type="radio" name="sortOrder" value="asc" class="radio" />
-						<span class="label-text">Ascending</span>
+				<div class="">
+					<label class="">
+						<input type="radio" name="sortOrder" value="asc" class="" />
+						<span class="">Ascending</span>
 					</label>
 				</div>
-				<div class="form-control">
-					<label class="label">
-						<input type="radio" name="sortOrder" value="desc" class="radio" checked />
-						<span class="label-text">Descending</span>
+				<div class="">
+					<label class="">
+						<input type="radio" name="sortOrder" value="desc" class="" checked />
+						<span class="">Descending</span>
 					</label>
 				</div>
-				<div class="join mt-2">
-					<button type="submit" disabled={!$isSortValid} class="btn w-full h-full join-item"
+				<div class="mt-2">
+					<button type="submit" disabled={!$isSortValid} class=" w-full h-full "
 						>Apply</button
 					>
-					<button class="btn btn-error join-item" on:click={sortReset}>
+					<button class="" on:click={sortReset}>
 						<X size={16} />
 					</button>
 				</div>
 			</form>
 		</div>
-		<div class="dropdown dropdown-bottom dropdown-end">
-			<div tabindex={0} role="button" class="btn">
+		<div class="">
+			<div tabindex={0} role="button" class="">
 				<Filter size={16} />
 				<p>Filter</p>
 			</div>
 			<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
-			<div tabindex={0} class="dropdown-content bg-base-100 z-10 p-2 shadow rounded-box">
+			<div tabindex={0} class=" bg-base-100 z-10 p-2 shadow rounded-box">
 				<form method="post" use:filterForm>
 					<Select
 						items={statusOptions}
@@ -145,12 +144,12 @@
 						closeListOnChange={false}
 						multiple
 					/>
-					<div class="join mt-2 w-full">
-						<button type="submit" disabled={!$isFilterValid} class="btn join-item w-full h-full"
+					<div class=" mt-2 w-full">
+						<button type="submit" disabled={!$isFilterValid} class=" w-full h-full"
 							>Apply</button
 						>
 						<button
-							class="btn btn-error join-item"
+							class=""
 							on:click={() => {
 								selectElement?.handleClear();
 								filterReset();
@@ -167,9 +166,9 @@
 	<div class="grid grid-cols-3 gap-4">
 		{#if $logsQueryResult.data && !$logsQueryResult.isLoading}
 			{#each $logsQueryResult.data as log}
-				<div class="card card-bordered">
-					<div class="card-body">
-						<h2 class="card-title line-clamp-2">{log.title}</h2>
+				<div class="">
+					<div class="">
+						<h2 class="line-clamp-2">{log.title}</h2>
 						<GameStatusBadge status={log.statusId} />
 						<p>{log.notes}</p>
 					</div>

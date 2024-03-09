@@ -35,17 +35,17 @@
 				<div class="join">
 					<input
 						name="game"
-						class="input input-bordered join-item"
+						class=""
 						type="text"
 						placeholder="The latest game"
 					/>
-					<button class="btn join-item rounded-r-full input-bordered">Search</button>
+					<button class="rounded-r-full">Search</button>
 				</div>
 			</form>
 			<div class="flex justify-center gap-4">
 				{#if searchPromise}
 					{#await searchPromise}
-						<span class="loading loading-spinner loading-lg mx-auto"></span>
+						<span class=""></span>
 					{:then searchResult}
 						{#if searchResult.length === 0}
 							<p>No results found</p>

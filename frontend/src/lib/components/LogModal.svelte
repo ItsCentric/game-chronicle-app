@@ -163,7 +163,7 @@
 							type="number"
 							id="timePlayedHours"
 							name="timePlayedHours"
-							class="input input-bordered w-full"
+							class="w-full"
 							placeholder="HH"
 							min="0"
                             value={hoursPlayed}
@@ -177,7 +177,7 @@
 							type="number"
 							id="timePlayedMinutes"
 							name="timePlayedMinutes"
-							class="input input-bordered w-full"
+							class="w-full"
 							placeholder="MM"
 							max="59"
 							min="0"
@@ -193,7 +193,7 @@
 					<textarea
 						id="notes"
 						name="notes"
-						class="textarea textarea-bordered w-full"
+						class="w-full"
 						placeholder="Notes"
 					></textarea>
 					<ValidationMessage for="notes" let:messages={message}>
@@ -203,8 +203,8 @@
 			</div>
 		</form>
 		<div class="modal-action">
-			<button type="submit" form="log" class="btn btn-primary" disabled={!$isValid}>Save</button>
-			<button type="button" class="btn" on:click={() => (open = false)}>Cancel</button>
+			<button type="submit" form="log" class="" disabled={!$isValid}>Save</button>
+			<button type="button" class="" on:click={() => (open = false)}>Cancel</button>
 		</div>
 	</svelte:fragment>
 </Modal>
