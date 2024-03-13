@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type SettingsFormData, settingsSchema } from '$lib/schemas';
+	import { settingsSchema } from '$lib/schemas';
 	import { OpenDirectoryDialog } from '$lib/wailsjs/go/main/App';
 	import { SaveUserSettings, GetUserSettings } from '$lib/wailsjs/go/main/Database';
 	import { WindowReloadApp } from '$lib/wailsjs/runtime/runtime';
@@ -7,21 +7,23 @@
 	import { createForm } from 'felte';
 	import { ArrowLeft, PencilIcon, Trash } from 'lucide-svelte';
 	import { onMount } from 'svelte';
+	import type { z } from 'zod';
 
 	var reloadApplicationModal: HTMLDialogElement | null;
-	const { form, isValid, isDirty, setData, data, setInitialValues, setIsDirty } =
-		createForm<SettingsFormData>({
-			initialValues: { processMonitoringEnabled: false, executablePaths: [] },
-			onSubmit: async (values) => {
-				var newSettings = {
-					processMonitoringEnabled: values.processMonitoringEnabled,
-					executablePaths: values.executablePaths.join(';')
-				};
-                await SaveUserSettings(newSettings);
-				reloadApplicationModal?.showModal();
-			},
-			extend: validator({ schema: settingsSchema })
-		});
+	const { form, isValid, isDirty, setData, data, setInitialValues, setIsDirty } = createForm<
+		z.infer<typeof settingsSchema>
+	>({
+		initialValues: { processMonitoringEnabled: false, executablePaths: [] },
+		onSubmit: async (values) => {
+			var newSettings = {
+				processMonitoringEnabled: values.processMonitoringEnabled,
+				executablePaths: values.executablePaths.join(';')
+			};
+			await SaveUserSettings(newSettings);
+			reloadApplicationModal?.showModal();
+		},
+		extend: validator({ schema: settingsSchema })
+	});
 
 	async function newDirectoryDialog() {
 		var result = await OpenDirectoryDialog();
@@ -42,10 +44,12 @@
 			var executablePathsString = userPreferencesRes.preferences.executablePaths;
 			var executablePathsArray = executablePathsString.split(';');
 			executablePathsArray = executablePathsArray.filter((path) => path !== '');
-            console.log(userPreferencesRes.preferences.processMonitoringEnabled);
-			setInitialValues({ processMonitoringEnabled: userPreferencesRes.preferences.processMonitoringEnabled, executablePaths: executablePathsArray });
+			setInitialValues({
+				processMonitoringEnabled: userPreferencesRes.preferences.processMonitoringEnabled,
+				executablePaths: executablePathsArray
+			});
 			setData('executablePaths', executablePathsArray);
-            setData('processMonitoringEnabled', userPreferencesRes.preferences.processMonitoringEnabled);
+			setData('processMonitoringEnabled', userPreferencesRes.preferences.processMonitoringEnabled);
 		}
 	});
 	function removePath(path: string) {
@@ -57,8 +61,6 @@
 		setData('executablePaths', [...$data.executablePaths, path]);
 		setIsDirty(true);
 	}
-
-    $: console.log($data.processMonitoringEnabled);
 </script>
 
 <main class="w-full h-full p-12 flex-col justify-center items-center">
@@ -74,7 +76,12 @@
 			<div class="form-control">
 				<label class="label cursor-pointer">
 					<span class="label-text">Enable Game Monitoring</span>
-					<input type="checkbox" class="toggle" name="processMonitoringEnabled" checked={$data.processMonitoringEnabled}  />
+					<input
+						type="checkbox"
+						class="toggle"
+						name="processMonitoringEnabled"
+						checked={$data.processMonitoringEnabled}
+					/>
 				</label>
 			</div>
 			<div class="flex justify-between items-center mb-2">

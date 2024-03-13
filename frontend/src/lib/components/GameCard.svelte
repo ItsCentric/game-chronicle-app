@@ -5,7 +5,7 @@
 </script>
 
 <div
-	class="w-full max-w-[33%] relative aspect-[3/4] group"
+	class="w-full relative aspect-[3/4] group"
 	on:click
 	on:keydown
 	role="button"
