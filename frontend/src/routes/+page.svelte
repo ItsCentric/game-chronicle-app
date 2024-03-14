@@ -504,6 +504,7 @@
 							<Badge class="w-fit bg-red-700">{log.statusId}</Badge>
 						{/if}
 					</Card.Header>
+					<Card.Content class="line-clamp-2">{log.notes}</Card.Content>
 				</Card.Root>
 			{/each}
 		{/if}
