@@ -158,7 +158,7 @@
 		toast.success('Log created!');
 	}
 	$: if ($newLogMutation.isError) {
-		toast.success('Something went wrong!');
+		toast.error('Something went wrong!');
 	}
 	EventsOn('game-stopped', async (data) => {
 		if (data.isNewGame) {
