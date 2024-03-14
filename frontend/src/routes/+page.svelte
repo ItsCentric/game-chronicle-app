@@ -2,7 +2,6 @@
 	import { main } from '$lib/wailsjs/go/models';
 	import { ArrowDownUp, Filter, Search, Settings, X } from 'lucide-svelte';
 	import { EventsOn } from '$lib/wailsjs/runtime/runtime';
-    import { toast } from "svelte-sonner";
 	import { AuthenticateWithTwitch, SearchForGame } from '$lib/wailsjs/go/main/App';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { superForm, defaults, type Infer } from 'sveltekit-superforms';
@@ -36,6 +35,7 @@
 	import * as Select from '$lib/components/ui/select';
 	import { getLocalTimeZone, parseDate, today } from '@internationalized/date';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
+	import { toast } from 'svelte-sonner';
 
 	let selectedGame: main.IgdbGame | undefined;
 	let searchPromise: ReturnType<typeof SearchForGame> | undefined;
@@ -158,7 +158,7 @@
 		toast.success('Log created!');
 	}
 	$: if ($newLogMutation.isError) {
-		toast.error('Something went wrong!');
+		toast.success('Something went wrong!');
 	}
 	EventsOn('game-stopped', async (data) => {
 		if (data.isNewGame) {
