@@ -172,12 +172,11 @@
 			selectedGame = gameSearchResults[0];
 		}
 	});
-	if (executableData.minutesPlayed) {
+	$: if (executableData.minutesPlayed) {
 		$newLogFormData.timePlayedHours = Math.floor(executableData.minutesPlayed / 60);
 		$newLogFormData.timePlayedMinutes = executableData.minutesPlayed % 60;
 	}
 	$: selectedStatuses = $filterFormData.status.map((status) => ({ value: status, label: status }));
-	$: console.log($newLogFormData.rating);
 </script>
 
 <main class="flex flex-col justify-center items-center h-full p-12">
