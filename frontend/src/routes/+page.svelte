@@ -1,13 +1,11 @@
 <script lang="ts">
 	import { main } from '$lib/wailsjs/go/models';
-	import { ArrowDownUp, Filter, Search, Settings, X } from 'lucide-svelte';
+	import { ArrowDownUp, Filter, Settings, X } from 'lucide-svelte';
 	import { EventsOn } from '$lib/wailsjs/runtime/runtime';
-	import { AuthenticateWithTwitch, SearchForGame } from '$lib/wailsjs/go/main/App';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { superForm, defaults, type Infer } from 'sveltekit-superforms';
 	import {
 		filterFormSchema,
-		gameSearchSchema,
 		newLogSchema,
 		sortFormSchema,
 		statusOptions,
@@ -17,8 +15,6 @@
 	import { zod, zodClient } from 'sveltekit-superforms/adapters';
 	import { Input } from '$lib/components/ui/input';
 	import * as Form from '$lib/components/ui/form';
-	import * as Carousel from '$lib/components/ui/carousel/index.js';
-	import GameCard from '$lib/components/GameCard.svelte';
 	import Combobox from '$lib/components/Combobox.svelte';
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
@@ -38,41 +34,15 @@
 	import { toast } from 'svelte-sonner';
 
 	let selectedGame: main.IgdbGame | undefined;
-	let searchPromise: ReturnType<typeof SearchForGame> | undefined;
 	let executableData: { title: string; minutesPlayed: number } = { title: '', minutesPlayed: 0 };
 	const newLogMutation = useMutation(InsertGameLog);
 	const queryClient = useQueryClient();
 	let openGameSearchModal = false;
-	async function authenticateAndSearchForGame(gameTitle: string) {
-		const authenticateRes = await AuthenticateWithTwitch();
-		if (!authenticateRes.access_token) {
-			console.error('Failed to authenticate with Twitch');
-		}
-		const queriedGames = await SearchForGame(gameTitle, authenticateRes.access_token);
-		if (queriedGames.length === 0) {
-			console.error('Failed to search for game');
-		}
-		return queriedGames;
-	}
 	function applySortAndFilter(data: Infer<SortFormSchema> | Infer<FilterFormSchema>) {
 		currentSortAndFilter = { ...currentSortAndFilter, ...data };
 		queryClient.invalidateQueries('logs');
 	}
 
-	const gameSearchForm = superForm(defaults(zod(gameSearchSchema)), {
-		validators: zodClient(gameSearchSchema),
-		SPA: true,
-		onUpdate: ({ form }) => {
-			if (form.valid) {
-				searchPromise = authenticateAndSearchForGame(form.data.gameTitle);
-			}
-		}
-	});
-	const {
-		form: gameSearchFormData,
-		enhance: gameSearchEnhance,
-		reset: gameSearchFormReset
-	} = gameSearchForm;
 	const newLogForm = superForm(defaults(zod(newLogSchema)), {
 		validators: zodClient(newLogSchema),
 		SPA: true,
@@ -166,10 +136,6 @@
 			openGameSearchModal = true;
 			executableData = data;
 			toast("Looks like you're playing a new title, help us out by telling us what it is!");
-		} else {
-			const gameSearchResults = await authenticateAndSearchForGame(data.title);
-			executableData = { title: data.title, minutesPlayed: data.minutesPlayed };
-			selectedGame = gameSearchResults[0];
 		}
 	});
 	$: if (executableData.minutesPlayed) {
@@ -181,56 +147,7 @@
 
 <main class="flex flex-col justify-center items-center h-full p-12">
 	<Button href="/settings" class="mb-2"><Settings /></Button>
-	<Dialog.Root
-		bind:open={openGameSearchModal}
-		onOpenChange={() => {
-			searchPromise = undefined;
-			gameSearchFormReset();
-		}}
-	>
-		<Dialog.Trigger class={buttonVariants({ variant: 'default' })}>Create Log</Dialog.Trigger>
-		<Dialog.Content>
-			<Dialog.Header>
-				<Dialog.Title>Search for a Game</Dialog.Title>
-				<Dialog.Description>Search for a game to create a log for</Dialog.Description>
-			</Dialog.Header>
-			<div class="flex flex-col gap-4">
-				<form method="post" class="flex justify-center" use:gameSearchEnhance>
-					<Form.Field form={gameSearchForm} name="gameTitle">
-						<Form.Control let:attrs>
-							<Input {...attrs} bind:value={$gameSearchFormData.gameTitle} class="rounded-r-none" />
-						</Form.Control>
-					</Form.Field>
-					<Form.Button class="rounded-l-none"><Search size={24} /></Form.Button>
-				</form>
-				{#if searchPromise}
-					{#await searchPromise}
-						<span class=""></span>
-						<p>Searching...</p>
-					{:then searchResult}
-						{#if searchResult.length === 0}
-							<p>No results found</p>
-						{:else}
-							<Carousel.Root class="w-5/6 mx-auto">
-								<Carousel.Content>
-									{#each searchResult as game}
-										<Carousel.Item class="basis-1/3">
-											<GameCard data={game} on:click={() => (selectedGame = game)} />
-										</Carousel.Item>
-									{/each}
-								</Carousel.Content>
-								<Carousel.Previous />
-								<Carousel.Next />
-							</Carousel.Root>
-						{/if}
-					{:catch error}
-						<p>Something went wrong</p>
-						<p>{error}</p>
-					{/await}
-				{/if}
-			</div>
-		</Dialog.Content>
-	</Dialog.Root>
+	<Button href="/game-search" class="mb-2">Create a log</Button>
 	{#if selectedGame}
 		<Dialog.Root
 			bind:open={openLogModal}

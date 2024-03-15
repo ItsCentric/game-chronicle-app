@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function AuthenticateWithTwitch():Promise<main.AccessTokenResponse>;
 
+export function GetRandomGames(arg1:number,arg2:string):Promise<main.GetRandomGamesResponse>;
+
 export function OpenDirectoryDialog():Promise<main.OpenDirectoryDialogResponse>;
 
-export function SearchForGame(arg1:string,arg2:string):Promise<Array<main.IgdbGame>>;
+export function SearchForGame(arg1:string,arg2:string):Promise<main.SearchForGameResponse>;

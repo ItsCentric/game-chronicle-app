@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 )
@@ -14,6 +15,16 @@ type AccessTokenResponse struct {
 	AccessToken string `json:"access_token"`
 	ExpiresIn   int    `json:"expires_in"`
 	TokenType   string `json:"token_type"`
+}
+
+type GetRandomGamesResponse struct {
+	Games []IgdbGame `json:"games"`
+	Error string     `json:"error"`
+}
+
+type SearchForGameResponse struct {
+	Games []IgdbGame `json:"games"`
+	Error string     `json:"error"`
 }
 
 type SimplifiedIgdbCover struct {
@@ -75,16 +86,30 @@ func SendIgdbRequest(endpoint string, accessToken string, body string) ([]byte, 
 	return responseBody, nil
 }
 
-func (a *App) SearchForGame(title string, accessToken string) ([]IgdbGame, error) {
+func (a *App) SearchForGame(title string, accessToken string) SearchForGameResponse {
 	responseBody, err := SendIgdbRequest("games", accessToken, fmt.Sprintf("search \"%s\"; fields name, cover.image_id; limit 9; where category = 0;", title))
 	if err != nil {
-		return []IgdbGame{}, err
+		return SearchForGameResponse{Error: err.Error()}
 	}
 	var igdbGames []IgdbGame
 	err = json.Unmarshal(responseBody, &igdbGames)
 	if err != nil {
-		return []IgdbGame{}, err
+		return SearchForGameResponse{Error: err.Error()}
 	}
 
-	return igdbGames, nil
+	return SearchForGameResponse{Games: igdbGames}
+}
+
+func (a *App) GetRandomGames(amount int, accessToken string) GetRandomGamesResponse {
+	randomOffset := rand.Intn(900)
+	responseBody, err := SendIgdbRequest("games", accessToken, fmt.Sprintf("fields name, cover.image_id; limit %v; where category = 0 & total_rating >= 85 & platforms.category = (1, 6); offset %v;", amount, randomOffset))
+	if err != nil {
+		return GetRandomGamesResponse{Error: err.Error()}
+	}
+	var igdbGames []IgdbGame
+	err = json.Unmarshal(responseBody, &igdbGames)
+	if err != nil {
+		return GetRandomGamesResponse{Error: err.Error()}
+	}
+	return GetRandomGamesResponse{Games: igdbGames}
 }
