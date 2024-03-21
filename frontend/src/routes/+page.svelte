@@ -95,8 +95,6 @@
 				<DropdownMenu.RadioGroup bind:value={$sortFormData.sortBy}>
 					<DropdownMenu.RadioItem value="title">Alphabetical</DropdownMenu.RadioItem>
 					<DropdownMenu.RadioItem value="time_played_minutes">Time Played</DropdownMenu.RadioItem>
-					<DropdownMenu.RadioItem value="started_on">Date Started</DropdownMenu.RadioItem>
-					<DropdownMenu.RadioItem value="finished_on">Date Finished</DropdownMenu.RadioItem>
 					<DropdownMenu.RadioItem value="created_at">Entry Added</DropdownMenu.RadioItem>
 				</DropdownMenu.RadioGroup>
 				<DropdownMenu.Separator />
