@@ -10,6 +10,8 @@
 	import { zod, zodClient } from 'sveltekit-superforms/adapters';
 	import * as Pagination from '$lib/components/ui/pagination';
 	import Button from '$lib/components/ui/button/button.svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 
 	const gamesPerPage = 18;
 	let searchPromise: ReturnType<typeof SearchForGame> | undefined;
@@ -72,9 +74,21 @@
 					<p class="text-gray-500">Try searching for something else</p>
 				</div>
 			{:else}
+				{@const executableName = $page.url.searchParams.get('executableName')}
+				{@const minutesPlayed = $page.url.searchParams.get('minutesPlayed')}
+				{@const isNewGame = !executableName && !minutesPlayed}
 				<div class="mx-auto grid grid-cols-6 gap-4 container">
 					{#each searchResult.games.slice(beginningPageIndex, beginningPageIndex + gamesPerPage) as game}
-						<GameCard data={game} />
+						<GameCard
+							data={game}
+							on:click={() =>
+								goto(
+									`/log?gameId=${game.id}` +
+										(isNewGame
+											? `&executableName=${executableName}&minutesPlayed=${minutesPlayed}`
+											: '')
+								)}
+						/>
 					{/each}
 				</div>
 				<Pagination.Root

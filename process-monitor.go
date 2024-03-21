@@ -24,9 +24,9 @@ type ProcessMonitor struct {
 	previousRunningProcesses ProcessMap
 }
 type GameStoppedEventData struct {
-	GameTitle     string `json:"title"`
-	MinutesPlayed int    `json:"minutesPlayed"`
-	IsNewGame     bool   `json:"isNewGame"`
+	GameId         int    `json:"gameId"`
+	ExecutableName string `json:"executableName"`
+	MinutesPlayed  int    `json:"minutesPlayed"`
 }
 
 func NewProcess(pid int32, name string, path string, createTime int64) *Process {
@@ -78,7 +78,7 @@ func (pm *ProcessMonitor) MonitorProcesses(pathsToMonitorString string, context 
 	for range ticker.C {
 		runningProcesses, err := pm.GetRunningProcesses()
 		if err != nil {
-			log.Fatal("Error getting running processes:", err.Error())
+			runtime.LogErrorf(context, "Error getting running processes: %s", err.Error())
 		}
 		if len(pathsToMonitorString) > 0 {
 			runningProcesses, err = pm.FilterProcesses(runningProcesses, pathsToMonitorString)
@@ -97,9 +97,9 @@ func (pm *ProcessMonitor) MonitorProcesses(pathsToMonitorString string, context 
 					log.Fatal("Error getting executable details:", err.Error())
 				}
 				if couldFindExecutable {
-					runtime.EventsEmit(context, "game-stopped", GameStoppedEventData{GameTitle: details.GameTitle, MinutesPlayed: int(minutesPlayed), IsNewGame: false})
+					runtime.EventsEmit(context, "game-stopped", GameStoppedEventData{GameId: details.GameId, MinutesPlayed: int(minutesPlayed)})
 				} else {
-					runtime.EventsEmit(context, "game-stopped", GameStoppedEventData{GameTitle: executableName, MinutesPlayed: int(minutesPlayed), IsNewGame: true})
+					runtime.EventsEmit(context, "game-stopped", GameStoppedEventData{ExecutableName: details.ExecutableName, MinutesPlayed: int(minutesPlayed)})
 				}
 				runtime.Show(context)
 			}

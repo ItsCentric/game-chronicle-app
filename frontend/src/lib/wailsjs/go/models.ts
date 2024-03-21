@@ -18,7 +18,7 @@ export namespace main {
 	}
 	export class ExecutableDetails {
 	    executableName: string;
-	    title: string;
+	    gameId: number;
 	    minutesPlayed: number;
 	
 	    static createFrom(source: any = {}) {
@@ -28,7 +28,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.executableName = source["executableName"];
-	        this.title = source["title"];
+	        this.gameId = source["gameId"];
 	        this.minutesPlayed = source["minutesPlayed"];
 	    }
 	}
@@ -47,6 +47,7 @@ export namespace main {
 	    }
 	}
 	export class IgdbGame {
+	    id: number;
 	    name: string;
 	    cover: SimplifiedIgdbCover;
 	
@@ -56,8 +57,41 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.cover = this.convertValues(source["cover"], SimplifiedIgdbCover);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class GetGameByIdResponse {
+	    game: IgdbGame;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GetGameByIdResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.game = this.convertValues(source["game"], IgdbGame);
+	        this.error = source["error"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -191,15 +225,14 @@ export namespace main {
 	}
 	export class Log {
 	    title: string;
+	    // Go type: time
+	    date: any;
 	    rating: number;
 	    notes: string;
 	    // Go type: LogStatus
 	    status: any;
 	    statusId: string;
-	    // Go type: time
-	    startedOn: any;
-	    // Go type: time
-	    finishedOn: any;
+	    finished: boolean;
 	    timePlayedMinutes: number;
 	
 	    static createFrom(source: any = {}) {
@@ -209,12 +242,12 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
+	        this.date = this.convertValues(source["date"], null);
 	        this.rating = source["rating"];
 	        this.notes = source["notes"];
 	        this.status = this.convertValues(source["status"], null);
 	        this.statusId = source["statusId"];
-	        this.startedOn = this.convertValues(source["startedOn"], null);
-	        this.finishedOn = this.convertValues(source["finishedOn"], null);
+	        this.finished = source["finished"];
 	        this.timePlayedMinutes = source["timePlayedMinutes"];
 	    }
 	
@@ -285,13 +318,12 @@ export namespace main {
 	}
 	export class LogData {
 	    title: string;
+	    // Go type: time
+	    date: any;
 	    rating: number;
 	    notes?: string;
 	    status: string;
-	    // Go type: time
-	    startedOn: any;
-	    // Go type: time
-	    finishedOn?: any;
+	    finished: boolean;
 	    timePlayed: TimePlayed;
 	
 	    static createFrom(source: any = {}) {
@@ -301,11 +333,11 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
+	        this.date = this.convertValues(source["date"], null);
 	        this.rating = source["rating"];
 	        this.notes = source["notes"];
 	        this.status = source["status"];
-	        this.startedOn = this.convertValues(source["startedOn"], null);
-	        this.finishedOn = this.convertValues(source["finishedOn"], null);
+	        this.finished = source["finished"];
 	        this.timePlayed = this.convertValues(source["timePlayed"], TimePlayed);
 	    }
 	

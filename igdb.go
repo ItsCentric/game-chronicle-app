@@ -27,12 +27,18 @@ type SearchForGameResponse struct {
 	Error string     `json:"error"`
 }
 
+type GetGameByIdResponse struct {
+	Game  IgdbGame `json:"game"`
+	Error string   `json:"error"`
+}
+
 type SimplifiedIgdbCover struct {
 	Id       int     `json:"id"`
 	Image_id *string `json:"image_id"`
 }
 
 type IgdbGame struct {
+	Id    int                 `json:"id"`
 	Name  string              `json:"name"`
 	Cover SimplifiedIgdbCover `json:"cover"`
 }
@@ -112,4 +118,20 @@ func (a *App) GetRandomGames(amount int, accessToken string) GetRandomGamesRespo
 		return GetRandomGamesResponse{Error: err.Error()}
 	}
 	return GetRandomGamesResponse{Games: igdbGames}
+}
+
+func (a *App) GetGameById(id int, accessToken string) GetGameByIdResponse {
+	responseBody, err := SendIgdbRequest("games", accessToken, fmt.Sprintf("fields name, cover.image_id; where id = %v; limit 1;", id))
+	if err != nil {
+		return GetGameByIdResponse{Error: err.Error()}
+	}
+	var igdbGames []IgdbGame
+	err = json.Unmarshal(responseBody, &igdbGames)
+	if err != nil {
+		return GetGameByIdResponse{Error: err.Error()}
+	}
+	if len(igdbGames) == 0 {
+		return GetGameByIdResponse{Error: "No game found with that ID"}
+	}
+	return GetGameByIdResponse{Game: igdbGames[0]}
 }

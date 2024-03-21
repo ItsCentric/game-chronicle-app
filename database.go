@@ -23,7 +23,7 @@ type UserSettings struct {
 
 type ExecutableDetails struct {
 	ExecutableName string `gorm:"primaryKey" json:"executableName"`
-	GameTitle      string `json:"title"`
+	GameId         int    `json:"gameId"`
 	MinutesPlayed  int    `json:"minutesPlayed"`
 }
 

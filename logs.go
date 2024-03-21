@@ -9,22 +9,22 @@ import (
 type Log struct {
 	gorm.Model
 	Title             string    `gorm:"not null" json:"title"`
+	Date              time.Time `json:"date"`
 	Rating            uint      `gorm:"check:rating <= 10" gorm:"not null" json:"rating"`
 	Notes             string    `json:"notes"`
 	Status            LogStatus `gorm:"not null" json:"status"`
 	StatusID          string    `gorm:"not null" json:"statusId"`
-	StartedOn         time.Time `gorm:"check:started_on <= finished_on" json:"startedOn"`
-	FinishedOn        time.Time `gorm:"check:finished_on >= started_on" json:"finishedOn"`
+	Finished          bool      `json:"finished"`
 	TimePlayedMinutes uint      `gorm:"not null" json:"timePlayedMinutes"`
 }
 
 type LogData struct {
 	Title      string     `json:"title"`
+	Date       time.Time  `json:"date"`
 	Rating     uint       `json:"rating"`
 	Notes      *string    `json:"notes"`
 	StatusID   string     `json:"status"`
-	StartedOn  time.Time  `json:"startedOn"`
-	FinishedOn *time.Time `json:"finishedOn"`
+	Finished   bool       `json:"finished"`
 	TimePlayed TimePlayed `json:"timePlayed"`
 }
 
@@ -45,7 +45,7 @@ func newLog(data LogData) (*Log, map[string]string) {
 	}
 	timePlayedMinutes := data.TimePlayed.Hours*60 + data.TimePlayed.Minutes
 
-	return &Log{Title: data.Title, Rating: data.Rating, Notes: *data.Notes, StatusID: data.StatusID, StartedOn: data.StartedOn, FinishedOn: *data.FinishedOn, TimePlayedMinutes: timePlayedMinutes}, nil
+	return &Log{Title: data.Title, Date: data.Date, Rating: data.Rating, Notes: *data.Notes, StatusID: data.StatusID, Finished: data.Finished, TimePlayedMinutes: timePlayedMinutes}, nil
 }
 
 func validateCandidateLog(data LogData) map[string]string {
@@ -53,14 +53,11 @@ func validateCandidateLog(data LogData) map[string]string {
 	if data.Title == "" {
 		validationErrors["title"] = "Title cannot be empty"
 	}
+	if data.Date.After(time.Now()) {
+		validationErrors["date"] = "Date cannot be in the future"
+	}
 	if data.Rating > 10 || data.Rating < 0 {
 		validationErrors["rating"] = "Rating must be between 0 and 10"
-	}
-	if data.StartedOn.After(*data.FinishedOn) {
-		validationErrors["finishedOn"] = "Finished on cannot be before started on"
-	}
-	if data.FinishedOn.Before(data.StartedOn) {
-		validationErrors["startedOn"] = "Started on cannot be after finished on"
 	}
 	if data.TimePlayed.Hours < 0 || data.TimePlayed.Minutes < 0 {
 		validationErrors["timePlayed"] = "Time played cannot be negative"

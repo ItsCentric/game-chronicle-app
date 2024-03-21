@@ -6,6 +6,10 @@ export function AuthenticateWithTwitch() {
   return window['go']['main']['App']['AuthenticateWithTwitch']();
 }
 
+export function GetGameById(arg1, arg2) {
+  return window['go']['main']['App']['GetGameById'](arg1, arg2);
+}
+
 export function GetRandomGames(arg1, arg2) {
   return window['go']['main']['App']['GetRandomGames'](arg1, arg2);
 }

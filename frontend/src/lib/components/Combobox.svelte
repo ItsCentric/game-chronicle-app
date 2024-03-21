@@ -10,6 +10,7 @@
 	export let options: { value: string; label: string }[];
 	export let placeholder = 'Search...';
 	export let emptyText = 'Nothing found here!';
+	export let disabled = false;
 
 	let open = false;
 	export let value = '';
@@ -42,11 +43,12 @@
 	</Popover.Trigger>
 	<Popover.Content class="w-full p-0">
 		<Command.Root>
-			<Command.Input {placeholder} />
+			<Command.Input {disabled} {placeholder} />
 			<Command.Empty>{emptyText}</Command.Empty>
 			<Command.Group>
 				{#each options as option}
 					<Command.Item
+						{disabled}
 						value={option.value}
 						onSelect={(currentValue) => {
 							value = currentValue;

@@ -21,17 +21,17 @@ export const gameSearchSchema = z.object({
 });
 export type GameSearchFormSchema = typeof gameSearchSchema;
 
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
 export const newLogSchema = z.object({
     rating: z
         .number()
         .max(5, { message: 'Rating must be 5 or less' })
         .nonnegative({ message: 'Rating must be positive' }),
-    status: z.enum(['Playing', 'Completed', 'Abandoned']),
-    notes: z.string().max(1000, { message: 'Notes must be less than 1000 characters' }).default(""),
-    startedOn: z.date().max(new Date(), { message: 'Started on cannot be in the future' }),
-    finishedOn: z.date().max(new Date(new Date().setDate(new Date().getDate() + 1)), {
-        message: 'Finished on cannot be in the future'
-    }),
+    logDate: z.date().max(tomorrow, { message: 'New log date must not be in the future' }).default(new Date()),
+    status: z.enum(statusOptions),
+    notes: z.string().max(1000, { message: 'Notes must be less than 1000 characters' }).optional(),
+    finished: z.boolean().default(false),
     timePlayedHours: z.number({ invalid_type_error: 'Invalid value for hour' }).min(0).default('' as unknown as number),
     timePlayedMinutes: z.number({ invalid_type_error: 'Invalid value for minute' }).min(0).default('' as unknown as number)
 });
