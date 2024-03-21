@@ -1,16 +1,11 @@
 <script lang="ts">
 	import type { main } from '$lib/wailsjs/go/models';
+	import { Gamepad2 } from 'lucide-svelte';
 
 	export let data: main.IgdbGame;
 </script>
 
-<div
-	class="w-full relative aspect-[3/4] group"
-	on:click
-	on:keydown
-	role="button"
-	tabindex="0"
->
+<div class="w-full relative aspect-[3/4] group" on:click on:keydown role="button" tabindex="0">
 	{#if data.cover.image_id}
 		<img
 			src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' + data.cover.image_id + '.jpg'}
@@ -21,7 +16,9 @@
 		<span
 			class="rounded-3xl h-full hover:opacity-30 group-hover:opacity-30 transition-opacity from-primary via-secondary to-accent bg-gradient-to-br flex justify-center items-center"
 		>
-			<p class="font-bold select-none text-black">Cover not found :(</p>
+			<p class="font-bold select-none text-gray-400">
+				<Gamepad2 size={64} />
+			</p>
 		</span>
 	{/if}
 	<p

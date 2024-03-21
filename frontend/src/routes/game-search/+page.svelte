@@ -20,6 +20,7 @@
 	const gameSearchForm = superForm(defaults(zod(gameSearchSchema)), {
 		validators: zodClient(gameSearchSchema),
 		SPA: true,
+		resetForm: false,
 		onUpdate: ({ form }) => {
 			if (form.valid) {
 				searchPromise = authenticateAndSearchForGame(form.data.gameTitle);
