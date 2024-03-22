@@ -56,7 +56,7 @@ const config = {
             },
             fontFamily: {
                 heading: 'Poppins',
-                sans: ['Noto Sans Chakma', ...fontFamily.sans]
+                sans: ['Inter', ...fontFamily.sans]
             },
             fontSize: {
                 sm: '0.750rem',

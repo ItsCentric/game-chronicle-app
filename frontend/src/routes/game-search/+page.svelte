@@ -51,8 +51,8 @@
 
 <main class="min-h-full px-16 py-8">
 	<div class="text-center mb-4">
-		<h1 class="text-3xl font-bold">Find a Game</h1>
-		<p class="text-gray-500">Let's find that game you've been playing</p>
+		<h1 class="text-3xl font-heading font-bold">Find a Game</h1>
+		<p class="text-gray-500 font-heading">Let's find that game you've been playing</p>
 	</div>
 	<form method="post" class="flex justify-center mb-8 mx-auto" use:gameSearchEnhance>
 		<Button href="/" variant="ghost" class="mr-4"><ArrowLeft size={32} /></Button>

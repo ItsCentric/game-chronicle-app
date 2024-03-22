@@ -14,15 +14,15 @@
 		/>
 	{:else}
 		<span
-			class="rounded-3xl h-full hover:opacity-30 group-hover:opacity-30 transition-opacity from-primary via-secondary to-accent bg-gradient-to-br flex justify-center items-center"
+			class="rounded-3xl h-full hover:opacity-30 group-hover:opacity-30 transition-opacity from-primary to-secondary bg-gradient-to-br flex justify-center items-center"
 		>
-			<p class="font-bold select-none text-gray-400">
+			<p class="select-none text-muted">
 				<Gamepad2 size={64} />
 			</p>
 		</span>
 	{/if}
 	<p
-		class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-center font-semibold"
+		class="absolute font-heading left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-center font-semibold"
 	>
 		{data.name}
 	</p>

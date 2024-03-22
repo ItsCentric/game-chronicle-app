@@ -17,7 +17,6 @@
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import { Button } from '$lib/components/ui/button';
-	import { ArrowLeft } from 'lucide-svelte';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import { AuthenticateWithTwitch, GetGameById } from '$lib/wailsjs/go/main/App';
@@ -95,21 +94,20 @@
 	}
 	let isNewLogFormValid = false;
 	$: if ($newLogFormData)
-		validateNewLogForm({ update: false }).then((superValidated) => (isNewLogFormValid = superValidated.valid));
+		validateNewLogForm({ update: false }).then(
+			(superValidated) => (isNewLogFormValid = superValidated.valid)
+		);
 </script>
 
 <main class="min-h-full container py-8 px-16">
-	<div class="relative mb-4">
-		<Button
-			variant="ghost"
-			class="absolute left-0 -translate-x-full"
-			on:click={() => window.history.back()}><ArrowLeft size={32} /></Button
-		>
-		<h1 class="text-2xl font-bold">New Log</h1>
+	<div class="mb-4">
+		<h1 class="text-3xl font-heading font-bold">New Log</h1>
 		{#if !selectedGame}
 			<Skeleton class="w-72 h-4 mt-2" />
 		{:else}
-			<p class="text-gray-500">How was today's session with {selectedGame.name}?</p>
+			<p class="text-gray-500 text-lg font-heading">
+				How was today's session with {selectedGame.name}?
+			</p>
 		{/if}
 	</div>
 	<form method="post" class="grid-cols-[25%,_1fr] grid gap-4" id="newLog" use:newLogEnhance>
@@ -133,7 +131,7 @@
 						placeholder="Pick a status"
 						emptyText="No status found!"
 						bind:value={$newLogFormData.status}
-                        disabled={!selectedGame}
+						disabled={!selectedGame}
 					/>
 				</Form.Control>
 			</Form.Field>
@@ -143,7 +141,7 @@
 				{#if !selectedGame}
 					<Skeleton class="w-52 h-6 mb-2" />
 				{:else}
-					<p class="text-2xl font-semibold">{selectedGame.name}</p>
+					<p class="text-2xl font-heading font-semibold">{selectedGame.name}</p>
 				{/if}
 				<Form.Fieldset form={newLogForm} name="rating">
 					<RadioGroup.Root
@@ -154,7 +152,12 @@
 					>
 						{#each Array(5) as _, i}
 							<Form.Control let:attrs>
-								<RadioGroup.Item class="hidden" disabled={!selectedGame} value={`${i + 1}`} {...attrs} />
+								<RadioGroup.Item
+									class="hidden"
+									disabled={!selectedGame}
+									value={`${i + 1}`}
+									{...attrs}
+								/>
 								<Form.Label>
 									{#if $newLogFormData.rating >= i + 1}
 										<svg
@@ -195,7 +198,7 @@
 						bind:value={$newLogFormData.logDate}
 						placeholder="Log date"
 						max={today(getLocalTimeZone())}
-                        disabled={!selectedGame}
+						disabled={!selectedGame}
 					/>
 				</Form.Control>
 				<Form.FieldErrors />
@@ -217,7 +220,7 @@
 							placeholder="HH"
 							min="0"
 							bind:value={$newLogFormData.timePlayedHours}
-                            disabled={!selectedGame}
+							disabled={!selectedGame}
 							on:change={(newValue) => {
 								validateNewLogFormField('timePlayedHours', {
 									value: parseInt(newValue.currentTarget.value)
@@ -235,7 +238,7 @@
 							placeholder="MM"
 							min="0"
 							max="59"
-                            disabled={!selectedGame}
+							disabled={!selectedGame}
 							bind:value={$newLogFormData.timePlayedMinutes}
 							on:change={(newValue) => {
 								validateNewLogFormField('timePlayedMinutes', {
@@ -251,17 +254,22 @@
 				<Form.Field form={newLogForm} name="notes">
 					<Form.Control let:attrs>
 						<Form.Label>Notes</Form.Label>
-						<Textarea {...attrs} placeholder="Notes" disabled={!selectedGame} bind:value={$newLogFormData.notes} />
+						<Textarea
+							{...attrs}
+							placeholder="Notes"
+							disabled={!selectedGame}
+							bind:value={$newLogFormData.notes}
+						/>
 					</Form.Control>
 					<Form.FieldErrors />
 				</Form.Field>
 			</div>
 		</div>
 	</form>
-	<Button
-		type="submit"
-		form="newLog"
-		class="mt-4 float-right"
-		disabled={!isNewLogFormValid || !selectedGame}>Save</Button
-	>
+	<div class="float-right">
+		<Button type="submit" form="newLog" class="mt-4" disabled={!isNewLogFormValid || !selectedGame}
+			>Save</Button
+		>
+		<Button variant="destructive" on:click={() => window.history.back()}>Cancel</Button>
+	</div>
 </main>

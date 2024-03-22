@@ -163,21 +163,7 @@
 				<Card.Root>
 					<Card.Header>
 						<Card.Title>{log.title}</Card.Title>
-						{#if logStatus === 'Wishlist'}
-							<Badge class="w-fit">{log.statusId}</Badge>
-						{:else if logStatus === 'Backlog'}
-							<Badge class="w-fit bg-gray-500">{log.statusId}</Badge>
-						{:else if logStatus === 'Playing'}
-							<Badge class="w-fit bg-yellow-500">{log.statusId}</Badge>
-						{:else if logStatus === 'Completed'}
-							<Badge class="w-fit bg-green-500">{log.statusId}</Badge>
-						{:else if logStatus === 'Played'}
-							<Badge class="w-fit bg-green-700">{log.statusId}</Badge>
-						{:else if logStatus === 'Abandoned'}
-							<Badge class="w-fit bg-red-500">{log.statusId}</Badge>
-						{:else if logStatus === 'Retired'}
-							<Badge class="w-fit bg-red-700">{log.statusId}</Badge>
-						{/if}
+						<Badge class="w-fit">{logStatus}</Badge>
 					</Card.Header>
 					<Card.Content class="line-clamp-2">{log.notes}</Card.Content>
 				</Card.Root>

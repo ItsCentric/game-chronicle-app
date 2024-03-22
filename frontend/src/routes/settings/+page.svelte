@@ -65,12 +65,12 @@
 <main class="w-full h-full p-12 flex-col justify-center items-center">
 	<div class="flex gap-2 mb-8 items-center">
 		<Button href="/" variant="ghost"><ArrowLeft size={32} /></Button>
-		<h1 class="text-3xl font-bold">Settings</h1>
+		<h1 class="text-3xl font-heading font-bold">Settings</h1>
 	</div>
 	<form method="post" use:settingsFormEnhance class="flex flex-col gap-8">
 		<section class="flex flex-col gap-2">
 			<div class="flex justify-between mb-2">
-				<h2 class="text-2xl font-bold">Monitoring</h2>
+				<h2 class="text-2xl font-heading font-bold">Monitoring</h2>
 			</div>
 			<Form.Field form={settingsForm} name="processMonitoringEnabled">
 				<Form.Control let:attrs>
@@ -85,7 +85,7 @@
 				</Form.Control>
 			</Form.Field>
 			<div class="flex justify-between items-center mb-2">
-				<h3 class="text-xl font-bold">Monitoring Paths</h3>
+				<h3 class="text-xl font-heading font-bold">Monitoring Paths</h3>
 				<Button type="button" on:click={newDirectoryDialog}>Add New Path</Button>
 			</div>
 			{#if $settingsFormData.executablePaths.length !== 0}
