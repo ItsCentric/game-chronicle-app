@@ -24,7 +24,7 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:             "game-chronicle",
+		Title:             "Game Chronicle",
 		Width:             1024,
 		Height:            768,
 		MinWidth:          1024,
@@ -75,8 +75,8 @@ func main() {
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  true,
 			About: &mac.AboutInfo{
-				Title:   "game-chronicle",
-				Message: "",
+				Title:   "Game Chronicle",
+				Message: "Your gaming journey, all in one place.",
 				Icon:    icon,
 			},
 		},
