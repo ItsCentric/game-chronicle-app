@@ -1,4 +1,4 @@
-module changeme
+module github.com/itscentric/game-chronicle
 
 go 1.21
 
