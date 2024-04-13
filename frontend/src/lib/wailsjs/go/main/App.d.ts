@@ -4,9 +4,13 @@ import {main} from '../models';
 
 export function AuthenticateWithTwitch():Promise<main.AccessTokenResponse>;
 
-export function GetGameById(arg1:number,arg2:string):Promise<main.GetGameByIdResponse>;
+export function GetCurrentUsername():Promise<main.GetCurrentUsernameResponse>;
+
+export function GetGamesById(arg1:Array<number>,arg2:string):Promise<main.GetGamesByIdResponse>;
 
 export function GetRandomGames(arg1:number,arg2:string):Promise<main.GetRandomGamesResponse>;
+
+export function GetSimilarGames(arg1:Array<number>,arg2:string):Promise<main.GetSimilarGamesResponse>;
 
 export function OpenDirectoryDialog():Promise<main.OpenDirectoryDialogResponse>;
 

@@ -16,6 +16,7 @@ type Log struct {
 	StatusID          string    `gorm:"not null" json:"statusId"`
 	Finished          bool      `json:"finished"`
 	TimePlayedMinutes uint      `gorm:"not null" json:"timePlayedMinutes"`
+	GameId            int       `json:"gameId"`
 }
 
 type LogData struct {
@@ -26,6 +27,7 @@ type LogData struct {
 	StatusID   string     `json:"status"`
 	Finished   bool       `json:"finished"`
 	TimePlayed TimePlayed `json:"timePlayed"`
+	GameId     int        `json:"gameId"`
 }
 
 type TimePlayed struct {
@@ -45,7 +47,7 @@ func newLog(data LogData) (*Log, map[string]string) {
 	}
 	timePlayedMinutes := data.TimePlayed.Hours*60 + data.TimePlayed.Minutes
 
-	return &Log{Title: data.Title, Date: data.Date, Rating: data.Rating, Notes: *data.Notes, StatusID: data.StatusID, Finished: data.Finished, TimePlayedMinutes: timePlayedMinutes}, nil
+	return &Log{Title: data.Title, Date: data.Date, Rating: data.Rating, Notes: *data.Notes, StatusID: data.StatusID, Finished: data.Finished, TimePlayedMinutes: timePlayedMinutes, GameId: data.GameId}, nil
 }
 
 func validateCandidateLog(data LogData) map[string]string {

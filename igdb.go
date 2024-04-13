@@ -27,9 +27,14 @@ type SearchForGameResponse struct {
 	Error string     `json:"error"`
 }
 
-type GetGameByIdResponse struct {
-	Game  IgdbGame `json:"game"`
-	Error string   `json:"error"`
+type GetGamesByIdResponse struct {
+	Games []IgdbGame `json:"games"`
+	Error string     `json:"error"`
+}
+
+type GetSimilarGamesResponse struct {
+	Games []IgdbGame `json:"games"`
+	Error string     `json:"error"`
 }
 
 type SimplifiedIgdbCover struct {
@@ -41,6 +46,25 @@ type IgdbGame struct {
 	Id    int                 `json:"id"`
 	Name  string              `json:"name"`
 	Cover SimplifiedIgdbCover `json:"cover"`
+}
+
+type SimilarGamesResponse struct {
+	Id           int        `json:"id"`
+	SimilarGames []IgdbGame `json:"similar_games"`
+}
+
+func formatIdString(ids []int) (string, error) {
+	if len(ids) == 0 {
+		return "", errors.New("No elements in slice")
+	}
+	formattedIds := ""
+	for i, v := range ids {
+		formattedIds += fmt.Sprintf("%v", v)
+		if i < len(ids)-1 {
+			formattedIds += ","
+		}
+	}
+	return formattedIds, nil
 }
 
 func (a *App) AuthenticateWithTwitch() (AccessTokenResponse, error) {
@@ -120,18 +144,46 @@ func (a *App) GetRandomGames(amount int, accessToken string) GetRandomGamesRespo
 	return GetRandomGamesResponse{Games: igdbGames}
 }
 
-func (a *App) GetGameById(id int, accessToken string) GetGameByIdResponse {
-	responseBody, err := SendIgdbRequest("games", accessToken, fmt.Sprintf("fields name, cover.image_id; where id = %v; limit 1;", id))
+func (a *App) GetGamesById(ids []int, accessToken string) GetGamesByIdResponse {
+	if len(ids) == 0 {
+		return GetGamesByIdResponse{Error: "No IDs provided"}
+	}
+	idsStr, err := formatIdString(ids)
 	if err != nil {
-		return GetGameByIdResponse{Error: err.Error()}
+		return GetGamesByIdResponse{Error: err.Error()}
+	}
+	responseBody, err := SendIgdbRequest("games", accessToken, fmt.Sprintf("fields name, cover.image_id; where id = (%v); limit %v;", idsStr, len(ids)+1))
+	if err != nil {
+		return GetGamesByIdResponse{Error: err.Error()}
 	}
 	var igdbGames []IgdbGame
 	err = json.Unmarshal(responseBody, &igdbGames)
 	if err != nil {
-		return GetGameByIdResponse{Error: err.Error()}
+		return GetGamesByIdResponse{Error: err.Error()}
 	}
-	if len(igdbGames) == 0 {
-		return GetGameByIdResponse{Error: "No game found with that ID"}
+	if len(igdbGames) == 0 || igdbGames[0].Id == 0 {
+		return GetGamesByIdResponse{Error: "No games found with those IDs"}
 	}
-	return GetGameByIdResponse{Game: igdbGames[0]}
+	return GetGamesByIdResponse{Games: igdbGames}
+}
+
+func (a *App) GetSimilarGames(ids []int, accessToken string) GetSimilarGamesResponse {
+	idsStr, err := formatIdString(ids)
+	if err != nil {
+		return GetSimilarGamesResponse{Error: err.Error()}
+	}
+	responseBody, err := SendIgdbRequest("games", accessToken, fmt.Sprintf("fields similar_games.name, similar_games.cover.image_id; where category = 0 & platforms.category = (1, 6) & id = (%v); exclude id;", idsStr))
+	if err != nil {
+		return GetSimilarGamesResponse{Error: err.Error()}
+	}
+	var response []SimilarGamesResponse
+	var igdbGames []IgdbGame
+	err = json.Unmarshal(responseBody, &response)
+	for _, v := range response {
+		igdbGames = append(igdbGames, v.SimilarGames...)
+	}
+	if err != nil {
+		return GetSimilarGamesResponse{Error: err.Error()}
+	}
+	return GetSimilarGamesResponse{Games: igdbGames}
 }

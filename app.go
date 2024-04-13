@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"os/user"
 
 	"github.com/joho/godotenv"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -78,7 +79,20 @@ type OpenDirectoryDialogResponse struct {
 	Error             error  `json:"error"`
 }
 
+type GetCurrentUsernameResponse struct {
+	Username string `json:"username"`
+	Error    string `json:"error"`
+}
+
 func (a *App) OpenDirectoryDialog() OpenDirectoryDialogResponse {
 	selectedDirectory, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{})
 	return OpenDirectoryDialogResponse{SelectedDirectory: selectedDirectory, Error: err}
+}
+
+func (a *App) GetCurrentUsername() GetCurrentUsernameResponse {
+	currentUser, err := user.Current()
+	if err != nil {
+		return GetCurrentUsernameResponse{Username: "", Error: err.Error()}
+	}
+	return GetCurrentUsernameResponse{Username: currentUser.Username, Error: ""}
 }

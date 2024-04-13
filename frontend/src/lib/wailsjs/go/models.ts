@@ -16,6 +16,22 @@ export namespace main {
 	        this.token_type = source["token_type"];
 	    }
 	}
+	export class DashboardStatistics {
+	    completedGames: number;
+	    timePlayed: number;
+	    totalGames: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DashboardStatistics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.completedGames = source["completedGames"];
+	        this.timePlayed = source["timePlayed"];
+	        this.totalGames = source["totalGames"];
+	    }
+	}
 	export class ExecutableDetails {
 	    executableName: string;
 	    gameId: number;
@@ -31,6 +47,54 @@ export namespace main {
 	        this.gameId = source["gameId"];
 	        this.minutesPlayed = source["minutesPlayed"];
 	    }
+	}
+	export class GetCurrentUsernameResponse {
+	    username: string;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GetCurrentUsernameResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.username = source["username"];
+	        this.error = source["error"];
+	    }
+	}
+	export class GetDashboardStatisticsResponse {
+	    thisMonthStatistics: DashboardStatistics;
+	    lastMonthStatistics: DashboardStatistics;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GetDashboardStatisticsResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.thisMonthStatistics = this.convertValues(source["thisMonthStatistics"], DashboardStatistics);
+	        this.lastMonthStatistics = this.convertValues(source["lastMonthStatistics"], DashboardStatistics);
+	        this.error = source["error"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class SimplifiedIgdbCover {
 	    id: number;
@@ -80,17 +144,17 @@ export namespace main {
 		    return a;
 		}
 	}
-	export class GetGameByIdResponse {
-	    game: IgdbGame;
+	export class GetGamesByIdResponse {
+	    games: IgdbGame[];
 	    error: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new GetGameByIdResponse(source);
+	        return new GetGamesByIdResponse(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.game = this.convertValues(source["game"], IgdbGame);
+	        this.games = this.convertValues(source["games"], IgdbGame);
 	        this.error = source["error"];
 	    }
 	
@@ -118,6 +182,118 @@ export namespace main {
 	
 	    static createFrom(source: any = {}) {
 	        return new GetRandomGamesResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.games = this.convertValues(source["games"], IgdbGame);
+	        this.error = source["error"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Log {
+	    title: string;
+	    // Go type: time
+	    date: any;
+	    rating: number;
+	    notes: string;
+	    // Go type: LogStatus
+	    status: any;
+	    statusId: string;
+	    finished: boolean;
+	    timePlayedMinutes: number;
+	    gameId: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Log(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = source["title"];
+	        this.date = this.convertValues(source["date"], null);
+	        this.rating = source["rating"];
+	        this.notes = source["notes"];
+	        this.status = this.convertValues(source["status"], null);
+	        this.statusId = source["statusId"];
+	        this.finished = source["finished"];
+	        this.timePlayedMinutes = source["timePlayedMinutes"];
+	        this.gameId = source["gameId"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class GetRecentLogsResponse {
+	    logs: Log[];
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GetRecentLogsResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.logs = this.convertValues(source["logs"], Log);
+	        this.error = source["error"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class GetSimilarGamesResponse {
+	    games: IgdbGame[];
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GetSimilarGamesResponse(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -223,52 +399,6 @@ export namespace main {
 		    return a;
 		}
 	}
-	export class Log {
-	    title: string;
-	    // Go type: time
-	    date: any;
-	    rating: number;
-	    notes: string;
-	    // Go type: LogStatus
-	    status: any;
-	    statusId: string;
-	    finished: boolean;
-	    timePlayedMinutes: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new Log(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.title = source["title"];
-	        this.date = this.convertValues(source["date"], null);
-	        this.rating = source["rating"];
-	        this.notes = source["notes"];
-	        this.status = this.convertValues(source["status"], null);
-	        this.statusId = source["statusId"];
-	        this.finished = source["finished"];
-	        this.timePlayedMinutes = source["timePlayedMinutes"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 	export class InsertGameLogResponse {
 	    log: Log;
 	    errors: {[key: string]: string};
@@ -325,6 +455,7 @@ export namespace main {
 	    status: string;
 	    finished: boolean;
 	    timePlayed: TimePlayed;
+	    gameId: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new LogData(source);
@@ -339,6 +470,7 @@ export namespace main {
 	        this.status = source["status"];
 	        this.finished = source["finished"];
 	        this.timePlayed = this.convertValues(source["timePlayed"], TimePlayed);
+	        this.gameId = source["gameId"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

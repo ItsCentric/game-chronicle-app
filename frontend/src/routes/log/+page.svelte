@@ -19,7 +19,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
-	import { AuthenticateWithTwitch, GetGameById } from '$lib/wailsjs/go/main/App';
+	import { AuthenticateWithTwitch, GetGamesById } from '$lib/wailsjs/go/main/App';
 
 	const searchParams = $page.url.searchParams;
 	let selectedGame: main.IgdbGame | null = null;
@@ -41,10 +41,12 @@
 				candidateLog.status = form.data.status;
 				candidateLog.notes = form.data.notes ?? '';
 				candidateLog.timePlayed = candidateTimePlayed;
+				candidateLog.gameId = selectedGame.id;
 				$newLogMutation.mutate(candidateLog);
 				const executableName = searchParams.get('executableName');
 				const minutesPlayed = searchParams.get('minutesPlayed');
 				if (executableName && minutesPlayed) {
+					console.log(searchParams);
 					await InsertExecutableDetails({
 						executableName: executableName,
 						gameId: selectedGame.id,
@@ -69,11 +71,11 @@
 			console.error('Failed to authenticate with Twitch');
 		}
 		const gameId = parseInt(gameIdString);
-		const gameResponse = await GetGameById(gameId, tokenRes.access_token);
+		const gameResponse = await GetGamesById([gameId], tokenRes.access_token);
 		if (gameResponse.error) {
 			console.error('Failed to get game by ID');
 		}
-		selectedGame = gameResponse.game;
+		selectedGame = gameResponse.games[0];
 		const minutesPlayed = searchParams.get('minutesPlayed');
 		if (minutesPlayed) {
 			$newLogFormData.timePlayedHours = Math.floor(parseInt(minutesPlayed) / 60);

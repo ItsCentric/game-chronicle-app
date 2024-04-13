@@ -1,173 +1,180 @@
 <script lang="ts">
-	import { ArrowDownUp, Filter, Settings, X } from 'lucide-svelte';
-	import { superForm, defaults, type Infer } from 'sveltekit-superforms';
+	import { Button } from '$lib/components/ui/button';
+	import GameCard from '$lib/components/GameCard.svelte';
+	import { onMount } from 'svelte';
 	import {
-		filterFormSchema,
-		sortFormSchema,
-		statusOptions,
-		type SortFormSchema,
-		type FilterFormSchema
-	} from '$lib/schemas';
-	import { zod, zodClient } from 'sveltekit-superforms/adapters';
-	import { Button, buttonVariants } from '$lib/components/ui/button';
-	import { useMutation, useQuery, useQueryClient } from '@sveltestack/svelte-query';
-	import { GetGameLogs, InsertGameLog } from '$lib/wailsjs/go/main/Database';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import Badge from '$lib/components/ui/badge/badge.svelte';
-	import * as Card from '$lib/components/ui/card';
-	import * as Select from '$lib/components/ui/select';
-	import { toast } from 'svelte-sonner';
+		AuthenticateWithTwitch,
+		GetCurrentUsername,
+		GetGamesById,
+		GetSimilarGames
+	} from '$lib/wailsjs/go/main/App';
+	import type { main } from '$lib/wailsjs/go/models';
+	import {
+		GetDashboardStatistics,
+		GetGameLogs,
+		GetRecentLogs
+	} from '$lib/wailsjs/go/main/Database';
+	import Statistic from '$lib/components/Statistic.svelte';
+	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
+	import { LoaderCircle } from 'lucide-svelte';
+	import { goto } from '$app/navigation';
 
-	const newLogMutation = useMutation(InsertGameLog);
-	const queryClient = useQueryClient();
-	function applySortAndFilter(data: Infer<SortFormSchema> | Infer<FilterFormSchema>) {
-		currentSortAndFilter = { ...currentSortAndFilter, ...data };
-		queryClient.invalidateQueries('logs');
-	}
+	let dashboardStatsPromise: Promise<main.GetDashboardStatisticsResponse> | undefined = undefined;
+	let recentLogsPromise: Promise<main.IgdbGame[]> | undefined = undefined;
+	let similarGamesPromise: Promise<main.IgdbGame[]> | undefined = undefined;
+	let username: string | undefined;
 
-	const sortForm = superForm(defaults(zod(sortFormSchema)), {
-		validators: zodClient(sortFormSchema),
-		SPA: true,
-		onUpdate: ({ form }) => {
-			if (form.valid) {
-				applySortAndFilter(form.data);
-			}
-		},
-		resetForm: false
+	onMount(async () => {
+		const userResponse = await GetCurrentUsername();
+		if (userResponse.error) {
+			console.error('Failed to get current user');
+			return;
+		}
+		username = userResponse.username;
+		const authResponse = await AuthenticateWithTwitch();
+		if (!authResponse.access_token) {
+			console.error('Failed to authenticate with Twitch');
+			return;
+		}
+		dashboardStatsPromise = new Promise((resolve, reject) => {
+			GetDashboardStatistics().then((response) => {
+				if (response.error) {
+					console.error(response);
+					reject(response.error);
+				}
+				resolve(response);
+			});
+		});
+		const recentLogsResponse = await GetRecentLogs(6);
+		if (recentLogsResponse.error) {
+			console.error('Failed to get recent logs');
+			return;
+		}
+		recentLogsPromise = new Promise((resolve, reject) => {
+			let recentGameIds = recentLogsResponse.logs.map((log) => log.gameId);
+			GetGamesById(recentGameIds, authResponse.access_token).then((response) => {
+				if (response.error) {
+					reject(response.error);
+				}
+				const sortedGames = [];
+				for (let i = 0; i < recentGameIds.length; i++) {
+					const game = response.games.find((game) => game.id === recentGameIds[i]);
+					if (game) {
+						sortedGames.push(game);
+					}
+				}
+				resolve(sortedGames);
+			});
+		});
+		const logsResponse = await GetGameLogs('', '', []);
+		if (logsResponse.length === 0) {
+			console.error('Failed to get game logs');
+			return;
+		}
+		const gameIds = logsResponse.map((log) => log.gameId);
+		similarGamesPromise = new Promise((resolve, reject) => {
+			GetSimilarGames(gameIds, authResponse.access_token).then((response) => {
+				if (response.error) {
+					reject(response.error);
+				}
+				resolve(response.games.slice(0, 6));
+			});
+		});
 	});
-	const { form: sortFormData, enhance: sortFormEnhance } = sortForm;
-	const filterForm = superForm(defaults(zod(filterFormSchema)), {
-		validators: zodClient(filterFormSchema),
-		SPA: true,
-		onUpdate: ({ form }) => {
-			if (form.valid) {
-				applySortAndFilter(form.data);
-			}
-		},
-		resetForm: false
-	});
-	const { form: filterFormData, enhance: filterFormEnhance } = filterForm;
-
-	let currentSortAndFilter = {
-		sortBy: 'created_at',
-		sortOrder: 'desc',
-		status: [...statusOptions]
-	};
-	const logsQueryResult = useQuery(
-		[
-			'logs',
-			currentSortAndFilter.sortBy,
-			currentSortAndFilter.sortOrder,
-			currentSortAndFilter.status
-		],
-		async () =>
-			await GetGameLogs(
-				currentSortAndFilter.sortBy,
-				currentSortAndFilter.sortOrder,
-				currentSortAndFilter.status
-			)
-	);
-	$: if ($newLogMutation.isSuccess) {
-		queryClient.invalidateQueries('logs');
-		toast.success('Log created!');
-	}
-	$: if ($newLogMutation.isError) {
-		toast.error('Something went wrong!');
-	}
-	$: selectedStatuses = $filterFormData.status.map((status) => ({ value: status, label: status }));
 </script>
 
-<main class="flex flex-col justify-center items-center h-full p-12">
-	<Button href="/settings" class="mb-2"><Settings /></Button>
-	<Button href="/game-search" class="mb-2">Create a log</Button>
-	<div class="flex justify-end gap-2 mb-2">
-		<form id="sortForm" method="post" use:sortFormEnhance />
-		<DropdownMenu.Root closeOnItemClick={false}>
-			<DropdownMenu.Trigger
-				class={buttonVariants({ variant: 'default' }) + ' flex gap-2 items-center'}
-			>
-				<ArrowDownUp size={16} />
-				<p>Sort</p>
-			</DropdownMenu.Trigger>
-			<DropdownMenu.Content>
-				<DropdownMenu.Label>Sort by</DropdownMenu.Label>
-				<DropdownMenu.Separator />
-				<DropdownMenu.RadioGroup bind:value={$sortFormData.sortBy}>
-					<DropdownMenu.RadioItem value="title">Alphabetical</DropdownMenu.RadioItem>
-					<DropdownMenu.RadioItem value="time_played_minutes">Time Played</DropdownMenu.RadioItem>
-					<DropdownMenu.RadioItem value="created_at">Entry Added</DropdownMenu.RadioItem>
-				</DropdownMenu.RadioGroup>
-				<DropdownMenu.Separator />
-				<DropdownMenu.Label>Sort order</DropdownMenu.Label>
-				<DropdownMenu.Separator />
-				<DropdownMenu.RadioGroup bind:value={$sortFormData.sortOrder}>
-					<DropdownMenu.RadioItem value="asc">Ascending</DropdownMenu.RadioItem>
-					<DropdownMenu.RadioItem value="desc">Descending</DropdownMenu.RadioItem>
-				</DropdownMenu.RadioGroup>
-				<div class="mt-2 flex items-center">
-					<Button type="submit" form="sortForm" class="rounded-r-none">Apply</Button>
-					<Button
-						type="button"
-						variant="destructive"
-						class="rounded-l-none"
-						on:click={() => sortForm.reset()}><X /></Button
+{#if !dashboardStatsPromise || !recentLogsPromise || !similarGamesPromise || !username}
+	<div class="h-full w-full flex justify-center items-center">
+		<LoaderCircle class="w-16 h-16 animate-spin" />
+	</div>
+{:else}
+	<main class="flex flex-col gap-12 h-full p-12 container">
+		<div>
+			<h1 class="font-heading font-bold text-3xl">
+				Hello, <span class="capitalize">{username}</span>
+			</h1>
+			<h2 class="text-xl font-heading font-semibold">Welcome to your journal</h2>
+		</div>
+		<div class="flex justify-around items-center border-y border-slate-800 py-4">
+			{#if dashboardStatsPromise}
+				{#await dashboardStatsPromise}
+					<div class="flex flex-col gap-3">
+						<Skeleton class="h-4 w-44" />
+						<Skeleton class="h-9 w-16" />
+						<Skeleton class="h-3 w-48" />
+					</div>
+					<div class="flex flex-col gap-3">
+						<Skeleton class="h-4 w-44" />
+						<Skeleton class="h-9 w-16" />
+						<Skeleton class="h-3 w-48" />
+					</div>
+					<div class="flex flex-col gap-3">
+						<Skeleton class="h-4 w-44" />
+						<Skeleton class="h-9 w-16" />
+						<Skeleton class="h-3 w-48" />
+					</div>
+				{:then statisticsResponse}
+					{@const hoursPlayed = Math.floor(statisticsResponse.thisMonthStatistics.timePlayed / 60)}
+					<Statistic
+						lastMonthStat={statisticsResponse.lastMonthStatistics.totalGames}
+						currentStat={statisticsResponse.thisMonthStatistics.totalGames}>Total games</Statistic
 					>
-				</div>
-			</DropdownMenu.Content>
-		</DropdownMenu.Root>
-		<DropdownMenu.Root closeOnItemClick={false}>
-			<DropdownMenu.Trigger
-				class={buttonVariants({ variant: 'default' }) + ' flex gap-2 items-center'}
-			>
-				<Filter size={16} />
-				<p>Filter</p>
-			</DropdownMenu.Trigger>
-			<DropdownMenu.Content class="max-w-xs">
-				<form id="filterForm" method="post" use:filterFormEnhance />
-				<Select.Root
-					selected={selectedStatuses}
-					onSelectedChange={(status) => {
-						if (status) {
-							$filterFormData.status = status.map((status) => status.value);
-						} else {
-							$filterFormData.status = [];
-						}
-					}}
-					multiple
-				>
-					<Select.Trigger>
-						<Select.Value placeholder="Status to filter..." />
-					</Select.Trigger>
-					<Select.Content>
-						{#each statusOptions as status}
-							<Select.Item value={status}>{status}</Select.Item>
+					<Statistic
+						lastMonthStat={Math.floor(statisticsResponse.lastMonthStatistics.timePlayed / 60)}
+						currentStat={hoursPlayed}
+						timeStat>Total hours played</Statistic
+					>
+					<Statistic
+						lastMonthStat={statisticsResponse.lastMonthStatistics.completedGames}
+						currentStat={statisticsResponse.thisMonthStatistics.completedGames}
+						>Completed games</Statistic
+					>
+				{:catch error}
+					<div>Error: {error}</div>
+				{/await}
+			{/if}
+		</div>
+		<div>
+			<div class="flex justify-between items-center mb-2">
+				<h3 class="text-xl font-heading font-semibold">Recent Games</h3>
+				<Button variant="link" href="">View all games</Button>
+			</div>
+			<div class="flex gap-4">
+				{#if recentLogsPromise}
+					{#await recentLogsPromise}
+						{#each Array(6) as _}
+							<Skeleton class="h-full w-full aspect-[3/4] rounded-3xl" />
 						{/each}
-					</Select.Content>
-				</Select.Root>
-				<div class="mt-2 flex items-center">
-					<Button type="submit" form="filterForm" class="rounded-r-none">Apply</Button>
-					<Button
-						type="button"
-						variant="destructive"
-						class="rounded-l-none"
-						on:click={() => filterForm.reset()}><X /></Button
-					>
-				</div>
-			</DropdownMenu.Content>
-		</DropdownMenu.Root>
-	</div>
-	<div class="grid grid-cols-3 gap-4">
-		{#if $logsQueryResult.data && !$logsQueryResult.isLoading}
-			{#each $logsQueryResult.data as log}
-				{@const logStatus = log.statusId}
-				<Card.Root>
-					<Card.Header>
-						<Card.Title>{log.title}</Card.Title>
-						<Badge class="w-fit">{logStatus}</Badge>
-					</Card.Header>
-					<Card.Content class="line-clamp-2">{log.notes}</Card.Content>
-				</Card.Root>
-			{/each}
-		{/if}
-	</div>
-</main>
+					{:then recentLogsResponse}
+						{#each recentLogsResponse as game}
+							<GameCard data={game} on:click={() => goto(`/log?gameId=${game.id}`)} />
+						{/each}
+					{:catch error}
+						<div>Error: {error}</div>
+					{/await}
+				{/if}
+			</div>
+		</div>
+		<div class="pb-16">
+			<div class="flex justify-between items-center mb-2">
+				<h3 class="text-xl font-heading font-semibold">Similar to What You Play</h3>
+				<Button variant="link" href="">View all similar titles</Button>
+			</div>
+			<div class="flex gap-4">
+				{#if similarGamesPromise}
+					{#await similarGamesPromise}
+						{#each Array(6) as _}
+							<Skeleton class="h-full w-full aspect-[3/4] rounded-3xl" />
+						{/each}
+					{:then similarGames}
+						{#each similarGames as game}
+							<GameCard data={game} on:click={() => goto(`/log?gameId=${game.id}`)} />
+						{/each}
+					{:catch error}
+						<div>Error: {error}</div>
+					{/await}
+				{/if}
+			</div>
+		</div>
+	</main>
+{/if}
