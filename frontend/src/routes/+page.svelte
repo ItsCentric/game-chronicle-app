@@ -93,7 +93,8 @@
 			<h1 class="font-heading font-bold text-3xl">
 				Hello, <span class="capitalize">{username}</span>
 			</h1>
-			<h2 class="text-xl font-heading font-semibold">Welcome to your journal</h2>
+			<h2 class="text-xl font-heading font-semibold mb-4">Welcome to your journal</h2>
+			<Button href="/game-search">Create a log</Button>
 		</div>
 		<div class="flex justify-around items-center border-y border-slate-800 py-4">
 			{#if dashboardStatsPromise}
