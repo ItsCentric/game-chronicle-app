@@ -71,14 +71,14 @@ func formatIdString(ids []int) (string, error) {
 func (a *App) AuthenticateWithTwitch() (AccessTokenResponse, error) {
 	if twitchClientId == "" {
 		log.Println("Missing compiled secret, attempting to load from environment")
-		twitchClientId := os.Getenv("TWITCH_CLIENT_ID")
+		twitchClientId = os.Getenv("TWITCH_CLIENT_ID")
 		if twitchClientId == "" {
 			return AccessTokenResponse{}, errors.New("twitchClientId environment variable not set")
 		}
 	}
 	if twitchClientSecret == "" {
 		log.Println("Missing compiled secret, attempting to load from environment")
-		twitchClientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
+		twitchClientSecret = os.Getenv("TWITCH_CLIENT_SECRET")
 		if twitchClientSecret == "" {
 			return AccessTokenResponse{}, errors.New("twitchClientSecret environment variable not set")
 		}

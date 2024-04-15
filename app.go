@@ -5,12 +5,9 @@ import (
 	"log"
 	"os"
 	"os/user"
-<<<<<<< Updated upstream
 	"path/filepath"
 	"strings"
-=======
 	"time"
->>>>>>> Stashed changes
 
 	"github.com/joho/godotenv"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
