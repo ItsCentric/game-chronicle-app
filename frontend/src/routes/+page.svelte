@@ -67,10 +67,6 @@
 			});
 		});
 		const logsResponse = await GetGameLogs('', '', []);
-		if (logsResponse.length === 0) {
-			console.error('Failed to get game logs');
-			return;
-		}
 		const gameIds = logsResponse.map((log) => log.gameId);
 		similarGamesPromise = new Promise((resolve, reject) => {
 			GetSimilarGames(gameIds, authResponse.access_token).then((response) => {

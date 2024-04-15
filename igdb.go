@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -68,13 +69,19 @@ func formatIdString(ids []int) (string, error) {
 }
 
 func (a *App) AuthenticateWithTwitch() (AccessTokenResponse, error) {
-	twitchClientId := os.Getenv("TWITCH_CLIENT_ID")
 	if twitchClientId == "" {
-		return AccessTokenResponse{}, errors.New("twitchClientId environment variable not set")
+		log.Println("Missing compiled secret, attempting to load from environment")
+		twitchClientId := os.Getenv("TWITCH_CLIENT_ID")
+		if twitchClientId == "" {
+			return AccessTokenResponse{}, errors.New("twitchClientId environment variable not set")
+		}
 	}
-	twitchClientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
 	if twitchClientSecret == "" {
-		return AccessTokenResponse{}, errors.New("twitchClientSecret environment variable not set")
+		log.Println("Missing compiled secret, attempting to load from environment")
+		twitchClientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
+		if twitchClientSecret == "" {
+			return AccessTokenResponse{}, errors.New("twitchClientSecret environment variable not set")
+		}
 	}
 	requestUrl := fmt.Sprintf("https://id.twitch.tv/oauth2/token?client_id=%s&client_secret=%s&grant_type=client_credentials", twitchClientId, twitchClientSecret)
 	accessTokenResponse, err := http.Post(requestUrl, "application/json", nil)

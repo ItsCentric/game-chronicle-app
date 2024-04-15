@@ -5,14 +5,20 @@ import (
 	"log"
 	"os"
 	"os/user"
+<<<<<<< Updated upstream
 	"path/filepath"
 	"strings"
+=======
+	"time"
+>>>>>>> Stashed changes
 
 	"github.com/joho/godotenv"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 var database Database
+var twitchClientId string
+var twitchClientSecret string
 
 // App struct
 type App struct {
@@ -24,21 +30,22 @@ func NewApp() *App {
 	return &App{}
 }
 
-func init() {
+// startup is called at application startup
+func (a *App) startup(ctx context.Context) {
+	// Perform your setup here
+	log.Printf("Starting with compiled secrets: %s, %s", twitchClientId, twitchClientSecret)
 	db, err := InitializeDatabase()
 	if err != nil {
 		log.Fatal("Error initializing database:", err)
 	}
 	database = db
-}
-
-// startup is called at application startup
-func (a *App) startup(ctx context.Context) {
-	// Perform your setup here
 	a.ctx = ctx
-	err := godotenv.Load()
+	err = godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("Couldn't get .env file, trying compiled values")
+		if twitchClientId == "" || twitchClientSecret == "" {
+			log.Fatal("Missing compiled secrets")
+		}
 	}
 	var preferences UserSettings
 	res := database.client.FirstOrCreate(&preferences)
@@ -49,6 +56,10 @@ func (a *App) startup(ctx context.Context) {
 
 // domReady is called after front-end resources have been loaded
 func (a App) domReady(ctx context.Context) {
+	if database.client == nil {
+		time.Sleep(3 * time.Second)
+		log.Println("Waiting for database to initialize...")
+	}
 	processMonitor := NewProcessMonitor()
 	preferencesResponse := database.GetUserSettings()
 	if preferencesResponse.Error != nil {
