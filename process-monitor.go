@@ -65,7 +65,7 @@ func (pm *ProcessMonitor) GetRunningProcesses() (ProcessMap, error) {
 func (pm *ProcessMonitor) FilterProcesses(processMapToFilter ProcessMap, pathsString string) (ProcessMap, error) {
 	filteredProcesses := make(ProcessMap)
 	for processPath, _process := range processMapToFilter {
-		if strings.Contains(processPath, pathsString) {
+		if strings.Contains(pathsString, processPath) {
 			filteredProcesses[processPath] = _process
 		}
 	}

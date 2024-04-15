@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 	"os/user"
+	"path/filepath"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -59,7 +62,33 @@ func (a App) domReady(ctx context.Context) {
 	if !preferences.ProcessMonitoringEnabled {
 		return
 	}
-	go processMonitor.MonitorProcesses(preferences.ExecutablePaths, ctx)
+	var pathsToMonitor string
+	executablePaths := strings.Split(preferences.ExecutablePaths, ";")
+	for _, path := range executablePaths {
+		fileInfo, err := os.Stat(path)
+		if err != nil {
+			log.Fatal("Error getting file info for executable path:", err)
+		}
+		if fileInfo.IsDir() {
+			err := filepath.Walk(path, func(walkedPath string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if info.Mode().Perm()&0111 != 0 && !info.IsDir() {
+					pathsToMonitor += walkedPath + ";"
+					return nil
+				} else {
+					return nil
+				}
+			})
+			if err != nil {
+				log.Fatal("Error walking path:", err)
+			}
+		} else {
+			pathsToMonitor += path + ";"
+		}
+	}
+	go processMonitor.MonitorProcesses(pathsToMonitor, ctx)
 }
 
 // beforeClose is called when the application is about to quit,
