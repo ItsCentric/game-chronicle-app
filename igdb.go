@@ -107,7 +107,7 @@ func SendIgdbRequest(endpoint string, accessToken string, body string) ([]byte, 
 	if err != nil {
 		return []byte{}, err
 	}
-	request.Header.Set("Client-ID", os.Getenv("TWITCH_CLIENT_ID"))
+	request.Header.Set("Client-ID", twitchClientId)
 	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 	client := &http.Client{}
 	response, err := client.Do(request)
