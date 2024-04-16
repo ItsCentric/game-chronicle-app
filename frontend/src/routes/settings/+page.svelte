@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { settingsSchema } from '$lib/schemas';
-	import { OpenDirectoryDialog } from '$lib/wailsjs/go/main/App';
-	import { GetUserSettings, SaveUserSettings } from '$lib/wailsjs/go/main/Database';
+	import { OpenDirectoryDialog, GetUserSettings, SaveUserSettings } from '$lib/wailsjs/go/main/App';
 	import { WindowReloadApp } from '$lib/wailsjs/runtime/runtime';
 	import { ArrowLeft, PencilIcon, Trash } from 'lucide-svelte';
 	import { defaults, superForm } from 'sveltekit-superforms';

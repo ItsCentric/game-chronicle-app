@@ -19,49 +19,32 @@ var assets embed.FS
 var icon []byte
 
 func main() {
-	// Create an instance of the app structure
 	app := NewApp()
 
-	// Create application with options
 	err := wails.Run(&options.App{
 		Title:             "Game Chronicle",
 		Width:             1024,
 		Height:            768,
 		MinWidth:          1024,
 		MinHeight:         768,
-		MaxWidth:          9999,
-		MaxHeight:         9999,
-		DisableResize:     false,
-		Fullscreen:        false,
-		Frameless:         false,
-		StartHidden:       false,
 		HideWindowOnClose: true,
 		BackgroundColour:  &options.RGBA{R: 255, G: 255, B: 255, A: 255},
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		Menu:             nil,
-		Logger:           nil,
 		LogLevel:         logger.DEBUG,
 		OnStartup:        app.startup,
-		OnDomReady:       app.domReady,
-		OnBeforeClose:    app.beforeClose,
-		OnShutdown:       app.shutdown,
 		WindowStartState: options.Normal,
 		Bind: []interface{}{
 			app,
-			&Database{},
 		},
-		// Windows platform specific options
 		Windows: &windows.Options{
 			WebviewIsTransparent: false,
 			WindowIsTranslucent:  false,
 			DisableWindowIcon:    false,
-			// DisableFramelessWindowDecorations: false,
-			WebviewUserDataPath: "",
-			ZoomFactor:          1.0,
+			WebviewUserDataPath:  "",
+			ZoomFactor:           1.0,
 		},
-		// Mac platform specific options
 		Mac: &mac.Options{
 			TitleBar: &mac.TitleBar{
 				TitlebarAppearsTransparent: true,

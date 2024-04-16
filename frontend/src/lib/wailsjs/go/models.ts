@@ -2,8 +2,7 @@ export namespace main {
 	
 	export class AccessTokenResponse {
 	    access_token: string;
-	    expires_in: number;
-	    token_type: string;
+	    error: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AccessTokenResponse(source);
@@ -12,8 +11,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.access_token = source["access_token"];
-	        this.expires_in = source["expires_in"];
-	        this.token_type = source["token_type"];
+	        this.error = source["error"];
 	    }
 	}
 	export class DashboardStatistics {
@@ -336,7 +334,7 @@ export namespace main {
 	}
 	export class GetUserSettingsResponse {
 	    preferences: UserSettings;
-	    error: any;
+	    error: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new GetUserSettingsResponse(source);
@@ -369,7 +367,7 @@ export namespace main {
 	
 	export class InsertExecutableDetailsResponse {
 	    details: ExecutableDetails;
-	    error: any;
+	    error: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new InsertExecutableDetailsResponse(source);
@@ -493,7 +491,7 @@ export namespace main {
 	}
 	export class OpenDirectoryDialogResponse {
 	    selectedDirectory: string;
-	    error: any;
+	    error: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new OpenDirectoryDialogResponse(source);

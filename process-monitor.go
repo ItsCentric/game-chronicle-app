@@ -75,7 +75,7 @@ func (pm *ProcessMonitor) FilterProcesses(processMapToFilter ProcessMap, pathsSt
 	return filteredProcesses, nil
 }
 
-func (pm *ProcessMonitor) MonitorProcesses(pathsToMonitorString string, context context.Context) {
+func (pm *ProcessMonitor) MonitorProcesses(pathsToMonitorString string, context context.Context, database *gorm.DB) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
@@ -97,7 +97,7 @@ func (pm *ProcessMonitor) MonitorProcesses(pathsToMonitorString string, context 
 					previousProcessPath = strings.Replace(previousProcessPath, "\\", "/", -1)
 				}
 				executableName := path.Base(previousProcessPath)
-				details, err := database.getExecutableDetails(executableName)
+				details, err := getExecutableDetails(executableName, database)
 				couldFindExecutable := err != gorm.ErrRecordNotFound
 				if err != nil && couldFindExecutable {
 					log.Fatal("Error getting executable details:", err.Error())

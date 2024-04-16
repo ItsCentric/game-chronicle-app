@@ -14,8 +14,7 @@ import (
 
 type AccessTokenResponse struct {
 	AccessToken string `json:"access_token"`
-	ExpiresIn   int    `json:"expires_in"`
-	TokenType   string `json:"token_type"`
+	Error       string `json:"error"`
 }
 
 type GetRandomGamesResponse struct {
@@ -68,41 +67,7 @@ func formatIdString(ids []int) (string, error) {
 	return formattedIds, nil
 }
 
-func (a *App) AuthenticateWithTwitch() (AccessTokenResponse, error) {
-	if twitchClientId == "" {
-		log.Println("Missing compiled secret, attempting to load from environment")
-		twitchClientId = os.Getenv("TWITCH_CLIENT_ID")
-		if twitchClientId == "" {
-			return AccessTokenResponse{}, errors.New("twitchClientId environment variable not set")
-		}
-	}
-	if twitchClientSecret == "" {
-		log.Println("Missing compiled secret, attempting to load from environment")
-		twitchClientSecret = os.Getenv("TWITCH_CLIENT_SECRET")
-		if twitchClientSecret == "" {
-			return AccessTokenResponse{}, errors.New("twitchClientSecret environment variable not set")
-		}
-	}
-	requestUrl := fmt.Sprintf("https://id.twitch.tv/oauth2/token?client_id=%s&client_secret=%s&grant_type=client_credentials", twitchClientId, twitchClientSecret)
-	accessTokenResponse, err := http.Post(requestUrl, "application/json", nil)
-	if err != nil {
-		return AccessTokenResponse{}, err
-	}
-	defer accessTokenResponse.Body.Close()
-	accessTokenResponseBody, err := io.ReadAll(accessTokenResponse.Body)
-	if err != nil {
-		return AccessTokenResponse{}, err
-	}
-	var accessToken AccessTokenResponse
-	err = json.Unmarshal(accessTokenResponseBody, &accessToken)
-	if err != nil {
-		return AccessTokenResponse{}, err
-	}
-
-	return accessToken, nil
-}
-
-func SendIgdbRequest(endpoint string, accessToken string, body string) ([]byte, error) {
+func sendIgdbRequest(endpoint string, accessToken string, body string) ([]byte, error) {
 	request, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.igdb.com/v4/%s", endpoint), bytes.NewBuffer([]byte(body)))
 	if err != nil {
 		return []byte{}, err
@@ -123,8 +88,42 @@ func SendIgdbRequest(endpoint string, accessToken string, body string) ([]byte, 
 	return responseBody, nil
 }
 
+func (a *App) AuthenticateWithTwitch() AccessTokenResponse {
+	if twitchClientId == "" {
+		log.Println("Missing compiled secret, attempting to load from environment")
+		twitchClientId = os.Getenv("TWITCH_CLIENT_ID")
+		if twitchClientId == "" {
+			return AccessTokenResponse{Error: "twitchClientId environment variable not set"}
+		}
+	}
+	if twitchClientSecret == "" {
+		log.Println("Missing compiled secret, attempting to load from environment")
+		twitchClientSecret = os.Getenv("TWITCH_CLIENT_SECRET")
+		if twitchClientSecret == "" {
+			return AccessTokenResponse{Error: "twitchClientSecret environment variable not set"}
+		}
+	}
+	requestUrl := fmt.Sprintf("https://id.twitch.tv/oauth2/token?client_id=%s&client_secret=%s&grant_type=client_credentials", twitchClientId, twitchClientSecret)
+	accessTokenResponse, err := http.Post(requestUrl, "application/json", nil)
+	if err != nil {
+		return AccessTokenResponse{Error: err.Error()}
+	}
+	defer accessTokenResponse.Body.Close()
+	accessTokenResponseBody, err := io.ReadAll(accessTokenResponse.Body)
+	if err != nil {
+		return AccessTokenResponse{Error: err.Error()}
+	}
+	var accessToken AccessTokenResponse
+	err = json.Unmarshal(accessTokenResponseBody, &accessToken)
+	if err != nil {
+		return AccessTokenResponse{Error: err.Error()}
+	}
+
+	return accessToken
+}
+
 func (a *App) SearchForGame(title string, accessToken string) SearchForGameResponse {
-	responseBody, err := SendIgdbRequest("games", accessToken, fmt.Sprintf("search \"%s\"; fields name, cover.image_id; where category = 0 & version_parent = null;", title))
+	responseBody, err := sendIgdbRequest("games", accessToken, fmt.Sprintf("search \"%s\"; fields name, cover.image_id; where category = 0 & version_parent = null;", title))
 	if err != nil {
 		return SearchForGameResponse{Error: err.Error()}
 	}
@@ -139,7 +138,7 @@ func (a *App) SearchForGame(title string, accessToken string) SearchForGameRespo
 
 func (a *App) GetRandomGames(amount int, accessToken string) GetRandomGamesResponse {
 	randomOffset := rand.Intn(900)
-	responseBody, err := SendIgdbRequest("games", accessToken, fmt.Sprintf("fields name, cover.image_id; limit %v; where category = 0 & total_rating >= 85 & platforms.category = (1, 6); offset %v;", amount, randomOffset))
+	responseBody, err := sendIgdbRequest("games", accessToken, fmt.Sprintf("fields name, cover.image_id; limit %v; where category = 0 & total_rating >= 85 & platforms.category = (1, 6); offset %v;", amount, randomOffset))
 	if err != nil {
 		return GetRandomGamesResponse{Error: err.Error()}
 	}
@@ -159,7 +158,7 @@ func (a *App) GetGamesById(ids []int, accessToken string) GetGamesByIdResponse {
 	if err != nil {
 		return GetGamesByIdResponse{Error: err.Error()}
 	}
-	responseBody, err := SendIgdbRequest("games", accessToken, fmt.Sprintf("fields name, cover.image_id; where id = (%v); limit %v;", idsStr, len(ids)+1))
+	responseBody, err := sendIgdbRequest("games", accessToken, fmt.Sprintf("fields name, cover.image_id; where id = (%v); limit %v;", idsStr, len(ids)+1))
 	if err != nil {
 		return GetGamesByIdResponse{Error: err.Error()}
 	}
@@ -179,7 +178,7 @@ func (a *App) GetSimilarGames(ids []int, accessToken string) GetSimilarGamesResp
 	if err != nil {
 		return GetSimilarGamesResponse{Error: err.Error()}
 	}
-	responseBody, err := SendIgdbRequest("games", accessToken, fmt.Sprintf("fields similar_games.name, similar_games.cover.image_id; where category = 0 & platforms.category = (1, 6) & id = (%v); exclude id;", idsStr))
+	responseBody, err := sendIgdbRequest("games", accessToken, fmt.Sprintf("fields similar_games.name, similar_games.cover.image_id; where category = 0 & platforms.category = (1, 6) & id = (%v); exclude id;", idsStr))
 	if err != nil {
 		return GetSimilarGamesResponse{Error: err.Error()}
 	}

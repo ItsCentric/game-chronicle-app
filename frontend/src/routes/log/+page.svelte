@@ -2,7 +2,6 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { newLogSchema, statusOptions } from '$lib/schemas';
-	import { InsertExecutableDetails, InsertGameLog } from '$lib/wailsjs/go/main/Database';
 	import { main } from '$lib/wailsjs/go/models';
 	import { useMutation, useQueryClient } from '@sveltestack/svelte-query';
 	import { onMount } from 'svelte';
@@ -19,7 +18,12 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
-	import { AuthenticateWithTwitch, GetGamesById } from '$lib/wailsjs/go/main/App';
+	import {
+		AuthenticateWithTwitch,
+		GetGamesById,
+		InsertGameLog,
+		InsertExecutableDetails
+	} from '$lib/wailsjs/go/main/App';
 
 	const searchParams = $page.url.searchParams;
 	let selectedGame: main.IgdbGame | null = null;
@@ -59,7 +63,6 @@
 		form: newLogFormData,
 		enhance: newLogEnhance,
 		validate: validateNewLogFormField,
-		allErrors: newLogFormErrors,
 		validateForm: validateNewLogForm
 	} = newLogForm;
 	onMount(async () => {

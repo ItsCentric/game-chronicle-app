@@ -6,14 +6,12 @@
 		AuthenticateWithTwitch,
 		GetCurrentUsername,
 		GetGamesById,
-		GetSimilarGames
+		GetSimilarGames,
+		GetDashboardStatistics,
+		GetRecentLogs,
+		GetGameLogs
 	} from '$lib/wailsjs/go/main/App';
 	import type { main } from '$lib/wailsjs/go/models';
-	import {
-		GetDashboardStatistics,
-		GetGameLogs,
-		GetRecentLogs
-	} from '$lib/wailsjs/go/main/Database';
 	import Statistic from '$lib/components/Statistic.svelte';
 	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
 	import { LoaderCircle } from 'lucide-svelte';
@@ -92,7 +90,7 @@
 			<h2 class="text-xl font-heading font-semibold mb-4">Welcome to your journal</h2>
 			<div class="flex gap-2">
 				<Button href="/game-search">Create a log</Button>
-                <Button href="/settings">Settings</Button>
+				<Button href="/settings">Settings</Button>
 			</div>
 		</div>
 		<div class="flex justify-around items-center border-y border-slate-800 py-4">

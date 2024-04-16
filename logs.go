@@ -2,22 +2,7 @@ package main
 
 import (
 	"time"
-
-	"gorm.io/gorm"
 )
-
-type Log struct {
-	gorm.Model
-	Title             string    `gorm:"not null" json:"title"`
-	Date              time.Time `json:"date"`
-	Rating            uint      `gorm:"check:rating <= 10" gorm:"not null" json:"rating"`
-	Notes             string    `json:"notes"`
-	Status            LogStatus `gorm:"not null" json:"status"`
-	StatusID          string    `gorm:"not null" json:"statusId"`
-	Finished          bool      `json:"finished"`
-	TimePlayedMinutes uint      `gorm:"not null" json:"timePlayedMinutes"`
-	GameId            int       `json:"gameId"`
-}
 
 type LogData struct {
 	Title      string     `json:"title"`
@@ -33,11 +18,6 @@ type LogData struct {
 type TimePlayed struct {
 	Hours   uint `json:"hours"`
 	Minutes uint `json:"minutes"`
-}
-
-type LogStatus struct {
-	Status string `gorm:"primaryKey"`
-	Order  uint
 }
 
 func newLog(data LogData) (*Log, map[string]string) {

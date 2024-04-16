@@ -8,19 +8,19 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"gorm.io/gorm"
 )
 
-var database Database
 var twitchClientId string
 var twitchClientSecret string
 
 // App struct
 type App struct {
 	ctx context.Context
+	Db  *gorm.DB
 }
 
 // NewApp creates a new App application struct
@@ -31,11 +31,11 @@ func NewApp() *App {
 // startup is called at application startup
 func (a *App) startup(ctx context.Context) {
 	// Perform your setup here
-	db, err := InitializeDatabase()
+	var err error
+	a.Db, err = initializeDatabase()
 	if err != nil {
 		log.Fatal("Error initializing database:", err)
 	}
-	database = db
 	a.ctx = ctx
 	err = godotenv.Load()
 	if err != nil {
@@ -45,28 +45,11 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}
 	var preferences UserSettings
-	res := database.client.FirstOrCreate(&preferences)
+	res := a.Db.FirstOrCreate(&preferences)
 	if res.Error != nil {
 		log.Fatal("Error getting user preferences:", res.Error.Error())
 	}
-}
-
-// domReady is called after front-end resources have been loaded
-func (a App) domReady(ctx context.Context) {
-	if database.client == nil {
-		time.Sleep(3 * time.Second)
-		log.Println("Waiting for database to initialize...")
-	}
 	processMonitor := NewProcessMonitor()
-	preferencesResponse := database.GetUserSettings()
-	if preferencesResponse.Error != nil {
-		log.Fatal("Error getting user preferences:", preferencesResponse.Error)
-	}
-	preferences := preferencesResponse.Preferences
-	runtime.EventsOn(ctx, "preferencesChanged", func(_ ...interface{}) {
-		preferences = database.GetUserSettings().Preferences
-	})
-
 	if !preferences.ProcessMonitoringEnabled {
 		return
 	}
@@ -100,24 +83,12 @@ func (a App) domReady(ctx context.Context) {
 			pathsToMonitor += executablePath + ";"
 		}
 	}
-	go processMonitor.MonitorProcesses(pathsToMonitor, ctx)
-}
-
-// beforeClose is called when the application is about to quit,
-// either by clicking the window close button or calling runtime.Quit.
-// Returning true will cause the application to continue, false will continue shutdown as normal.
-func (a *App) beforeClose(ctx context.Context) (prevent bool) {
-	return false
-}
-
-// shutdown is called at application termination
-func (a *App) shutdown(ctx context.Context) {
-	// Perform your teardown here
+	go processMonitor.MonitorProcesses(pathsToMonitor, ctx, a.Db)
 }
 
 type OpenDirectoryDialogResponse struct {
 	SelectedDirectory string `json:"selectedDirectory"`
-	Error             error  `json:"error"`
+	Error             string `json:"error"`
 }
 
 type GetCurrentUsernameResponse struct {
@@ -127,7 +98,7 @@ type GetCurrentUsernameResponse struct {
 
 func (a *App) OpenDirectoryDialog() OpenDirectoryDialogResponse {
 	selectedDirectory, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{})
-	return OpenDirectoryDialogResponse{SelectedDirectory: selectedDirectory, Error: err}
+	return OpenDirectoryDialogResponse{SelectedDirectory: selectedDirectory, Error: err.Error()}
 }
 
 func (a *App) GetCurrentUsername() GetCurrentUsernameResponse {

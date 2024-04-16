@@ -10,6 +10,14 @@ export function GetCurrentUsername() {
   return window['go']['main']['App']['GetCurrentUsername']();
 }
 
+export function GetDashboardStatistics() {
+  return window['go']['main']['App']['GetDashboardStatistics']();
+}
+
+export function GetGameLogs(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetGameLogs'](arg1, arg2, arg3);
+}
+
 export function GetGamesById(arg1, arg2) {
   return window['go']['main']['App']['GetGamesById'](arg1, arg2);
 }
@@ -18,12 +26,32 @@ export function GetRandomGames(arg1, arg2) {
   return window['go']['main']['App']['GetRandomGames'](arg1, arg2);
 }
 
+export function GetRecentLogs(arg1) {
+  return window['go']['main']['App']['GetRecentLogs'](arg1);
+}
+
 export function GetSimilarGames(arg1, arg2) {
   return window['go']['main']['App']['GetSimilarGames'](arg1, arg2);
 }
 
+export function GetUserSettings() {
+  return window['go']['main']['App']['GetUserSettings']();
+}
+
+export function InsertExecutableDetails(arg1) {
+  return window['go']['main']['App']['InsertExecutableDetails'](arg1);
+}
+
+export function InsertGameLog(arg1) {
+  return window['go']['main']['App']['InsertGameLog'](arg1);
+}
+
 export function OpenDirectoryDialog() {
   return window['go']['main']['App']['OpenDirectoryDialog']();
+}
+
+export function SaveUserSettings(arg1) {
+  return window['go']['main']['App']['SaveUserSettings'](arg1);
 }
 
 export function SearchForGame(arg1, arg2) {

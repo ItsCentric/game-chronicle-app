@@ -6,12 +6,26 @@ export function AuthenticateWithTwitch():Promise<main.AccessTokenResponse>;
 
 export function GetCurrentUsername():Promise<main.GetCurrentUsernameResponse>;
 
+export function GetDashboardStatistics():Promise<main.GetDashboardStatisticsResponse>;
+
+export function GetGameLogs(arg1:string,arg2:string,arg3:Array<string>):Promise<Array<main.Log>>;
+
 export function GetGamesById(arg1:Array<number>,arg2:string):Promise<main.GetGamesByIdResponse>;
 
 export function GetRandomGames(arg1:number,arg2:string):Promise<main.GetRandomGamesResponse>;
 
+export function GetRecentLogs(arg1:number):Promise<main.GetRecentLogsResponse>;
+
 export function GetSimilarGames(arg1:Array<number>,arg2:string):Promise<main.GetSimilarGamesResponse>;
 
+export function GetUserSettings():Promise<main.GetUserSettingsResponse>;
+
+export function InsertExecutableDetails(arg1:main.ExecutableDetails):Promise<main.InsertExecutableDetailsResponse>;
+
+export function InsertGameLog(arg1:main.LogData):Promise<main.InsertGameLogResponse>;
+
 export function OpenDirectoryDialog():Promise<main.OpenDirectoryDialogResponse>;
+
+export function SaveUserSettings(arg1:main.UserSettingsData):Promise<void>;
 
 export function SearchForGame(arg1:string,arg2:string):Promise<main.SearchForGameResponse>;
