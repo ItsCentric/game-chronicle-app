@@ -7,7 +7,7 @@
 
 	const queryClient = new QueryClient();
 	EventsOn('game-stopped', async (data) => {
-		if (data.isNewGame) {
+		if (data.executableName !== '') {
 			toast.info("Looks like you're playing a new title!", {
 				description: 'Tell us what it is so we know for future reference.'
 			});

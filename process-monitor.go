@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"path"
+	goruntime "runtime"
 	"strings"
 	"time"
 
@@ -37,6 +38,8 @@ func NewProcessMonitor() *ProcessMonitor {
 	return &ProcessMonitor{previousRunningProcesses: make(ProcessMap)}
 }
 
+var isWindows = goruntime.GOOS == "windows"
+
 func (pm *ProcessMonitor) GetRunningProcesses() (ProcessMap, error) {
 	runningProcesses := make(ProcessMap)
 	processes, err := process.Processes()
@@ -46,15 +49,15 @@ func (pm *ProcessMonitor) GetRunningProcesses() (ProcessMap, error) {
 
 	for _, runningProcess := range processes {
 		processPath, err := runningProcess.Exe()
-		if err != nil {
+		if err != nil && !isWindows {
 			return nil, err
 		}
 		processName, err := runningProcess.Name()
-		if err != nil {
+		if err != nil && !isWindows {
 			return nil, err
 		}
 		processCreateTime, err := runningProcess.CreateTime()
-		if err != nil {
+		if err != nil && !isWindows {
 			return nil, err
 		}
 		runningProcesses[processPath] = *NewProcess(runningProcess.Pid, processName, processPath, processCreateTime)
@@ -90,6 +93,9 @@ func (pm *ProcessMonitor) MonitorProcesses(pathsToMonitorString string, context 
 			if _, isStillRunning := runningProcesses[previousProcessPath]; !isStillRunning {
 				milisecondsPlayed := time.Now().UnixMilli() - previousProcess.CreateTime
 				minutesPlayed := math.Floor(float64(milisecondsPlayed / 60000))
+				if isWindows {
+					previousProcessPath = strings.Replace(previousProcessPath, "\\", "/", -1)
+				}
 				executableName := path.Base(previousProcessPath)
 				details, err := database.getExecutableDetails(executableName)
 				couldFindExecutable := err != gorm.ErrRecordNotFound
@@ -99,7 +105,7 @@ func (pm *ProcessMonitor) MonitorProcesses(pathsToMonitorString string, context 
 				if couldFindExecutable {
 					runtime.EventsEmit(context, "game-stopped", GameStoppedEventData{GameId: details.GameId, MinutesPlayed: int(minutesPlayed)})
 				} else {
-					runtime.EventsEmit(context, "game-stopped", GameStoppedEventData{ExecutableName: details.ExecutableName, MinutesPlayed: int(minutesPlayed)})
+					runtime.EventsEmit(context, "game-stopped", GameStoppedEventData{ExecutableName: executableName, MinutesPlayed: int(minutesPlayed)})
 				}
 				runtime.Show(context)
 			}

@@ -77,7 +77,7 @@
 			{:else}
 				{@const executableName = $page.url.searchParams.get('executableName')}
 				{@const minutesPlayed = $page.url.searchParams.get('minutesPlayed')}
-				{@const isNewGame = !executableName && !minutesPlayed}
+				{@const isNewGame = executableName && minutesPlayed}
 				<div class="mx-auto grid grid-cols-6 gap-4 container">
 					{#each searchResult.games.slice(beginningPageIndex, beginningPageIndex + gamesPerPage) as game}
 						<GameCard
