@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -30,7 +31,6 @@ func NewApp() *App {
 // startup is called at application startup
 func (a *App) startup(ctx context.Context) {
 	// Perform your setup here
-	log.Printf("Starting with compiled secrets: %s, %s", twitchClientId, twitchClientSecret)
 	db, err := InitializeDatabase()
 	if err != nil {
 		log.Fatal("Error initializing database:", err)
@@ -72,17 +72,21 @@ func (a App) domReady(ctx context.Context) {
 	}
 	var pathsToMonitor string
 	executablePaths := strings.Split(preferences.ExecutablePaths, ";")
-	for _, path := range executablePaths {
-		fileInfo, err := os.Stat(path)
+	for _, executablePath := range executablePaths {
+		fileInfo, err := os.Stat(executablePath)
 		if err != nil {
 			log.Fatal("Error getting file info for executable path:", err)
 		}
 		if fileInfo.IsDir() {
-			err := filepath.Walk(path, func(walkedPath string, info os.FileInfo, err error) error {
+			err := filepath.Walk(executablePath, func(walkedPath string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
+
 				if info.Mode().Perm()&0111 != 0 && !info.IsDir() {
+					pathsToMonitor += walkedPath + ";"
+					return nil
+				} else if isWindows && strings.Contains(path.Base(walkedPath), ".exe") {
 					pathsToMonitor += walkedPath + ";"
 					return nil
 				} else {
@@ -93,7 +97,7 @@ func (a App) domReady(ctx context.Context) {
 				log.Fatal("Error walking path:", err)
 			}
 		} else {
-			pathsToMonitor += path + ";"
+			pathsToMonitor += executablePath + ";"
 		}
 	}
 	go processMonitor.MonitorProcesses(pathsToMonitor, ctx)

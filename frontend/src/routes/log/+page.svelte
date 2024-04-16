@@ -46,7 +46,6 @@
 				const executableName = searchParams.get('executableName');
 				const minutesPlayed = searchParams.get('minutesPlayed');
 				if (executableName && minutesPlayed) {
-					console.log(searchParams);
 					await InsertExecutableDetails({
 						executableName: executableName,
 						gameId: selectedGame.id,
