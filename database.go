@@ -151,7 +151,10 @@ func (a *App) GetGameLogs(sortBy string, sortOrder string, filter []string) []*L
 func (a *App) GetUserSettings() GetUserSettingsResponse {
 	var preferences UserSettings
 	res := a.Db.First(&preferences)
-	return GetUserSettingsResponse{Preferences: preferences, Error: res.Error.Error()}
+	if res.Error != nil {
+		return GetUserSettingsResponse{Error: res.Error.Error()}
+	}
+	return GetUserSettingsResponse{Preferences: preferences}
 }
 
 func (a *App) InsertExecutableDetails(newExecutableDetails ExecutableDetails) InsertExecutableDetailsResponse {

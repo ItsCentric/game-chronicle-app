@@ -98,7 +98,10 @@ type GetCurrentUsernameResponse struct {
 
 func (a *App) OpenDirectoryDialog() OpenDirectoryDialogResponse {
 	selectedDirectory, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{})
-	return OpenDirectoryDialogResponse{SelectedDirectory: selectedDirectory, Error: err.Error()}
+	if err != nil {
+		return OpenDirectoryDialogResponse{SelectedDirectory: "", Error: err.Error()}
+	}
+	return OpenDirectoryDialogResponse{SelectedDirectory: selectedDirectory}
 }
 
 func (a *App) GetCurrentUsername() GetCurrentUsernameResponse {
