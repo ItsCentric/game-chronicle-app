@@ -2,8 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { newLogSchema, statusOptions } from '$lib/schemas';
-	import { main } from '$lib/wailsjs/go/models';
-	import { useMutation, useQueryClient } from '@sveltestack/svelte-query';
+	import type { main } from '$lib/wailsjs/go/models';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { defaults, superForm } from 'sveltekit-superforms';
@@ -24,29 +23,25 @@
 		InsertGameLog,
 		InsertExecutableDetails
 	} from '$lib/wailsjs/go/main/App';
+	import { logDataFromForm } from '$lib';
 
 	const searchParams = $page.url.searchParams;
 	let selectedGame: main.IgdbGame | null = null;
-	const newLogMutation = useMutation(InsertGameLog);
-	const queryClient = useQueryClient();
 	const newLogForm = superForm(defaults(zod(newLogSchema)), {
 		validators: zodClient(newLogSchema),
 		SPA: true,
 		onUpdate: async ({ form }) => {
 			if (form.valid && selectedGame) {
-				const candidateTimePlayed = new main.TimePlayed();
-				let candidateLog = new main.LogData();
-				candidateTimePlayed.hours = form.data.timePlayedHours ?? 0;
-				candidateTimePlayed.minutes = form.data.timePlayedMinutes ?? 0;
-				candidateLog.title = selectedGame.name;
-				candidateLog.date = form.data.logDate;
-				candidateLog.rating = form.data.rating;
-				candidateLog.finished = form.data.finished;
-				candidateLog.status = form.data.status;
-				candidateLog.notes = form.data.notes ?? '';
-				candidateLog.timePlayed = candidateTimePlayed;
-				candidateLog.gameId = selectedGame.id;
-				$newLogMutation.mutate(candidateLog);
+				const candidateLog = logDataFromForm(selectedGame, form.data);
+				let insertResponse = await InsertGameLog(candidateLog);
+				if (parseInt(insertResponse.errors?.length) > 0) {
+					toast.error('Something went wrong creating your log.', {
+						description:
+							'Please try again. If the problem persists, reach out or make a ticket on our GitHub.'
+					});
+				}
+				toast.success('Log created!');
+				goto('/');
 				const executableName = searchParams.get('executableName');
 				const minutesPlayed = searchParams.get('minutesPlayed');
 				if (executableName && minutesPlayed) {
@@ -85,17 +80,6 @@
 		}
 	});
 
-	$: if ($newLogMutation.isSuccess) {
-		queryClient.invalidateQueries('logs');
-		toast.success('Log created!');
-		goto('/');
-	}
-	$: if ($newLogMutation.isError) {
-		toast.error('Something went wrong creating your log.', {
-			description:
-				'Please try again. If the problem persists, reach out or make a ticket on our GitHub.'
-		});
-	}
 	let isNewLogFormValid = false;
 	$: if ($newLogFormData)
 		validateNewLogForm({ update: false }).then(

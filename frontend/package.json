@@ -35,7 +35,6 @@
   "type": "module",
   "dependencies": {
     "@internationalized/date": "^3.5.2",
-    "@sveltestack/svelte-query": "^1.6.0",
     "bits-ui": "^0.19.7",
     "clsx": "^2.1.0",
     "cmdk-sv": "^0.0.15",

@@ -21,9 +21,13 @@
 		validators: zodClient(gameSearchSchema),
 		SPA: true,
 		resetForm: false,
-		onUpdate: ({ form }) => {
+		onUpdate: async ({ form }) => {
 			if (form.valid) {
-				searchPromise = authenticateAndSearchForGame(form.data.gameTitle);
+				const authenticateRes = await AuthenticateWithTwitch();
+				if (!authenticateRes.access_token) {
+					console.error('Failed to authenticate with Twitch');
+				}
+				searchPromise = SearchForGame(form.data.gameTitle, authenticateRes.access_token);
 			}
 		}
 	});
@@ -36,17 +40,6 @@
 		}
 		searchPromise = GetRandomGames(gamesPerPage * 4, authenticationResponse.access_token);
 	});
-	async function authenticateAndSearchForGame(gameTitle: string) {
-		const authenticateRes = await AuthenticateWithTwitch();
-		if (!authenticateRes.access_token) {
-			console.error('Failed to authenticate with Twitch');
-		}
-		const queriedGames = await SearchForGame(gameTitle, authenticateRes.access_token);
-		if (queriedGames.error) {
-			console.error('Failed to search for game');
-		}
-		return queriedGames;
-	}
 </script>
 
 <main class="min-h-full px-16 py-8">
