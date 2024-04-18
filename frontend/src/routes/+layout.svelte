@@ -13,7 +13,7 @@
 				`/game-search?executableName=${data.executableName}&minutesPlayed=${data.minutesPlayed}`
 			);
 		} else {
-			goto(`/log?gameId=${data.gameId}&minutesPlayed=${data.minutesPlayed}`);
+			goto(`/logs/new?gameId=${data.gameId}&minutesPlayed=${data.minutesPlayed}`);
 		}
 	});
 </script>

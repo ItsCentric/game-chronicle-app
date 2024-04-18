@@ -15,6 +15,7 @@ export const statusOptions = [
     'Abandoned',
     'Retired'
 ] as const;
+export type StatusOption = typeof statusOptions[number];
 
 export const gameSearchSchema = z.object({
     gameTitle: z.string().min(1)

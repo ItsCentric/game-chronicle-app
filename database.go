@@ -87,7 +87,6 @@ type DashboardStatistics struct {
 func initializeDatabase() (*gorm.DB, error) {
 	var err error
 	database, err := gorm.Open(sqlite.Open("logs.db"), &gorm.Config{})
-	log.Printf("\n\nInitialize Database: %+v, error: %s\n\n", database, err)
 	if err != nil {
 		return database, errors.New("failed to connect database")
 	}

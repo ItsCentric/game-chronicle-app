@@ -89,7 +89,7 @@
 			</h1>
 			<h2 class="text-xl font-heading font-semibold mb-4">Welcome to your journal</h2>
 			<div class="flex gap-2">
-				<Button href="/game-search">Create a log</Button>
+				<Button href="/logs">View logs</Button>
 				<Button href="/settings">Settings</Button>
 			</div>
 		</div>
@@ -135,7 +135,7 @@
 		<div>
 			<div class="flex justify-between items-center mb-2">
 				<h3 class="text-xl font-heading font-semibold">Recent Games</h3>
-				<Button variant="link" href="">View all games</Button>
+				<Button variant="link" href="/logs">View all games</Button>
 			</div>
 			<div class="flex gap-4">
 				{#if recentLogsPromise}
