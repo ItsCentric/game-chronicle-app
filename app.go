@@ -65,7 +65,10 @@ func (a *App) startup(ctx context.Context) {
 				if err != nil {
 					return err
 				}
-
+				depth := strings.Count(strings.TrimPrefix(walkedPath, executablePath), string(os.PathSeparator))
+				if depth > preferences.ProcessMonitoringDirectoryDepth {
+					return filepath.SkipDir
+				}
 				if info.Mode().Perm()&0111 != 0 && !info.IsDir() {
 					pathsToMonitor += walkedPath + ";"
 					return nil
@@ -105,9 +108,17 @@ func (a *App) OpenDirectoryDialog() OpenDirectoryDialogResponse {
 }
 
 func (a *App) GetCurrentUsername() GetCurrentUsernameResponse {
-	currentUser, err := user.Current()
-	if err != nil {
-		return GetCurrentUsernameResponse{Username: "", Error: err.Error()}
+	settingsResponse := a.GetUserSettings()
+	if settingsResponse.Error != "" {
+		return GetCurrentUsernameResponse{Username: "", Error: settingsResponse.Error}
 	}
-	return GetCurrentUsernameResponse{Username: currentUser.Username, Error: ""}
+	if settingsResponse.Preferences.Username != "" {
+		return GetCurrentUsernameResponse{Username: settingsResponse.Preferences.Username, Error: ""}
+	} else {
+		currentUser, err := user.Current()
+		if err != nil {
+			return GetCurrentUsernameResponse{Username: "", Error: err.Error()}
+		}
+		return GetCurrentUsernameResponse{Username: currentUser.Username, Error: ""}
+	}
 }
