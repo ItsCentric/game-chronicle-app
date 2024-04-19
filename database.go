@@ -78,6 +78,11 @@ type GetPopularUpcomingGamesResponse struct {
 	Error string     `json:"error"`
 }
 
+type GetLogByIdResponse struct {
+	Log   Log    `json:"log"`
+	Error string `json:"error"`
+}
+
 type DashboardStatistics struct {
 	CompletedGames int64 `json:"completedGames"`
 	TimePlayed     int64 `json:"timePlayed"`
@@ -131,6 +136,15 @@ func (a *App) InsertGameLog(data LogData) InsertGameLogResponse {
 	response.Log = *gameLog
 
 	return response
+}
+
+func (a *App) GetLogById(id int) GetLogByIdResponse {
+	var dbLog Log
+	res := a.Db.First(&dbLog, id)
+	if res.Error != nil {
+		return GetLogByIdResponse{Error: res.Error.Error()}
+	}
+	return GetLogByIdResponse{Log: dbLog}
 }
 
 func (a *App) GetGameLogs(sortBy string, sortOrder string, filter []string) []*Log {
@@ -208,4 +222,34 @@ func (a *App) GetRecentLogs(amount int) GetRecentLogsResponse {
 		return GetRecentLogsResponse{Error: res.Error.Error()}
 	}
 	return GetRecentLogsResponse{Logs: logs}
+}
+
+func (a *App) UpdateLog(logId int, newData LogData) string {
+	var logToUpdate Log
+	res := a.Db.First(&logToUpdate, logId)
+	if res.Error != nil {
+		return res.Error.Error()
+	}
+	logToUpdate.Title = newData.Title
+	logToUpdate.Date = newData.Date
+	logToUpdate.Rating = newData.Rating
+	logToUpdate.StatusID = newData.StatusID
+	logToUpdate.Finished = newData.Finished
+	logToUpdate.TimePlayedMinutes = newData.TimePlayed.Minutes + newData.TimePlayed.Hours*60
+	if newData.Notes != nil {
+		logToUpdate.Notes = *newData.Notes
+	}
+	res = a.Db.Save(&logToUpdate)
+	if res.Error != nil {
+		return res.Error.Error()
+	}
+	return ""
+}
+
+func (a *App) DeleteLog(logId int) string {
+	res := a.Db.Delete(&Log{}, logId)
+	if res.Error != nil {
+		return res.Error.Error()
+	}
+	return ""
 }

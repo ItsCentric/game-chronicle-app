@@ -3,6 +3,9 @@
 	import '../app.css';
 	import { EventsOn } from '$lib/wailsjs/runtime/runtime';
 	import { goto } from '$app/navigation';
+	import { QueryClient, QueryClientProvider } from '@sveltestack/svelte-query';
+
+	const queryClient = new QueryClient();
 
 	EventsOn('game-stopped', async (data) => {
 		if (data.executableName !== '') {
@@ -20,5 +23,7 @@
 
 <main class="h-full">
 	<Toaster />
-	<slot />
+	<QueryClientProvider client={queryClient}>
+		<slot />
+	</QueryClientProvider>
 </main>

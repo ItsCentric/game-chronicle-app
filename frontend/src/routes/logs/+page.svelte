@@ -1,28 +1,65 @@
 <script lang="ts">
 	import GameCard from '$lib/components/GameCard.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import { AuthenticateWithTwitch, GetGamesById } from '$lib/wailsjs/go/main/App';
+	import { AuthenticateWithTwitch, DeleteLog, GetGamesById } from '$lib/wailsjs/go/main/App';
 	import { GetGameLogs } from '$lib/wailsjs/go/main/App';
 	import type { main } from '$lib/wailsjs/go/models';
 	import { statusOptions, type StatusOption } from '$lib/schemas';
-	import { onMount } from 'svelte';
-	import { ArrowDownUp, ArrowLeft, ChevronLeft, ChevronRight, Plus, SearchX } from 'lucide-svelte';
+	import {
+		ArrowDownUp,
+		ArrowLeft,
+		ChevronLeft,
+		ChevronRight,
+		Plus,
+		SearchX,
+		Trash
+	} from 'lucide-svelte';
 	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
 	import * as Pagination from '$lib/components/ui/pagination';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
+	import { goto } from '$app/navigation';
+	import { LogDebug } from '$lib/wailsjs/runtime/runtime';
+	import { useMutation, useQuery, useQueryClient } from '@sveltestack/svelte-query';
+	import { toast } from 'svelte-sonner';
 
 	type GameLog = Omit<main.Log & { game: main.IgdbGame; statusId: StatusOption }, 'convertValues'>;
-	let getLogsResponse:
-		| {
-				gameLogs: GameLog[];
-				error: string | null;
-		  }
-		| undefined;
 	let filteredLogs: GameLog[] = [];
 	let statusFilter: StatusOption[] = [];
 	let currentLogPage = 1;
 	let sortBy = 'date';
 	let sortOrder = 'desc';
+	const queryClient = useQueryClient();
+	const logsQuery = useQuery(['logs', sortBy, sortOrder, statusFilter], async ({ queryKey }) => {
+		const [_key, sortBy, sortOrder, statusFilter] = queryKey;
+		const logs = await GetGameLogs(
+			sortBy as string,
+			sortOrder as string,
+			statusFilter as StatusOption[]
+		);
+		const accessTokenResponse = await AuthenticateWithTwitch();
+		const gameIds = logs.map((log) => log.gameId);
+		const gamesResponse = await GetGamesById(gameIds, accessTokenResponse.access_token);
+		if (gamesResponse.error) {
+			throw new Error(gamesResponse.error);
+		}
+		return logs.map((log) => {
+			const game = gamesResponse.games.find((game) => game.id === log.gameId);
+			if (!game) {
+				throw new Error('Game not found');
+			}
+			return { ...log, statusId: log.statusId as StatusOption, game };
+		});
+	});
+	const deleteLogMutation = useMutation(
+		async (id: number) => {
+			const deleteLogError = await DeleteLog(id);
+			if (deleteLogError != '') {
+				throw new Error(deleteLogError);
+			}
+		},
+		{ onSuccess: () => queryClient.invalidateQueries('logs') }
+	);
 	const logStatusColorMap: Record<StatusOption, string> = {
 		Backlog: 'bg-gray-500',
 		Wishlist: 'bg-blue-500',
@@ -33,36 +70,14 @@
 		Retired: 'bg-yellow-500'
 	};
 
-	onMount(async () => {
-		const logs = await GetGameLogs('date', 'desc', []);
-		const accessTokenResponse = await AuthenticateWithTwitch();
-		const gameIds = logs.map((log) => log.gameId);
-		const gamesResponse = await GetGamesById(gameIds, accessTokenResponse.access_token);
-		if (gamesResponse.error) {
-			console.error(gamesResponse.error);
-			getLogsResponse = { gameLogs: [], error: gamesResponse.error };
-		}
-		const gameLogs = logs.map((log) => {
-			const game = gamesResponse.games.find((game) => game.id === log.gameId);
-			if (!game) {
-				throw new Error('Game not found');
-			}
-			return { ...log, statusId: log.statusId as StatusOption, game };
-		});
-		getLogsResponse = {
-			gameLogs,
-			error: null
-		};
-		filteredLogs = getLogsResponse.gameLogs;
-	});
 	function logStatusColor(status: StatusOption) {
 		return logStatusColorMap[status];
 	}
-	$: if (statusFilter && getLogsResponse) {
+	$: if (statusFilter && $logsQuery.data) {
 		if (statusFilter.length === 0) {
-			filteredLogs = getLogsResponse.gameLogs;
+			filteredLogs = $logsQuery.data;
 		} else {
-			filteredLogs = getLogsResponse.gameLogs.filter((log) => {
+			filteredLogs = $logsQuery.data.filter((log) => {
 				return statusFilter.includes(log.statusId as StatusOption);
 			});
 		}
@@ -153,13 +168,13 @@
 			</Button>
 		</div>
 	</div>
-	{#if !getLogsResponse}
+	{#if $logsQuery.isLoading}
 		<div class="grid gap-2 grid-cols-6">
 			{#each Array(18) as _}
 				<Skeleton class="rounded-3xl aspect-[3/4]" />
 			{/each}
 		</div>
-	{:else if !getLogsResponse.error}
+	{:else if $logsQuery.isSuccess}
 		{#if filteredLogs.length === 0}
 			<div class="flex-1 flex flex-col gap-1 items-center justify-center">
 				<SearchX size={64} />
@@ -174,7 +189,42 @@
 		{:else}
 			<div class="grid gap-2 grid-cols-6">
 				{#each filteredLogs.slice(start, end) as gameLog}
-					<GameCard data={gameLog.game}>
+					<GameCard
+						data={gameLog.game}
+						on:click={() => goto(`logs/new?id=${gameLog.ID}&gameId=${gameLog.game.id}`)}
+					>
+						<AlertDialog.Root>
+							<AlertDialog.Trigger asChild let:builder>
+								<Button
+									on:click={(e) => e.stopPropagation()}
+									builders={[builder]}
+									variant="ghost"
+									size="icon"
+									class="z-30 absolute top-0 right-0 opacity-0 group-hover:opacity-100"
+								>
+									<Trash size={24} />
+								</Button>
+							</AlertDialog.Trigger>
+							<AlertDialog.Content>
+								<AlertDialog.Header>Delete Log</AlertDialog.Header>
+								<AlertDialog.Description>
+									Are you sure you want to delete this log?
+								</AlertDialog.Description>
+								<AlertDialog.Footer>
+									<AlertDialog.Action
+										on:click={() =>
+											toast.promise($deleteLogMutation.mutateAsync(gameLog.ID), {
+												loading: 'Deleting log...',
+												success: 'Log was successfully deleted!',
+												error: 'Something went wrong deleting your log.'
+											})}
+									>
+										Delete
+									</AlertDialog.Action>
+									<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+								</AlertDialog.Footer>
+							</AlertDialog.Content>
+						</AlertDialog.Root>
 						<span
 							class={`absolute left-2 shadow-black shadow text-black bottom-2 rounded-2xl px-2 py-1 text-sm pointer-events-none ${logStatusColor(
 								gameLog.statusId
@@ -214,6 +264,6 @@
 			</Pagination.Content>
 		</Pagination.Root>
 	{:else}
-		<p class="text-red-500">{getLogsResponse.error}</p>
+		<p class="text-red-500">{$logsQuery.error}</p>
 	{/if}
 </main>

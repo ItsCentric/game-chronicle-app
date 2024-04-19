@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { newLogSchema, statusOptions } from '$lib/schemas';
+	import { logSchema, statusOptions, type StatusOption } from '$lib/schemas';
 	import type { main } from '$lib/wailsjs/go/models';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
@@ -21,46 +21,89 @@
 		AuthenticateWithTwitch,
 		GetGamesById,
 		InsertGameLog,
-		InsertExecutableDetails
+		InsertExecutableDetails,
+		GetLogById,
+		UpdateLog
 	} from '$lib/wailsjs/go/main/App';
 	import { logDataFromForm } from '$lib';
+	import { useMutation } from '@sveltestack/svelte-query';
 
 	const searchParams = $page.url.searchParams;
+	const isEditing = searchParams.has('id');
+	const insertLogMutation = useMutation(async (data: main.LogData) => {
+		const insertResponse = await InsertGameLog(data);
+		if (parseInt(insertResponse.errors?.length) > 0) {
+			throw new Error('Failed to insert log');
+		}
+		return insertResponse.log;
+	});
+	const updateLogMutation = useMutation(async (log: { id: number; data: main.LogData }) => {
+		const updateLogError = await UpdateLog(log.id, log.data);
+		if (updateLogError != '') {
+			throw new Error('Failed to update log');
+		}
+	});
 	let selectedGame: main.IgdbGame | null = null;
-	const newLogForm = superForm(defaults(zod(newLogSchema)), {
-		validators: zodClient(newLogSchema),
+	const logForm = superForm(defaults(zod(logSchema)), {
+		validators: zodClient(logSchema),
 		SPA: true,
 		onUpdate: async ({ form }) => {
 			if (form.valid && selectedGame) {
 				const candidateLog = logDataFromForm(selectedGame, form.data);
-				let insertResponse = await InsertGameLog(candidateLog);
-				if (parseInt(insertResponse.errors?.length) > 0) {
-					toast.error('Something went wrong creating your log.', {
-						description:
-							'Please try again. If the problem persists, reach out or make a ticket on our GitHub.'
+				if (!isEditing) {
+					toast.promise($insertLogMutation.mutateAsync(candidateLog), {
+						loading: 'Creating log...',
+						success: 'Log created successfully!',
+						error: 'Failed to create log'
 					});
-				}
-				toast.success('Log created!');
-				goto('/');
-				const executableName = searchParams.get('executableName');
-				const minutesPlayed = searchParams.get('minutesPlayed');
-				if (executableName && minutesPlayed) {
-					await InsertExecutableDetails({
-						executableName: executableName,
-						gameId: selectedGame.id,
-						minutesPlayed: parseInt(minutesPlayed)
-					});
+					goto('/logs');
+					const executableName = searchParams.get('executableName');
+					const minutesPlayed = searchParams.get('minutesPlayed');
+					if (executableName && minutesPlayed) {
+						await InsertExecutableDetails({
+							executableName: executableName,
+							gameId: selectedGame.id,
+							minutesPlayed: parseInt(minutesPlayed)
+						});
+					}
+				} else {
+					toast.promise(
+						$updateLogMutation.mutateAsync({
+							id: parseInt(searchParams.get('id') as string),
+							data: candidateLog
+						}),
+						{
+							loading: 'Updating log...',
+							success: 'Log updated successfully!',
+							error: 'Failed to update log'
+						}
+					);
+					goto('/logs');
 				}
 			}
 		}
 	});
 	const {
-		form: newLogFormData,
-		enhance: newLogEnhance,
-		validate: validateNewLogFormField,
-		validateForm: validateNewLogForm
-	} = newLogForm;
+		form: logFormData,
+		enhance: logEnhance,
+		validate: validateLogFormField,
+		validateForm: validateLogForm
+	} = logForm;
 	onMount(async () => {
+		if (isEditing) {
+			const getLogResponse = await GetLogById(parseInt(searchParams.get('id') as string));
+			if (getLogResponse.error) {
+				console.error('Failed to get log by ID');
+				return;
+			}
+			$logFormData.status = getLogResponse.log.statusId as StatusOption;
+			$logFormData.rating = getLogResponse.log.rating;
+			$logFormData.logDate = new Date(getLogResponse.log.date);
+			$logFormData.finished = getLogResponse.log.finished;
+			$logFormData.timePlayedHours = Math.floor(getLogResponse.log.timePlayedMinutes / 60);
+			$logFormData.timePlayedMinutes = getLogResponse.log.timePlayedMinutes % 60;
+			$logFormData.notes = getLogResponse.log.notes;
+		}
 		const gameIdString = searchParams.get('gameId');
 		if (!gameIdString) return;
 		const tokenRes = await AuthenticateWithTwitch();
@@ -75,30 +118,30 @@
 		selectedGame = gameResponse.games[0];
 		const minutesPlayed = searchParams.get('minutesPlayed');
 		if (minutesPlayed) {
-			$newLogFormData.timePlayedHours = Math.floor(parseInt(minutesPlayed) / 60);
-			$newLogFormData.timePlayedMinutes = parseInt(minutesPlayed) % 60;
+			$logFormData.timePlayedHours = Math.floor(parseInt(minutesPlayed) / 60);
+			$logFormData.timePlayedMinutes = parseInt(minutesPlayed) % 60;
 		}
 	});
 
 	let isNewLogFormValid = false;
-	$: if ($newLogFormData)
-		validateNewLogForm({ update: false }).then(
+	$: if ($logFormData)
+		validateLogForm({ update: false }).then(
 			(superValidated) => (isNewLogFormValid = superValidated.valid)
 		);
 </script>
 
 <main class="min-h-full container py-8 px-16">
 	<div class="mb-4">
-		<h1 class="text-3xl font-heading font-bold">New Log</h1>
+		<h1 class="text-3xl font-heading font-bold">{isEditing ? 'Edit' : 'New'} Log</h1>
 		{#if !selectedGame}
 			<Skeleton class="w-72 h-4 mt-2" />
 		{:else}
 			<p class="text-gray-500 text-lg font-heading">
-				How was today's session with {selectedGame.name}?
+				What was it like playing {selectedGame.name}?
 			</p>
 		{/if}
 	</div>
-	<form method="post" class="grid-cols-[25%,_1fr] grid gap-4" id="newLog" use:newLogEnhance>
+	<form method="post" class="grid-cols-[25%,_1fr] grid gap-4" id="logForm" use:logEnhance>
 		<div>
 			{#if !selectedGame}
 				<Skeleton class="aspect-[3/4] rounded-3xl w-full mb-4" />
@@ -111,14 +154,14 @@
 					class="aspect-[3/4] rounded-3xl mb-4 w-full"
 				/>
 			{/if}
-			<Form.Field form={newLogForm} name="status">
+			<Form.Field form={logForm} name="status">
 				<Form.Control let:attrs>
 					<Combobox
 						{...attrs}
 						options={statusOptions.map((status) => ({ value: status, label: status }))}
 						placeholder="Pick a status"
 						emptyText="No status found!"
-						bind:value={$newLogFormData.status}
+						bind:value={$logFormData.status}
 						disabled={!selectedGame}
 					/>
 				</Form.Control>
@@ -131,12 +174,12 @@
 				{:else}
 					<p class="text-2xl font-heading font-semibold">{selectedGame.name}</p>
 				{/if}
-				<Form.Fieldset form={newLogForm} name="rating">
+				<Form.Fieldset form={logForm} name="rating">
 					<RadioGroup.Root
-						value={`${$newLogFormData.rating}`}
+						value={`${$logFormData.rating}`}
 						class="flex items-center"
 						onValueChange={(newValue) =>
-							validateNewLogFormField('rating', { value: parseInt(newValue) })}
+							validateLogFormField('rating', { value: parseInt(newValue) })}
 					>
 						{#each Array(5) as _, i}
 							<Form.Control let:attrs>
@@ -147,7 +190,7 @@
 									{...attrs}
 								/>
 								<Form.Label>
-									{#if $newLogFormData.rating >= i + 1}
+									{#if $logFormData.rating >= i + 1}
 										<svg
 											xmlns="http://www.w3.org/2000/svg"
 											width="24"
@@ -178,12 +221,12 @@
 					</RadioGroup.Root>
 				</Form.Fieldset>
 			</div>
-			<Form.Field form={newLogForm} name="logDate">
+			<Form.Field form={logForm} name="logDate">
 				<Form.Control let:attrs>
 					<Form.Label>Date</Form.Label>
 					<DatePicker
 						{...attrs}
-						bind:value={$newLogFormData.logDate}
+						bind:value={$logFormData.logDate}
 						placeholder="Log date"
 						max={today(getLocalTimeZone())}
 						disabled={!selectedGame}
@@ -191,26 +234,26 @@
 				</Form.Control>
 				<Form.FieldErrors />
 			</Form.Field>
-			<Form.Field form={newLogForm} name="finished">
+			<Form.Field form={logForm} name="finished">
 				<Form.Control let:attrs>
 					<Form.Label class="mr-2">Finished?</Form.Label>
-					<Checkbox {...attrs} bind:checked={$newLogFormData.finished} disabled={!selectedGame} />
+					<Checkbox {...attrs} bind:checked={$logFormData.finished} disabled={!selectedGame} />
 				</Form.Control>
 				<Form.FieldErrors />
 			</Form.Field>
 			<div>
 				<p class="text-sm mb-2 pointer-events-none">Time played</p>
-				<Form.Field form={newLogForm} name="timePlayedHours" class="w-14 inline-block mr-1">
+				<Form.Field form={logForm} name="timePlayedHours" class="w-14 inline-block mr-1">
 					<Form.Control let:attrs>
 						<Input
 							{...attrs}
 							type="number"
 							placeholder="HH"
 							min="0"
-							bind:value={$newLogFormData.timePlayedHours}
+							bind:value={$logFormData.timePlayedHours}
 							disabled={!selectedGame}
 							on:change={(newValue) => {
-								validateNewLogFormField('timePlayedHours', {
+								validateLogFormField('timePlayedHours', {
 									value: parseInt(newValue.currentTarget.value)
 								});
 							}}
@@ -218,7 +261,7 @@
 					</Form.Control>
 					<Form.FieldErrors />
 				</Form.Field>
-				<Form.Field form={newLogForm} name="timePlayedMinutes" class="w-14 inline-block">
+				<Form.Field form={logForm} name="timePlayedMinutes" class="w-14 inline-block">
 					<Form.Control let:attrs>
 						<Input
 							{...attrs}
@@ -227,9 +270,9 @@
 							min="0"
 							max="59"
 							disabled={!selectedGame}
-							bind:value={$newLogFormData.timePlayedMinutes}
+							bind:value={$logFormData.timePlayedMinutes}
 							on:change={(newValue) => {
-								validateNewLogFormField('timePlayedMinutes', {
+								validateLogFormField('timePlayedMinutes', {
 									value: parseInt(newValue.currentTarget.value)
 								});
 							}}
@@ -239,14 +282,14 @@
 				</Form.Field>
 			</div>
 			<div>
-				<Form.Field form={newLogForm} name="notes">
+				<Form.Field form={logForm} name="notes">
 					<Form.Control let:attrs>
 						<Form.Label>Notes</Form.Label>
 						<Textarea
 							{...attrs}
 							placeholder="Notes"
 							disabled={!selectedGame}
-							bind:value={$newLogFormData.notes}
+							bind:value={$logFormData.notes}
 						/>
 					</Form.Control>
 					<Form.FieldErrors />
@@ -255,7 +298,7 @@
 		</div>
 	</form>
 	<div class="float-right">
-		<Button type="submit" form="newLog" class="mt-4" disabled={!isNewLogFormValid || !selectedGame}
+		<Button type="submit" form="logForm" class="mt-4" disabled={!isNewLogFormValid || !selectedGame}
 			>Save</Button
 		>
 		<Button variant="destructive" on:click={() => window.history.back()}>Cancel</Button>

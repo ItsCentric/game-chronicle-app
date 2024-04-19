@@ -24,7 +24,7 @@ export type GameSearchFormSchema = typeof gameSearchSchema;
 
 const tomorrow = new Date();
 tomorrow.setDate(tomorrow.getDate() + 1);
-export const newLogSchema = z.object({
+export const logSchema = z.object({
     rating: z
         .number()
         .max(5, { message: 'Rating must be 5 or less' })
@@ -36,7 +36,7 @@ export const newLogSchema = z.object({
     timePlayedHours: z.number({ invalid_type_error: 'Invalid value for hour' }).min(0).default('' as unknown as number),
     timePlayedMinutes: z.number({ invalid_type_error: 'Invalid value for minute' }).min(0).default('' as unknown as number)
 });
-export type NewLogFormSchema = typeof newLogSchema;
+export type LogFormSchema = typeof logSchema;
 
 export const filterFormSchema = z.object({
     status: z.array(z.enum(statusOptions))

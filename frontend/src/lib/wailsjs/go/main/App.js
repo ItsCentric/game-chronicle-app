@@ -6,6 +6,10 @@ export function AuthenticateWithTwitch() {
   return window['go']['main']['App']['AuthenticateWithTwitch']();
 }
 
+export function DeleteLog(arg1) {
+  return window['go']['main']['App']['DeleteLog'](arg1);
+}
+
 export function GetCurrentUsername() {
   return window['go']['main']['App']['GetCurrentUsername']();
 }
@@ -20,6 +24,10 @@ export function GetGameLogs(arg1, arg2, arg3) {
 
 export function GetGamesById(arg1, arg2) {
   return window['go']['main']['App']['GetGamesById'](arg1, arg2);
+}
+
+export function GetLogById(arg1) {
+  return window['go']['main']['App']['GetLogById'](arg1);
 }
 
 export function GetRandomGames(arg1, arg2) {
@@ -56,4 +64,8 @@ export function SaveUserSettings(arg1) {
 
 export function SearchForGame(arg1, arg2) {
   return window['go']['main']['App']['SearchForGame'](arg1, arg2);
+}
+
+export function UpdateLog(arg1, arg2) {
+  return window['go']['main']['App']['UpdateLog'](arg1, arg2);
 }
