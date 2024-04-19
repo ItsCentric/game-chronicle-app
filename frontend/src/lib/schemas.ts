@@ -44,7 +44,9 @@ export const filterFormSchema = z.object({
 export type FilterFormSchema = typeof filterFormSchema;
 
 export const settingsSchema = z.object({
+    username: z.string().min(1).max(50),
     executablePaths: z.array(z.string()),
     processMonitoringEnabled: z.boolean(),
+    processMonitoringDirectoryDepth: z.number().min(0).max(99).default(3),
 });
 export type SettingsFormSchema = typeof settingsSchema;

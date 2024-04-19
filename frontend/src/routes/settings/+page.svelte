@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { settingsSchema } from '$lib/schemas';
-	import { OpenDirectoryDialog, GetUserSettings, SaveUserSettings } from '$lib/wailsjs/go/main/App';
+	import {
+		OpenDirectoryDialog,
+		GetUserSettings,
+		SaveUserSettings,
+		GetCurrentUsername
+	} from '$lib/wailsjs/go/main/App';
 	import { WindowReloadApp } from '$lib/wailsjs/runtime/runtime';
 	import { ArrowLeft, PencilIcon, Trash } from 'lucide-svelte';
 	import { defaults, superForm } from 'sveltekit-superforms';
@@ -11,6 +16,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { zod } from 'sveltekit-superforms/adapters';
 	import { onMount } from 'svelte';
+	import Input from '$lib/components/ui/input/input.svelte';
 
 	let openReloadApplicationModal = false;
 	const settingsForm = superForm(defaults(zod(settingsSchema)), {
@@ -20,14 +26,20 @@
 			if (form.valid) {
 				var newSettings = {
 					processMonitoringEnabled: form.data.processMonitoringEnabled,
-					executablePaths: form.data.executablePaths.join(';')
+					executablePaths: form.data.executablePaths.join(';'),
+					username: form.data.username,
+					processMonitoringDirectoryDepth: form.data.processMonitoringDirectoryDepth
 				};
 				await SaveUserSettings(newSettings);
 				openReloadApplicationModal = true;
 			}
 		}
 	});
-	const { form: settingsFormData, enhance: settingsFormEnhance } = settingsForm;
+	const {
+		form: settingsFormData,
+		enhance: settingsFormEnhance,
+		validate: validateSettingsFormField
+	} = settingsForm;
 
 	onMount(async () => {
 		const userPreferencesRes = await GetUserSettings();
@@ -38,6 +50,17 @@
 		$settingsFormData.processMonitoringEnabled =
 			userPreferencesRes.preferences.processMonitoringEnabled;
 		$settingsFormData.executablePaths = executablePathsArray;
+		$settingsFormData.processMonitoringDirectoryDepth =
+			userPreferencesRes.preferences.processMonitoringDirectoryDepth;
+		if (userPreferencesRes.preferences.username !== '') {
+			$settingsFormData.username = userPreferencesRes.preferences.username;
+		} else {
+			const usernameResponse = await GetCurrentUsername();
+			if (usernameResponse.error) {
+				console.error(usernameResponse.error);
+			}
+			$settingsFormData.username = usernameResponse.username;
+		}
 	});
 
 	async function newDirectoryDialog() {
@@ -69,6 +92,19 @@
 	<form method="post" use:settingsFormEnhance class="flex flex-col gap-8">
 		<section class="flex flex-col gap-2">
 			<div class="flex justify-between mb-2">
+				<h2 class="text-2xl font-heading font-bold">General</h2>
+			</div>
+			<Form.Field form={settingsForm} name="username">
+				<Form.Control let:attrs>
+					<div class="flex justify-between items-center">
+						<Form.Label>Username</Form.Label>
+						<Input {...attrs} bind:value={$settingsFormData.username} class="max-w-xs" />
+					</div>
+				</Form.Control>
+			</Form.Field>
+		</section>
+		<section class="flex flex-col gap-2">
+			<div class="flex justify-between mb-2">
 				<h2 class="text-2xl font-heading font-bold">Monitoring</h2>
 			</div>
 			<Form.Field form={settingsForm} name="processMonitoringEnabled">
@@ -79,6 +115,25 @@
 							includeInput
 							{...attrs}
 							bind:checked={$settingsFormData.processMonitoringEnabled}
+						/>
+					</div>
+				</Form.Control>
+			</Form.Field>
+			<Form.Field form={settingsForm} name="processMonitoringDirectoryDepth">
+				<Form.Control let:attrs>
+					<div class="flex justify-between items-center">
+						<Form.Label>Directory Depth</Form.Label>
+						<Input
+							{...attrs}
+							bind:value={$settingsFormData.processMonitoringDirectoryDepth}
+							type="number"
+							min="1"
+							max="99"
+							class="w-16"
+							on:change={({ currentTarget }) =>
+								validateSettingsFormField('processMonitoringDirectoryDepth', {
+									value: parseInt(currentTarget.value)
+								})}
 						/>
 					</div>
 				</Form.Control>

@@ -32,8 +32,10 @@ type LogStatus struct {
 
 type UserSettings struct {
 	gorm.Model
-	ExecutablePaths          string `json:"executablePaths"`
-	ProcessMonitoringEnabled bool   `json:"processMonitoringEnabled" gorm:"default:false"`
+	Username                        string `json:"username"`
+	ExecutablePaths                 string `json:"executablePaths"`
+	ProcessMonitoringEnabled        bool   `json:"processMonitoringEnabled" gorm:"default:false"`
+	ProcessMonitoringDirectoryDepth int    `json:"processMonitoringDirectoryDepth" gorm:"default:3"`
 }
 
 type ExecutableDetails struct {
@@ -53,8 +55,10 @@ type GetUserSettingsResponse struct {
 }
 
 type UserSettingsData struct {
-	ExecutablePaths          string `json:"executablePaths"`
-	ProcessMonitoringEnabled bool   `json:"processMonitoringEnabled"`
+	Username                        string `json:"username"`
+	ExecutablePaths                 string `json:"executablePaths"`
+	ProcessMonitoringEnabled        bool   `json:"processMonitoringEnabled"`
+	ProcessMonitoringDirectoryDepth int    `json:"processMonitoringDirectoryDepth"`
 }
 
 type InsertExecutableDetailsResponse struct {
@@ -119,6 +123,8 @@ func (a *App) SaveUserSettings(newSettings UserSettingsData) {
 	}
 	preferences.ExecutablePaths = newSettings.ExecutablePaths
 	preferences.ProcessMonitoringEnabled = newSettings.ProcessMonitoringEnabled
+	preferences.ProcessMonitoringDirectoryDepth = newSettings.ProcessMonitoringDirectoryDepth
+	preferences.Username = newSettings.Username
 	res = a.Db.Save(&preferences)
 	if res.Error != nil {
 		log.Fatal("Error updating user preferences:", res.Error.Error())

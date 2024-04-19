@@ -351,8 +351,10 @@ export namespace main {
 		}
 	}
 	export class UserSettings {
+	    username: string;
 	    executablePaths: string;
 	    processMonitoringEnabled: boolean;
+	    processMonitoringDirectoryDepth: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new UserSettings(source);
@@ -360,8 +362,10 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.username = source["username"];
 	        this.executablePaths = source["executablePaths"];
 	        this.processMonitoringEnabled = source["processMonitoringEnabled"];
+	        this.processMonitoringDirectoryDepth = source["processMonitoringDirectoryDepth"];
 	    }
 	}
 	export class GetUserSettingsResponse {
@@ -571,8 +575,10 @@ export namespace main {
 	
 	
 	export class UserSettingsData {
+	    username: string;
 	    executablePaths: string;
 	    processMonitoringEnabled: boolean;
+	    processMonitoringDirectoryDepth: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new UserSettingsData(source);
@@ -580,8 +586,10 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.username = source["username"];
 	        this.executablePaths = source["executablePaths"];
 	        this.processMonitoringEnabled = source["processMonitoringEnabled"];
+	        this.processMonitoringDirectoryDepth = source["processMonitoringDirectoryDepth"];
 	    }
 	}
 
