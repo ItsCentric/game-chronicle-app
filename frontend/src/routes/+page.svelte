@@ -145,7 +145,7 @@
 						{/each}
 					{:then recentLogsResponse}
 						{#each recentLogsResponse as game}
-							<GameCard data={game} on:click={() => goto(`/log?gameId=${game.id}`)} />
+							<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />
 						{/each}
 					{:catch error}
 						<div>Error: {error}</div>
@@ -166,7 +166,7 @@
 						{/each}
 					{:then similarGames}
 						{#each similarGames as game}
-							<GameCard data={game} on:click={() => goto(`/log?gameId=${game.id}`)} />
+							<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />
 						{/each}
 					{:catch error}
 						<div>Error: {error}</div>

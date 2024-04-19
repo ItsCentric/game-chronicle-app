@@ -19,7 +19,6 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import { goto } from '$app/navigation';
-	import { LogDebug } from '$lib/wailsjs/runtime/runtime';
 	import { useMutation, useQuery, useQueryClient } from '@sveltestack/svelte-query';
 	import { toast } from 'svelte-sonner';
 
@@ -191,7 +190,7 @@
 				{#each filteredLogs.slice(start, end) as gameLog}
 					<GameCard
 						data={gameLog.game}
-						on:click={() => goto(`logs/new?id=${gameLog.ID}&gameId=${gameLog.game.id}`)}
+						on:click={() => goto(`/logs/edit?id=${gameLog.ID}&gameId=${gameLog.game.id}`)}
 					>
 						<AlertDialog.Root>
 							<AlertDialog.Trigger asChild let:builder>
