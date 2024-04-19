@@ -7,7 +7,7 @@
 		GetCurrentUsername
 	} from '$lib/wailsjs/go/main/App';
 	import { WindowReloadApp } from '$lib/wailsjs/runtime/runtime';
-	import { ArrowLeft, PencilIcon, Trash } from 'lucide-svelte';
+	import { PencilIcon, Plus, Trash } from 'lucide-svelte';
 	import { defaults, superForm } from 'sveltekit-superforms';
 	import * as Form from '$lib/components/ui/form';
 	import * as Dialog from '$lib/components/ui/dialog';
@@ -17,8 +17,10 @@
 	import { zod } from 'sveltekit-superforms/adapters';
 	import { onMount } from 'svelte';
 	import Input from '$lib/components/ui/input/input.svelte';
+	import { goto } from '$app/navigation';
 
 	let openReloadApplicationModal = false;
+
 	const settingsForm = superForm(defaults(zod(settingsSchema)), {
 		validators: zod(settingsSchema),
 		SPA: true,
@@ -84,9 +86,8 @@
 	}
 </script>
 
-<main class="w-full h-full p-12 flex-col justify-center items-center">
+<main class="w-full h-full py-12 flex-col justify-center container items-center">
 	<div class="flex gap-2 mb-8 items-center">
-		<Button href="/" variant="ghost"><ArrowLeft size={32} /></Button>
 		<h1 class="text-3xl font-heading font-bold">Settings</h1>
 	</div>
 	<form method="post" use:settingsFormEnhance class="flex flex-col gap-8">
@@ -138,9 +139,12 @@
 					</div>
 				</Form.Control>
 			</Form.Field>
-			<div class="flex justify-between items-center mb-2">
+			<div class="flex justify-between items-center my-2">
 				<h3 class="text-xl font-heading font-bold">Monitoring Paths</h3>
-				<Button type="button" on:click={newDirectoryDialog}>Add New Path</Button>
+				<Button type="button" on:click={newDirectoryDialog} size="sm">
+					<Plus size="1.5em" class="mr-1" />
+					<p>Add Path</p>
+				</Button>
 			</div>
 			{#if $settingsFormData.executablePaths.length !== 0}
 				<Table.Root>
@@ -156,11 +160,15 @@
 							<Table.Row>
 								<Table.Cell class="w-3/4">{path}</Table.Cell>
 								<Table.Cell class="text-right">
-									<Button type="button" on:click={async () => await editDirectoryDialog(path)}
-										><PencilIcon size={12} /></Button
+									<Button
+										type="button"
+										size="icon"
+										class="mr-1"
+										on:click={async () => await editDirectoryDialog(path)}
+										><PencilIcon size={16} /></Button
 									>
-									<Button type="button" on:click={() => removePath(path)}
-										><Trash size={12} /></Button
+									<Button type="button" size="icon" on:click={() => removePath(path)}
+										><Trash size={16} /></Button
 									>
 								</Table.Cell>
 							</Table.Row>
@@ -169,7 +177,10 @@
 				</Table.Root>
 			{/if}
 		</section>
-		<Button type="submit">Apply changes</Button>
+		<div class="flex justify-end gap-2">
+			<Button type="submit">Save</Button>
+			<Button variant="destructive" type="reset" on:click={() => goto('/')}>Cancel</Button>
+		</div>
 	</form>
 	<Dialog.Root bind:open={openReloadApplicationModal}>
 		<Dialog.Content>
