@@ -77,7 +77,7 @@
 							data={game}
 							on:click={() =>
 								goto(
-									`/logs/new?gameId=${game.id}` +
+									`/logs/edit?gameId=${game.id}` +
 										(isNewGame
 											? `&executableName=${executableName}&minutesPlayed=${minutesPlayed}`
 											: '')
