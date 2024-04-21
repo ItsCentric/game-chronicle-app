@@ -221,9 +221,9 @@ func (a *App) GetDashboardStatistics() GetDashboardStatisticsResponse {
 	return statistics
 }
 
-func (a *App) GetRecentLogs(amount int) GetRecentLogsResponse {
+func (a *App) GetRecentLogs(amount int, filter []string) GetRecentLogsResponse {
 	var logs []Log
-	res := a.Db.Order("created_at desc").Limit(amount).Find(&logs)
+	res := a.Db.Order("date desc").Limit(amount).Where("status_id IN ?", filter).Find(&logs)
 	if res.Error != nil {
 		return GetRecentLogsResponse{Error: res.Error.Error()}
 	}

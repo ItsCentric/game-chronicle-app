@@ -16,6 +16,7 @@
 	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
 	import { LoaderCircle } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
+	import { statusOptions } from '$lib/schemas';
 
 	let dashboardStatsPromise: Promise<main.GetDashboardStatisticsResponse> | undefined = undefined;
 	let recentLogsPromise: Promise<main.IgdbGame[]> | undefined = undefined;
@@ -43,7 +44,10 @@
 				resolve(response);
 			});
 		});
-		const recentLogsResponse = await GetRecentLogs(6);
+		const recentLogsResponse = await GetRecentLogs(
+			6,
+			statusOptions.filter((status) => status != 'Wishlist')
+		);
 		if (recentLogsResponse.error) {
 			console.error('Failed to get recent logs');
 			return;
@@ -134,7 +138,7 @@
 		</div>
 		<div>
 			<div class="flex justify-between items-center mb-2">
-				<h3 class="text-xl font-heading font-semibold">Recent Games</h3>
+				<h3 class="text-xl font-heading font-semibold">Recently Played</h3>
 				<Button variant="link" href="/logs">View all games</Button>
 			</div>
 			<div class="flex gap-4">

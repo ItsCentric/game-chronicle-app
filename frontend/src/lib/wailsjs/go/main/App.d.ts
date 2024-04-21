@@ -18,7 +18,7 @@ export function GetLogById(arg1:number):Promise<main.GetLogByIdResponse>;
 
 export function GetRandomGames(arg1:number,arg2:string):Promise<main.GetRandomGamesResponse>;
 
-export function GetRecentLogs(arg1:number):Promise<main.GetRecentLogsResponse>;
+export function GetRecentLogs(arg1:number,arg2:Array<string>):Promise<main.GetRecentLogsResponse>;
 
 export function GetSimilarGames(arg1:Array<number>,arg2:string):Promise<main.GetSimilarGamesResponse>;
 
