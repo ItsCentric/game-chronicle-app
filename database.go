@@ -191,28 +191,28 @@ func (a *App) GetDashboardStatistics() GetDashboardStatisticsResponse {
 	beginningOfNextMonth := time.Date(currentYear, currentMonth+1, 1, 0, 0, 0, 0, time.UTC)
 	endOfMonthBeforeLast := endOfLastMonth.AddDate(0, -1, -2)
 
-	res := a.Db.Model(&Log{}).Where("status_id = ? AND created_at BETWEEN ? AND ?", "Completed", endOfLastMonth, beginningOfNextMonth).Count(&completedGames)
+	res := a.Db.Model(&Log{}).Where("status_id = ? AND date BETWEEN ? AND ?", "Completed", endOfLastMonth, beginningOfNextMonth).Count(&completedGames)
 	if res.Error != nil {
 		return GetDashboardStatisticsResponse{Error: res.Error.Error()}
 	}
-	res = a.Db.Model(&Log{}).Select("COALESCE(SUM(time_played_minutes), 0)").Where("created_at BETWEEN ? AND ?", endOfLastMonth, beginningOfNextMonth).Scan(&timePlayed)
+	res = a.Db.Model(&Log{}).Select("COALESCE(SUM(time_played_minutes), 0)").Where("date BETWEEN ? AND ?", endOfLastMonth, beginningOfNextMonth).Scan(&timePlayed)
 	if res.Error != nil {
 		return GetDashboardStatisticsResponse{Error: res.Error.Error()}
 	}
-	res = a.Db.Model(&Log{}).Where("created_at BETWEEN ? AND ? AND status_id != ?", endOfLastMonth, beginningOfNextMonth, "Wishlist").Count(&totalGames)
+	res = a.Db.Model(&Log{}).Where("date BETWEEN ? AND ? AND status_id != ?", endOfLastMonth, beginningOfNextMonth, "Wishlist").Count(&totalGames)
 	if res.Error != nil {
 		return GetDashboardStatisticsResponse{Error: res.Error.Error()}
 	}
 	statistics.ThisMonthStatistics = DashboardStatistics{CompletedGames: completedGames, TimePlayed: timePlayed, TotalGames: totalGames}
-	res = a.Db.Model(&Log{}).Where("status_id = ? AND created_at BETWEEN ? AND ?", "Completed", endOfMonthBeforeLast, beginningOfThisMonth).Count(&completedGames)
+	res = a.Db.Model(&Log{}).Where("status_id = ? AND date BETWEEN ? AND ?", "Completed", endOfMonthBeforeLast, beginningOfThisMonth).Count(&completedGames)
 	if res.Error != nil {
 		return GetDashboardStatisticsResponse{Error: res.Error.Error()}
 	}
-	res = a.Db.Model(&Log{}).Select("COALESCE(SUM(time_played_minutes), 0)").Where("created_at BETWEEN ? AND ? AND status_id != ?", endOfMonthBeforeLast, beginningOfThisMonth, "Wishlist").Scan(&timePlayed)
+	res = a.Db.Model(&Log{}).Select("COALESCE(SUM(time_played_minutes), 0)").Where("date BETWEEN ? AND ? AND status_id != ?", endOfMonthBeforeLast, beginningOfThisMonth, "Wishlist").Scan(&timePlayed)
 	if res.Error != nil {
 		return GetDashboardStatisticsResponse{Error: res.Error.Error()}
 	}
-	res = a.Db.Model(&Log{}).Where("created_at BETWEEN ? AND ?", endOfMonthBeforeLast, beginningOfThisMonth).Count(&totalGames)
+	res = a.Db.Model(&Log{}).Where("date BETWEEN ? AND ?", endOfMonthBeforeLast, beginningOfThisMonth).Count(&totalGames)
 	if res.Error != nil {
 		return GetDashboardStatisticsResponse{Error: res.Error.Error()}
 	}
