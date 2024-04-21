@@ -48,7 +48,9 @@
 		<p class="text-gray-500 font-heading">Let's find that game you've been playing</p>
 	</div>
 	<form method="post" class="flex justify-center mb-8 mx-auto" use:gameSearchEnhance>
-		<Button href="/" variant="ghost" class="mr-4"><ArrowLeft size={32} /></Button>
+		<Button variant="ghost" class="mr-4" on:click={() => window.history.back()}
+			><ArrowLeft size={32} /></Button
+		>
 		<Form.Field form={gameSearchForm} name="gameTitle">
 			<Form.Control let:attrs>
 				<Input {...attrs} bind:value={$gameSearchFormData.gameTitle} class="rounded-r-none" />

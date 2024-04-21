@@ -179,7 +179,9 @@
 		</section>
 		<div class="flex justify-end gap-2">
 			<Button type="submit">Save</Button>
-			<Button variant="destructive" type="reset" on:click={() => goto('/')}>Cancel</Button>
+			<Button variant="destructive" type="reset" on:click={() => window.history.back()}
+				>Cancel</Button
+			>
 		</div>
 	</form>
 	<Dialog.Root bind:open={openReloadApplicationModal}>
