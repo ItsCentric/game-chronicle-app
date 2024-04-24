@@ -22,12 +22,16 @@ type TimePlayed struct {
 
 func newLog(data LogData) (*Log, map[string]string) {
 	logValidationError := validateCandidateLog(data)
+	notes := ""
 	if len(logValidationError) > 0 {
 		return nil, logValidationError
 	}
+	if data.Notes != nil {
+		notes = *data.Notes
+	}
 	timePlayedMinutes := data.TimePlayed.Hours*60 + data.TimePlayed.Minutes
 
-	return &Log{Title: data.Title, Date: data.Date, Rating: data.Rating, Notes: *data.Notes, StatusID: data.StatusID, Finished: data.Finished, TimePlayedMinutes: timePlayedMinutes, GameId: data.GameId}, nil
+	return &Log{Title: data.Title, Date: data.Date, Rating: data.Rating, Notes: notes, StatusID: data.StatusID, Finished: data.Finished, TimePlayedMinutes: timePlayedMinutes, GameId: data.GameId}, nil
 }
 
 func validateCandidateLog(data LogData) map[string]string {

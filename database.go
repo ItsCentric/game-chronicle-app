@@ -178,7 +178,10 @@ func (a *App) GetUserSettings() GetUserSettingsResponse {
 
 func (a *App) InsertExecutableDetails(newExecutableDetails ExecutableDetails) InsertExecutableDetailsResponse {
 	res := a.Db.Create(&newExecutableDetails)
-	return InsertExecutableDetailsResponse{Details: newExecutableDetails, Error: res.Error.Error()}
+	if res.Error != nil {
+		return InsertExecutableDetailsResponse{Error: res.Error.Error()}
+	}
+	return InsertExecutableDetailsResponse{Details: newExecutableDetails}
 }
 
 func (a *App) GetDashboardStatistics() GetDashboardStatisticsResponse {
@@ -223,6 +226,9 @@ func (a *App) GetDashboardStatistics() GetDashboardStatisticsResponse {
 
 func (a *App) GetRecentLogs(amount int, filter []string) GetRecentLogsResponse {
 	var logs []Log
+	if len(filter) == 0 {
+		filter = logStatuses
+	}
 	res := a.Db.Order("date desc").Limit(amount).Where("status_id IN ?", filter).Find(&logs)
 	if res.Error != nil {
 		return GetRecentLogsResponse{Error: res.Error.Error()}
