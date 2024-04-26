@@ -3,7 +3,6 @@
 	import { page } from '$app/stores';
 	import { logSchema, statusOptions, type StatusOption } from '$lib/schemas';
 	import type { main } from '$lib/wailsjs/go/models';
-	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { defaults, superForm } from 'sveltekit-superforms';
 	import { zod, zodClient } from 'sveltekit-superforms/adapters';
@@ -26,7 +25,7 @@
 		UpdateLog
 	} from '$lib/wailsjs/go/main/App';
 	import { logDataFromForm } from '$lib';
-	import { useMutation } from '@sveltestack/svelte-query';
+	import { useMutation, useQuery } from '@sveltestack/svelte-query';
 
 	const searchParams = $page.url.searchParams;
 	const isEditing = searchParams.has('id');
@@ -43,13 +42,49 @@
 			throw new Error('Failed to update log');
 		}
 	});
-	let selectedGame: main.IgdbGame | null = null;
+	const logQuery = useQuery(
+		['log', searchParams.get('id'), searchParams.get('gameId'), searchParams.get('minutesPlayed')],
+		async () => {
+			if (isEditing) {
+				const getLogResponse = await GetLogById(parseInt(searchParams.get('id') as string));
+				if (getLogResponse.error) {
+					console.error('Failed to get log by ID');
+					return;
+				}
+				$logFormData.status = getLogResponse.log.statusId as StatusOption;
+				$logFormData.rating = getLogResponse.log.rating;
+				$logFormData.logDate = new Date(getLogResponse.log.date);
+				$logFormData.finished = getLogResponse.log.finished;
+				$logFormData.timePlayedHours = Math.floor(getLogResponse.log.timePlayedMinutes / 60);
+				$logFormData.timePlayedMinutes = getLogResponse.log.timePlayedMinutes % 60;
+				$logFormData.notes = getLogResponse.log.notes;
+			}
+			const gameIdString = searchParams.get('gameId');
+			if (!gameIdString) return;
+			const tokenRes = await AuthenticateWithTwitch();
+			if (!tokenRes.access_token) {
+				console.error('Failed to authenticate with Twitch');
+			}
+			const gameId = parseInt(gameIdString);
+			const gameResponse = await GetGamesById([gameId], tokenRes.access_token);
+			if (gameResponse.error) {
+				console.error('Failed to get game by ID');
+			}
+			const minutesPlayed = searchParams.get('minutesPlayed');
+			if (minutesPlayed) {
+				$logFormData.timePlayedHours = Math.floor(parseInt(minutesPlayed) / 60);
+				$logFormData.timePlayedMinutes = parseInt(minutesPlayed) % 60;
+			}
+			return gameResponse.games[0];
+		},
+		{ staleTime: Infinity }
+	);
 	const logForm = superForm(defaults(zod(logSchema)), {
 		validators: zodClient(logSchema),
 		SPA: true,
 		onUpdate: async ({ form }) => {
-			if (form.valid && selectedGame) {
-				const candidateLog = logDataFromForm(selectedGame, form.data);
+			if (form.valid && $logQuery.data) {
+				const candidateLog = logDataFromForm($logQuery.data, form.data);
 				if (!isEditing) {
 					toast.promise($insertLogMutation.mutateAsync(candidateLog), {
 						loading: 'Creating log...',
@@ -62,7 +97,7 @@
 					if (executableName && minutesPlayed) {
 						await InsertExecutableDetails({
 							executableName: executableName,
-							gameId: selectedGame.id,
+							gameId: $logQuery.data.id,
 							minutesPlayed: parseInt(minutesPlayed)
 						});
 					}
@@ -89,39 +124,6 @@
 		validate: validateLogFormField,
 		validateForm: validateLogForm
 	} = logForm;
-	onMount(async () => {
-		if (isEditing) {
-			const getLogResponse = await GetLogById(parseInt(searchParams.get('id') as string));
-			if (getLogResponse.error) {
-				console.error('Failed to get log by ID');
-				return;
-			}
-			$logFormData.status = getLogResponse.log.statusId as StatusOption;
-			$logFormData.rating = getLogResponse.log.rating;
-			$logFormData.logDate = new Date(getLogResponse.log.date);
-			$logFormData.finished = getLogResponse.log.finished;
-			$logFormData.timePlayedHours = Math.floor(getLogResponse.log.timePlayedMinutes / 60);
-			$logFormData.timePlayedMinutes = getLogResponse.log.timePlayedMinutes % 60;
-			$logFormData.notes = getLogResponse.log.notes;
-		}
-		const gameIdString = searchParams.get('gameId');
-		if (!gameIdString) return;
-		const tokenRes = await AuthenticateWithTwitch();
-		if (!tokenRes.access_token) {
-			console.error('Failed to authenticate with Twitch');
-		}
-		const gameId = parseInt(gameIdString);
-		const gameResponse = await GetGamesById([gameId], tokenRes.access_token);
-		if (gameResponse.error) {
-			console.error('Failed to get game by ID');
-		}
-		selectedGame = gameResponse.games[0];
-		const minutesPlayed = searchParams.get('minutesPlayed');
-		if (minutesPlayed) {
-			$logFormData.timePlayedHours = Math.floor(parseInt(minutesPlayed) / 60);
-			$logFormData.timePlayedMinutes = parseInt(minutesPlayed) % 60;
-		}
-	});
 
 	let isNewLogFormValid = false;
 	$: if ($logFormData)
@@ -133,22 +135,22 @@
 <main class="min-h-full container py-8 px-16">
 	<div class="mb-4">
 		<h1 class="text-3xl font-heading font-bold">{isEditing ? 'Edit' : 'New'} Log</h1>
-		{#if !selectedGame}
+		{#if $logQuery.isLoading}
 			<Skeleton class="w-72 h-4 mt-2" />
 		{:else}
 			<p class="text-gray-500 text-lg font-heading">
-				What was it like playing {selectedGame.name}?
+				What was it like playing {$logQuery.data?.name}?
 			</p>
 		{/if}
 	</div>
 	<form method="post" class="grid-cols-[25%,_1fr] grid gap-4" id="logForm" use:logEnhance>
 		<div>
-			{#if !selectedGame}
+			{#if $logQuery.isLoading}
 				<Skeleton class="aspect-[3/4] rounded-3xl w-full mb-4" />
 			{:else}
 				<img
 					src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' +
-						selectedGame.cover.image_id +
+						$logQuery.data?.cover.image_id +
 						'.jpg'}
 					alt="cover"
 					class="aspect-[3/4] rounded-3xl mb-4 w-full"
@@ -162,17 +164,17 @@
 						placeholder="Pick a status"
 						emptyText="No status found!"
 						bind:value={$logFormData.status}
-						disabled={!selectedGame}
+						disabled={!$logQuery.data}
 					/>
 				</Form.Control>
 			</Form.Field>
 		</div>
 		<div class="flex flex-col gap-2">
 			<div>
-				{#if !selectedGame}
+				{#if $logQuery.isLoading}
 					<Skeleton class="w-52 h-6 mb-2" />
 				{:else}
-					<p class="text-2xl font-heading font-semibold">{selectedGame.name}</p>
+					<p class="text-2xl font-heading font-semibold">{$logQuery.data?.name}</p>
 				{/if}
 				<Form.Fieldset form={logForm} name="rating">
 					<RadioGroup.Root
@@ -185,7 +187,7 @@
 							<Form.Control let:attrs>
 								<RadioGroup.Item
 									class="hidden"
-									disabled={!selectedGame}
+									disabled={!$logQuery.data}
 									value={`${i + 1}`}
 									{...attrs}
 								/>
@@ -229,7 +231,7 @@
 						bind:value={$logFormData.logDate}
 						placeholder="Log date"
 						max={today(getLocalTimeZone())}
-						disabled={!selectedGame}
+						disabled={!$logQuery.data}
 					/>
 				</Form.Control>
 				<Form.FieldErrors />
@@ -237,7 +239,7 @@
 			<Form.Field form={logForm} name="finished">
 				<Form.Control let:attrs>
 					<Form.Label class="mr-2">Finished?</Form.Label>
-					<Checkbox {...attrs} bind:checked={$logFormData.finished} disabled={!selectedGame} />
+					<Checkbox {...attrs} bind:checked={$logFormData.finished} disabled={!$logQuery.data} />
 				</Form.Control>
 				<Form.FieldErrors />
 			</Form.Field>
@@ -251,7 +253,7 @@
 							placeholder="HH"
 							min="0"
 							bind:value={$logFormData.timePlayedHours}
-							disabled={!selectedGame}
+							disabled={!$logQuery.data}
 							data-testid="hours-played"
 							on:change={(newValue) => {
 								validateLogFormField('timePlayedHours', {
@@ -270,7 +272,7 @@
 							placeholder="MM"
 							min="0"
 							max="59"
-							disabled={!selectedGame}
+							disabled={!$logQuery.data}
 							data-testid="minutes-played"
 							bind:value={$logFormData.timePlayedMinutes}
 							on:change={(newValue) => {
@@ -290,7 +292,7 @@
 						<Textarea
 							{...attrs}
 							placeholder="Notes"
-							disabled={!selectedGame}
+							disabled={!$logQuery.data}
 							bind:value={$logFormData.notes}
 						/>
 					</Form.Control>
@@ -305,7 +307,7 @@
 			form="logForm"
 			data-testid="save-log"
 			class="mt-4"
-			disabled={!isNewLogFormValid || !selectedGame}>Save</Button
+			disabled={!isNewLogFormValid || !$logQuery.data}>Save</Button
 		>
 		<Button variant="destructive" on:click={() => window.history.back()}>Cancel</Button>
 	</div>
