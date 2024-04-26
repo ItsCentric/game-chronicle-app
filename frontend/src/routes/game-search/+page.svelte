@@ -5,16 +5,49 @@
 	import { gameSearchSchema } from '$lib/schemas';
 	import { AuthenticateWithTwitch, GetRandomGames, SearchForGame } from '$lib/wailsjs/go/main/App';
 	import { ArrowLeft, LoaderCircle, Search, SearchX, X } from 'lucide-svelte';
-	import { onMount } from 'svelte';
 	import { defaults, superForm } from 'sveltekit-superforms';
 	import { zod, zodClient } from 'sveltekit-superforms/adapters';
 	import * as Pagination from '$lib/components/ui/pagination';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { useQuery } from '@sveltestack/svelte-query';
 
+	let queriedGame = '';
 	const gamesPerPage = 18;
-	let searchPromise: ReturnType<typeof SearchForGame> | undefined;
+	const gameSearchQuery = useQuery(
+		['gameSearch', queriedGame],
+		async () => {
+			const authenticateRes = await AuthenticateWithTwitch();
+			if (!authenticateRes.access_token) {
+				console.error('Failed to authenticate with Twitch');
+			}
+			const searchResponse = await SearchForGame(queriedGame, authenticateRes.access_token);
+			if (searchResponse.error) {
+				throw new Error(searchResponse.error);
+			}
+			return searchResponse.games;
+		},
+		{ enabled: queriedGame.length > 0 }
+	);
+	const randomGamesQuery = useQuery(
+		'randomGames',
+		async () => {
+			const authenticateRes = await AuthenticateWithTwitch();
+			if (!authenticateRes.access_token) {
+				console.error('Failed to authenticate with Twitch');
+			}
+			const randomGamesResponse = await GetRandomGames(
+				gamesPerPage * 4,
+				authenticateRes.access_token
+			);
+			if (randomGamesResponse.error) {
+				throw new Error(randomGamesResponse.error);
+			}
+			return randomGamesResponse.games;
+		},
+		{ staleTime: Infinity }
+	);
 	let currentPage = 1;
 	$: beginningPageIndex = (currentPage - 1) * gamesPerPage;
 	const gameSearchForm = superForm(defaults(zod(gameSearchSchema)), {
@@ -23,23 +56,15 @@
 		resetForm: false,
 		onUpdate: async ({ form }) => {
 			if (form.valid) {
-				const authenticateRes = await AuthenticateWithTwitch();
-				if (!authenticateRes.access_token) {
-					console.error('Failed to authenticate with Twitch');
-				}
-				searchPromise = SearchForGame(form.data.gameTitle, authenticateRes.access_token);
+				queriedGame = form.data.gameTitle;
+				$gameSearchQuery.refetch();
 			}
 		}
 	});
 	const { form: gameSearchFormData, enhance: gameSearchEnhance } = gameSearchForm;
 
-	onMount(async () => {
-		const authenticationResponse = await AuthenticateWithTwitch();
-		if (!authenticationResponse.access_token) {
-			console.error('Failed to authenticate with Twitch');
-		}
-		searchPromise = GetRandomGames(gamesPerPage * 4, authenticationResponse.access_token);
-	});
+	$: games =
+		$gameSearchQuery.data?.length ?? 0 > 0 ? $gameSearchQuery.data : $randomGamesQuery.data;
 </script>
 
 <main class="min-h-full px-16 py-8">
@@ -48,8 +73,13 @@
 		<p class="text-gray-500 font-heading">Let's find that game you've been playing</p>
 	</div>
 	<form method="post" class="flex justify-center mb-8 mx-auto" use:gameSearchEnhance>
-		<Button variant="ghost" class="mr-4" on:click={() => window.history.back()}
-			><ArrowLeft size={32} /></Button
+		<Button
+			variant="ghost"
+			class="mr-4"
+			on:click={() => {
+				window.history.back();
+				$gameSearchQuery.remove();
+			}}><ArrowLeft size={32} /></Button
 		>
 		<Form.Field form={gameSearchForm} name="gameTitle">
 			<Form.Control let:attrs>
@@ -59,70 +89,66 @@
 		<Form.Button class="rounded-l-none"><Search size={24} /></Form.Button>
 	</form>
 	<div class="flex w-full justify-center items-center"></div>
-	{#if searchPromise}
-		{#await searchPromise}
-			<LoaderCircle size={64} class="animate-spin mx-auto" />
-		{:then searchResult}
-			{#if searchResult.games.length === 0}
-				<div class="mx-auto text-center">
-					<SearchX size={64} class="mb-2 mx-auto" />
-					<h2 class="text-2xl font-bold">No games found</h2>
-					<p class="text-gray-500">Try searching for something else</p>
-				</div>
-			{:else}
-				{@const executableName = $page.url.searchParams.get('executableName')}
-				{@const minutesPlayed = $page.url.searchParams.get('minutesPlayed')}
-				{@const isNewGame = executableName && minutesPlayed}
-				<div class="mx-auto grid grid-cols-6 gap-4 container">
-					{#each searchResult.games.slice(beginningPageIndex, beginningPageIndex + gamesPerPage) as game}
-						<GameCard
-							data={game}
-							on:click={() =>
-								goto(
-									`/logs/edit?gameId=${game.id}` +
-										(isNewGame
-											? `&executableName=${executableName}&minutesPlayed=${minutesPlayed}`
-											: '')
-								)}
-						/>
-					{/each}
-				</div>
-				<Pagination.Root
-					count={searchResult.games.length}
-					perPage={gamesPerPage}
-					let:pages
-					bind:page={currentPage}
-					class="mt-8"
-				>
-					<Pagination.Content>
+	{#if $gameSearchQuery.isLoading || $randomGamesQuery.isLoading || $gameSearchQuery.isRefetching}
+		<LoaderCircle size={64} class="animate-spin mx-auto" />
+	{:else if $gameSearchQuery.isError || $randomGamesQuery.isError || !games}
+		<div class="mx-auto text-center">
+			<X size={64} class="text-red-500 rounded-full border-2 border-red-500 mx-auto mb-2" />
+			<h2 class="text-2xl font-bold">Uh oh!</h2>
+			<p class="text-gray-500">Something went wrong. Please try again later.</p>
+		</div>
+	{:else if games.length === 0}
+		<div class="mx-auto text-center">
+			<SearchX size={64} class="mb-2 mx-auto" />
+			<h2 class="text-2xl font-bold">No games found</h2>
+			<p class="text-gray-500">Try searching for something else</p>
+		</div>
+	{:else}
+		{@const executableName = $page.url.searchParams.get('executableName')}
+		{@const minutesPlayed = $page.url.searchParams.get('minutesPlayed')}
+		{@const isNewGame = executableName && minutesPlayed}
+		<div class="mx-auto grid grid-cols-6 gap-4 container">
+			{#each games.slice(beginningPageIndex, beginningPageIndex + gamesPerPage) as game}
+				<GameCard
+					data={game}
+					on:click={() =>
+						goto(
+							`/logs/edit?gameId=${game.id}` +
+								(isNewGame
+									? `&executableName=${executableName}&minutesPlayed=${minutesPlayed}`
+									: '')
+						)}
+				/>
+			{/each}
+		</div>
+		<Pagination.Root
+			count={games.length}
+			perPage={gamesPerPage}
+			let:pages
+			bind:page={currentPage}
+			class="mt-8"
+		>
+			<Pagination.Content>
+				<Pagination.Item>
+					<Pagination.PrevButton />
+				</Pagination.Item>
+				{#each pages as page (page.key)}
+					{#if page.type === 'ellipsis'}
 						<Pagination.Item>
-							<Pagination.PrevButton />
+							<Pagination.Ellipsis />
 						</Pagination.Item>
-						{#each pages as page (page.key)}
-							{#if page.type === 'ellipsis'}
-								<Pagination.Item>
-									<Pagination.Ellipsis />
-								</Pagination.Item>
-							{:else}
-								<Pagination.Item>
-									<Pagination.Link {page} isActive={currentPage == page.value}>
-										{page.value}
-									</Pagination.Link>
-								</Pagination.Item>
-							{/if}
-						{/each}
+					{:else}
 						<Pagination.Item>
-							<Pagination.NextButton />
+							<Pagination.Link {page} isActive={currentPage == page.value}>
+								{page.value}
+							</Pagination.Link>
 						</Pagination.Item>
-					</Pagination.Content>
-				</Pagination.Root>
-			{/if}
-		{:catch _}
-			<div class="mx-auto text-center">
-				<X size={64} class="text-red-500 rounded-full border-2 border-red-500 mx-auto mb-2" />
-				<h2 class="text-2xl font-bold">Uh oh!</h2>
-				<p class="text-gray-500">Something went wrong. Please try again later.</p>
-			</div>
-		{/await}
+					{/if}
+				{/each}
+				<Pagination.Item>
+					<Pagination.NextButton />
+				</Pagination.Item>
+			</Pagination.Content>
+		</Pagination.Root>
 	{/if}
 </main>
