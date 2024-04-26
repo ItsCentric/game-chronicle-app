@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import GameCard from '$lib/components/GameCard.svelte';
+	import { onMount } from 'svelte';
 	import {
 		AuthenticateWithTwitch,
 		GetCurrentUsername,
@@ -34,7 +35,7 @@
 		}
 		const recentGameIds = response.logs.map((log) => log.gameId);
 		const gamesResponse = await GetGamesById(recentGameIds, authResponse.access_token);
-		if (gamesResponse.error) {
+		if (gamesResponse.error && gamesResponse.error !== 'No IDs provided') {
 			throw new Error(gamesResponse.error);
 		}
 		const sortedGames = [];
@@ -55,24 +56,31 @@
 		);
 		const gameIds = logsResponse.map((log) => log.gameId);
 		const response = await GetSimilarGames(gameIds, authResponse.access_token);
-		if (response.error) {
+		if (response.error && response.error !== 'No IDs provided') {
 			throw new Error(response.error);
 		}
-		return response.games.slice(0, 6);
+		if (response.games && response.games.length > 0) {
+			return response.games.slice(0, 6);
+		} else {
+			return [];
+		}
 	});
-	const usernameQuery = useQuery('username', async () => {
-		const response = await GetCurrentUsername();
-		if (response.error) {
-			throw new Error(response.error);
+	let username: string | undefined;
+
+	onMount(async () => {
+		const userResponse = await GetCurrentUsername();
+		if (userResponse.error) {
+			console.error('Failed to get current user');
+			return;
 		}
-		return response.username;
+		username = userResponse.username;
 	});
 </script>
 
 <main class="flex flex-col gap-12 h-full p-12 container">
 	<div>
 		<h1 class="font-heading font-bold text-3xl">
-			Hello, <span class="capitalize">{$usernameQuery.data}</span>
+			Hello, <span class="capitalize">{username}</span>
 		</h1>
 		<h2 class="text-xl font-heading font-semibold mb-4">Welcome to your journal</h2>
 		<div class="flex gap-2">
@@ -80,7 +88,7 @@
 			<Button href="/settings" data-testid="settings">Settings</Button>
 		</div>
 	</div>
-	<div class="flex justify-around items-center border-y border-slate-800 py-4">
+	<div class="flex justify-around items-center border-y border-slate-800 py-4 relative">
 		{#if $dashboardStatisticsQuery.isLoading}
 			<div class="flex flex-col gap-3">
 				<Skeleton class="h-4 w-44" />
@@ -98,7 +106,28 @@
 				<Skeleton class="h-3 w-48" />
 			</div>
 		{:else if $dashboardStatisticsQuery.isError || !$dashboardStatisticsQuery.data}
-			<p>error</p>
+			<div class="flex flex-col gap-3">
+				<span class="h-4 w-44 bg-white/5 rounded-xl" />
+				<span class="h-9 w-16 bg-white/5 rounded-xl" />
+				<span class="h-3 w-48 bg-white/5 rounded-xl" />
+			</div>
+			<div class="flex flex-col gap-3">
+				<span class="h-4 w-44 bg-white/5 rounded-xl" />
+				<span class="h-9 w-16 bg-white/5 rounded-xl" />
+				<span class="h-3 w-48 bg-white/5 rounded-xl" />
+			</div>
+			<div class="flex flex-col gap-3">
+				<span class="h-4 w-44 bg-white/5 rounded-xl" />
+				<span class="h-9 w-16 bg-white/5 rounded-xl" />
+				<span class="h-3 w-48 bg-white/5 rounded-xl" />
+			</div>
+				<div
+					class="absolute px-4 py-2 bg-red-800/80 shadow-lg rounded-xl text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+				>
+					<p class="font-semibold font-heading text-lg">Couldn't get your statistics</p>
+					<p>If the issue persists, try reaching out.</p>
+					<p>{$recentLogsQuery.error}</p>
+				</div>
 		{:else}
 			{@const hoursPlayed = Math.floor(
 				$dashboardStatisticsQuery.data.thisMonthStatistics.timePlayed / 60
@@ -127,13 +156,32 @@
 			<h3 class="text-xl font-heading font-semibold">Recently Played</h3>
 			<Button variant="link" href="/logs">View all games</Button>
 		</div>
-		<div class="flex gap-4">
+		<div class="flex gap-4 relative">
 			{#if $recentLogsQuery.isLoading}
 				{#each Array(6) as _}
 					<Skeleton class="h-full w-full aspect-[3/4] rounded-3xl" />
 				{/each}
 			{:else if $recentLogsQuery.isError || !$recentLogsQuery.data}
-				<p>{$recentLogsQuery.error}</p>
+				{#each Array(6) as _}
+					<span class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl"/>
+				{/each}
+				<div
+					class="absolute px-4 py-2 bg-red-800/80 shadow-lg rounded-xl text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+				>
+					<p class="font-semibold font-heading text-lg">Couldn't get your recently played</p>
+					<p>If the issue persists, try reaching out.</p>
+					<p>{$recentLogsQuery.error}</p>
+				</div>
+			{:else if $recentLogsQuery.data.length === 0}
+				{#each Array(6) as _}
+					<div class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl"></div>
+				{/each}
+				<div
+					class="absolute px-4 py-2 bg-black/80 shadow-lg rounded-xl text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+				>
+					<p class="font-semibold font-heading text-lg">No recently played games</p>
+					<p>Start logging your games to see them here</p>
+				</div>
 			{:else}
 				{#each $recentLogsQuery.data as game}
 					<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />
@@ -146,13 +194,32 @@
 			<h3 class="text-xl font-heading font-semibold">Similar to What You Play</h3>
 			<Button variant="link" href="">View all similar titles</Button>
 		</div>
-		<div class="flex gap-4">
+		<div class="flex gap-4 relative">
 			{#if $similarGamesQuery.isLoading}
 				{#each Array(6) as _}
 					<Skeleton class="h-full w-full aspect-[3/4] rounded-3xl" />
 				{/each}
 			{:else if $similarGamesQuery.isError || !$similarGamesQuery.data}
-				<p>{$similarGamesQuery.error}</p>
+				{#each Array(6) as _}
+					<div class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl"></div>
+				{/each}
+				<div
+					class="absolute px-4 py-2 bg-red-800/80 shadow-lg rounded-xl text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+				>
+					<p class="font-semibold font-heading text-lg">Couldn't get your recommendations</p>
+					<p>If the issue persists, try reaching out.</p>
+					<p>{$recentLogsQuery.error}</p>
+				</div>
+			{:else if $similarGamesQuery.data.length === 0}
+				{#each Array(6) as _}
+					<div class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl"></div>
+				{/each}
+				<div
+					class="absolute px-4 py-2 bg-black/80 shadow-lg rounded-xl text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+				>
+					<p class="font-semibold font-heading text-lg">No similar games</p>
+					<p>Start logging your games to see your suggestions here</p>
+				</div>
 			{:else}
 				{#each $similarGamesQuery.data as game}
 					<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />

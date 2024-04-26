@@ -174,6 +174,9 @@ func (a *App) GetGamesById(ids []int, accessToken string) GetGamesByIdResponse {
 }
 
 func (a *App) GetSimilarGames(ids []int, accessToken string) GetSimilarGamesResponse {
+	if len(ids) == 0 {
+		return GetSimilarGamesResponse{Error: "No IDs provided"}
+	}
 	idsStr, err := formatIdString(ids)
 	if err != nil {
 		return GetSimilarGamesResponse{Error: err.Error()}
