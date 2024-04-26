@@ -252,6 +252,7 @@
 							min="0"
 							bind:value={$logFormData.timePlayedHours}
 							disabled={!selectedGame}
+							data-testid="hours-played"
 							on:change={(newValue) => {
 								validateLogFormField('timePlayedHours', {
 									value: parseInt(newValue.currentTarget.value)
@@ -270,6 +271,7 @@
 							min="0"
 							max="59"
 							disabled={!selectedGame}
+							data-testid="minutes-played"
 							bind:value={$logFormData.timePlayedMinutes}
 							on:change={(newValue) => {
 								validateLogFormField('timePlayedMinutes', {
@@ -298,8 +300,12 @@
 		</div>
 	</form>
 	<div class="float-right">
-		<Button type="submit" form="logForm" class="mt-4" disabled={!isNewLogFormValid || !selectedGame}
-			>Save</Button
+		<Button
+			type="submit"
+			form="logForm"
+			data-testid="save-log"
+			class="mt-4"
+			disabled={!isNewLogFormValid || !selectedGame}>Save</Button
 		>
 		<Button variant="destructive" on:click={() => window.history.back()}>Cancel</Button>
 	</div>

@@ -5,7 +5,14 @@
 	export let data: main.IgdbGame;
 </script>
 
-<div class="w-full relative aspect-[3/4] group" on:click on:keydown role="button" tabindex="0">
+<div
+	class="w-full relative aspect-[3/4] group"
+	data-testid="game-card"
+	on:click
+	on:keydown
+	role="button"
+	tabindex="0"
+>
 	{#if data.cover.image_id}
 		<img
 			src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' + data.cover.image_id + '.jpg'}

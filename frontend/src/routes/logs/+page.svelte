@@ -161,7 +161,7 @@
 					</DropdownMenu.RadioGroup>
 				</DropdownMenu.Content>
 			</DropdownMenu.Root>
-			<Button href="/game-search">
+			<Button href="/game-search" data-testid="add-log">
 				<Plus size="1.5em" class="mr-1" />
 				<p>Add log</p>
 			</Button>
@@ -200,6 +200,7 @@
 									variant="ghost"
 									size="icon"
 									class="z-30 absolute top-0 right-0 opacity-0 group-hover:opacity-100"
+									data-testid="delete-log"
 								>
 									<Trash size={24} />
 								</Button>
@@ -211,6 +212,7 @@
 								</AlertDialog.Description>
 								<AlertDialog.Footer>
 									<AlertDialog.Action
+										data-testid="confirm-delete"
 										on:click={() =>
 											toast.promise($deleteLogMutation.mutateAsync(gameLog.ID), {
 												loading: 'Deleting log...',
