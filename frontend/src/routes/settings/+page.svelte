@@ -15,12 +15,20 @@
 	import { Switch } from '$lib/components/ui/switch';
 	import { Button } from '$lib/components/ui/button';
 	import { zod } from 'sveltekit-superforms/adapters';
-	import { onMount } from 'svelte';
 	import Input from '$lib/components/ui/input/input.svelte';
-	import { goto } from '$app/navigation';
+	import { useQuery, useQueryClient } from '@sveltestack/svelte-query';
 
 	let openReloadApplicationModal = false;
 
+	const queryClient = useQueryClient();
+	const userPreferencesQuery = useQuery('userPreferences', GetUserSettings);
+	const usernameQuery = useQuery('username', async () => {
+		const response = await GetCurrentUsername();
+		if (response.error) {
+			throw new Error(response.error);
+		}
+		return response.username;
+	});
 	const settingsForm = superForm(defaults(zod(settingsSchema)), {
 		validators: zod(settingsSchema),
 		SPA: true,
@@ -33,6 +41,10 @@
 					processMonitoringDirectoryDepth: form.data.processMonitoringDirectoryDepth
 				};
 				await SaveUserSettings(newSettings);
+				queryClient.invalidateQueries('userPreferences');
+				if (form.data.username !== $usernameQuery.data) {
+					queryClient.invalidateQueries('username');
+				}
 				openReloadApplicationModal = true;
 			}
 		}
@@ -42,28 +54,6 @@
 		enhance: settingsFormEnhance,
 		validate: validateSettingsFormField
 	} = settingsForm;
-
-	onMount(async () => {
-		const userPreferencesRes = await GetUserSettings();
-		if (!userPreferencesRes.preferences) return;
-		const executablePathsString = userPreferencesRes.preferences.executablePaths;
-		let executablePathsArray = executablePathsString.split(';');
-		executablePathsArray = executablePathsArray.filter((path) => path !== '');
-		$settingsFormData.processMonitoringEnabled =
-			userPreferencesRes.preferences.processMonitoringEnabled;
-		$settingsFormData.executablePaths = executablePathsArray;
-		$settingsFormData.processMonitoringDirectoryDepth =
-			userPreferencesRes.preferences.processMonitoringDirectoryDepth;
-		if (userPreferencesRes.preferences.username !== '') {
-			$settingsFormData.username = userPreferencesRes.preferences.username;
-		} else {
-			const usernameResponse = await GetCurrentUsername();
-			if (usernameResponse.error) {
-				console.error(usernameResponse.error);
-			}
-			$settingsFormData.username = usernameResponse.username;
-		}
-	});
 
 	async function newDirectoryDialog() {
 		var result = await OpenDirectoryDialog();
@@ -83,6 +73,21 @@
 	}
 	function addPath(path: string) {
 		$settingsFormData.executablePaths = [...$settingsFormData.executablePaths, path];
+	}
+
+	$: if ($userPreferencesQuery.data) {
+		const settings = $userPreferencesQuery.data.preferences;
+		const executablePathsString = settings.executablePaths;
+		let executablePathsArray = executablePathsString.split(';');
+		executablePathsArray = executablePathsArray.filter((path) => path !== '');
+		$settingsFormData.processMonitoringEnabled = settings.processMonitoringEnabled;
+		$settingsFormData.executablePaths = executablePathsArray;
+		$settingsFormData.processMonitoringDirectoryDepth = settings.processMonitoringDirectoryDepth;
+		if (settings.username !== '') {
+			$settingsFormData.username = settings.username;
+		} else {
+			$settingsFormData.username = $usernameQuery.data ?? '';
+		}
 	}
 </script>
 
