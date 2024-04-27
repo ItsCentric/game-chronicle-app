@@ -16,6 +16,7 @@
 	import { goto } from '$app/navigation';
 	import { statusOptions } from '$lib/schemas';
 	import { useQuery } from '@sveltestack/svelte-query';
+	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 
 	const dashboardStatisticsQuery = useQuery('dashboardStatistics', async () => {
 		const response = await GetDashboardStatistics();
@@ -121,13 +122,9 @@
 				<span class="h-9 w-16 bg-white/5 rounded-xl" />
 				<span class="h-3 w-48 bg-white/5 rounded-xl" />
 			</div>
-				<div
-					class="absolute px-4 py-2 bg-red-800/80 shadow-lg rounded-xl text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-				>
-					<p class="font-semibold font-heading text-lg">Couldn't get your statistics</p>
-					<p>If the issue persists, try reaching out.</p>
-					<p>{$recentLogsQuery.error}</p>
-				</div>
+			<ErrorMessage error={$dashboardStatisticsQuery.error}
+				>Couldn't get your statistics</ErrorMessage
+			>
 		{:else}
 			{@const hoursPlayed = Math.floor(
 				$dashboardStatisticsQuery.data.thisMonthStatistics.timePlayed / 60
@@ -163,15 +160,11 @@
 				{/each}
 			{:else if $recentLogsQuery.isError || !$recentLogsQuery.data}
 				{#each Array(6) as _}
-					<span class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl"/>
+					<span class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl" />
 				{/each}
-				<div
-					class="absolute px-4 py-2 bg-red-800/80 shadow-lg rounded-xl text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+				<ErrorMessage error={$recentLogsQuery.error}
+					>Couldn't get your recently played games</ErrorMessage
 				>
-					<p class="font-semibold font-heading text-lg">Couldn't get your recently played</p>
-					<p>If the issue persists, try reaching out.</p>
-					<p>{$recentLogsQuery.error}</p>
-				</div>
 			{:else if $recentLogsQuery.data.length === 0}
 				{#each Array(6) as _}
 					<div class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl"></div>
@@ -203,13 +196,9 @@
 				{#each Array(6) as _}
 					<div class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl"></div>
 				{/each}
-				<div
-					class="absolute px-4 py-2 bg-red-800/80 shadow-lg rounded-xl text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+				<ErrorMessage error={$similarGamesQuery.error}
+					>Couldn't get your recommendations</ErrorMessage
 				>
-					<p class="font-semibold font-heading text-lg">Couldn't get your recommendations</p>
-					<p>If the issue persists, try reaching out.</p>
-					<p>{$recentLogsQuery.error}</p>
-				</div>
 			{:else if $similarGamesQuery.data.length === 0}
 				{#each Array(6) as _}
 					<div class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl"></div>

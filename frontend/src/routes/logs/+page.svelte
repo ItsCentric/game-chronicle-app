@@ -21,6 +21,7 @@
 	import { goto } from '$app/navigation';
 	import { useMutation, useQuery, useQueryClient } from '@sveltestack/svelte-query';
 	import { toast } from 'svelte-sonner';
+	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 
 	type GameLog = Omit<main.Log & { game: main.IgdbGame; statusId: StatusOption }, 'convertValues'>;
 	let filteredLogs: GameLog[] = [];
@@ -267,13 +268,7 @@
 		</Pagination.Root>
 	{:else}
 		<div class="grid grid-cols-6 gap-2 relative">
-			<div
-				class="absolute px-4 py-2 bg-red-800/80 shadow-lg rounded-xl text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-			>
-				<p class="font-semibold font-heading text-lg">Couldn't get your logs</p>
-				<p>If the issue persists, try reaching out.</p>
-				<p>{$logsQuery.error}</p>
-			</div>
+			<ErrorMessage error={$logsQuery.error}>Couldn't get your logs</ErrorMessage>
 			{#each Array(18) as _}
 				<span class="rounded-3xl bg-white/5 aspect-[3/4]" />
 			{/each}
