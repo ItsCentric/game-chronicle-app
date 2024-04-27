@@ -16,19 +16,77 @@
 	import { Button } from '$lib/components/ui/button';
 	import { zod } from 'sveltekit-superforms/adapters';
 	import Input from '$lib/components/ui/input/input.svelte';
-	import { useQuery, useQueryClient } from '@sveltestack/svelte-query';
+	import { useMutation, useQuery, useQueryClient } from '@sveltestack/svelte-query';
+	import { toast } from 'svelte-sonner';
+	import type { main } from '$lib/wailsjs/go/models';
 
 	let openReloadApplicationModal = false;
 
 	const queryClient = useQueryClient();
-	const userPreferencesQuery = useQuery('userPreferences', GetUserSettings);
-	const usernameQuery = useQuery('username', async () => {
-		const response = await GetCurrentUsername();
-		if (response.error) {
-			throw new Error(response.error);
+	const userPreferencesMutation = useMutation(
+		'userPreferences',
+		async (newSettings: main.UserSettingsData) => {
+			const response = await SaveUserSettings(newSettings);
+			if (response.error != '') {
+				throw new Error(response.error);
+			}
+			return response.newSettings;
+		},
+		{
+			onSuccess: (data) => {
+				queryClient.invalidateQueries('userPreferences');
+				if (data.username !== $usernameQuery.data) {
+					queryClient.invalidateQueries('username');
+				}
+				openReloadApplicationModal = true;
+			}
 		}
-		return response.username;
-	});
+	);
+	useQuery(
+		'userPreferences',
+		async () => {
+			const response = await GetUserSettings();
+			if (response.error) {
+				throw new Error(response.error);
+			}
+			return response.preferences;
+		},
+		{
+			onSuccess: (data) => {
+				const executablePathsString = data.executablePaths;
+				let executablePathsArray = executablePathsString.split(';');
+				executablePathsArray = executablePathsArray.filter((path) => path !== '');
+				$settingsFormData.processMonitoringEnabled = data.processMonitoringEnabled;
+				$settingsFormData.executablePaths = executablePathsArray;
+				$settingsFormData.processMonitoringDirectoryDepth = data.processMonitoringDirectoryDepth;
+				if ($settingsFormData.username === '') {
+					$settingsFormData.username = data.username;
+				} else {
+					$settingsFormData.username = $usernameQuery.data ?? '';
+				}
+			},
+			onError: () => {
+				toast.error('Failed to load user preferences');
+			}
+		}
+	);
+	const usernameQuery = useQuery(
+		'username',
+		async () => {
+			const response = await GetCurrentUsername();
+			if (response.error) {
+				throw new Error(response.error);
+			}
+			return response.username;
+		},
+		{
+			onSuccess: (data) => {
+				if ($settingsFormData.username === '') {
+					$settingsFormData.username = data;
+				}
+			}
+		}
+	);
 	const settingsForm = superForm(defaults(zod(settingsSchema)), {
 		validators: zod(settingsSchema),
 		SPA: true,
@@ -40,12 +98,11 @@
 					username: form.data.username,
 					processMonitoringDirectoryDepth: form.data.processMonitoringDirectoryDepth
 				};
-				await SaveUserSettings(newSettings);
-				queryClient.invalidateQueries('userPreferences');
-				if (form.data.username !== $usernameQuery.data) {
-					queryClient.invalidateQueries('username');
-				}
-				openReloadApplicationModal = true;
+				toast.promise($userPreferencesMutation.mutateAsync(newSettings), {
+					loading: 'Saving new settings...',
+					success: 'Settings saved successfully',
+					error: 'Failed to save settings'
+				});
 			}
 		}
 	});
@@ -73,21 +130,6 @@
 	}
 	function addPath(path: string) {
 		$settingsFormData.executablePaths = [...$settingsFormData.executablePaths, path];
-	}
-
-	$: if ($userPreferencesQuery.data) {
-		const settings = $userPreferencesQuery.data.preferences;
-		const executablePathsString = settings.executablePaths;
-		let executablePathsArray = executablePathsString.split(';');
-		executablePathsArray = executablePathsArray.filter((path) => path !== '');
-		$settingsFormData.processMonitoringEnabled = settings.processMonitoringEnabled;
-		$settingsFormData.executablePaths = executablePathsArray;
-		$settingsFormData.processMonitoringDirectoryDepth = settings.processMonitoringDirectoryDepth;
-		if (settings.username !== '') {
-			$settingsFormData.username = settings.username;
-		} else {
-			$settingsFormData.username = $usernameQuery.data ?? '';
-		}
 	}
 </script>
 
@@ -179,6 +221,35 @@
 							</Table.Row>
 						{/each}
 					</Table.Body>
+				</Table.Root>
+			{:else}
+				<Table.Root class="relative">
+					<Table.Header>
+						<Table.Row>
+							<Table.Head>Path</Table.Head>
+							<Table.Head class="text-right">Actions</Table.Head>
+						</Table.Row>
+					</Table.Header>
+					<Table.Body>
+						{#each Array(3) as _}
+							<Table.Row>
+								<Table.Cell class="w-3/4"
+									><span class="w-64 h-4 bg-white/5 block rounded-xl" /></Table.Cell
+								>
+								<Table.Cell class="text-right">
+									<Button type="button" size="icon" class="mr-1" disabled
+										><PencilIcon size={16} /></Button
+									>
+									<Button type="button" size="icon" disabled><Trash size={16} /></Button>
+								</Table.Cell>
+							</Table.Row>
+						{/each}
+					</Table.Body>
+					<div
+						class="absolute top-0 left-0 bg-black/30 rounded-xl w-full h-full flex justify-center items-center"
+					>
+						<p class="text-lg font-semibold font-heading">No paths found, try adding some!</p>
+					</div>
 				</Table.Root>
 			{/if}
 		</section>

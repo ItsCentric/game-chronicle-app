@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
 	"time"
 
 	"gorm.io/driver/sqlite"
@@ -93,6 +92,11 @@ type DashboardStatistics struct {
 	TotalGames     int64 `json:"totalGames"`
 }
 
+type SaveUserSettingsResponse struct {
+	NewSettings UserSettings `json:"newSettings"`
+	Error       string       `json:"error"`
+}
+
 func initializeDatabase() (*gorm.DB, error) {
 	var err error
 	database, err := gorm.Open(sqlite.Open("logs.db"), &gorm.Config{})
@@ -115,11 +119,11 @@ func getExecutableDetails(queriedExecutable string, database *gorm.DB) (Executab
 	return details, res.Error
 }
 
-func (a *App) SaveUserSettings(newSettings UserSettingsData) {
+func (a *App) SaveUserSettings(newSettings UserSettingsData) SaveUserSettingsResponse {
 	var preferences UserSettings
 	res := a.Db.FirstOrCreate(&preferences)
 	if res.Error != nil {
-		log.Fatal("Error getting or creating user preferences:", res.Error.Error())
+		return SaveUserSettingsResponse{Error: res.Error.Error()}
 	}
 	preferences.ExecutablePaths = newSettings.ExecutablePaths
 	preferences.ProcessMonitoringEnabled = newSettings.ProcessMonitoringEnabled
@@ -127,8 +131,9 @@ func (a *App) SaveUserSettings(newSettings UserSettingsData) {
 	preferences.Username = newSettings.Username
 	res = a.Db.Save(&preferences)
 	if res.Error != nil {
-		log.Fatal("Error updating user preferences:", res.Error.Error())
+		return SaveUserSettingsResponse{Error: res.Error.Error()}
 	}
+	return SaveUserSettingsResponse{NewSettings: preferences}
 }
 
 func (a *App) InsertGameLog(data LogData) InsertGameLogResponse {

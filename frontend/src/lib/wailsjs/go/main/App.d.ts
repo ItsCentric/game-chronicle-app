@@ -30,7 +30,7 @@ export function InsertGameLog(arg1:main.LogData):Promise<main.InsertGameLogRespo
 
 export function OpenDirectoryDialog():Promise<main.OpenDirectoryDialogResponse>;
 
-export function SaveUserSettings(arg1:main.UserSettingsData):Promise<void>;
+export function SaveUserSettings(arg1:main.UserSettingsData):Promise<main.SaveUserSettingsResponse>;
 
 export function SearchForGame(arg1:string,arg2:string):Promise<main.SearchForGameResponse>;
 
