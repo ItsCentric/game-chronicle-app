@@ -4,7 +4,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { gameSearchSchema } from '$lib/schemas';
 	import { AuthenticateWithTwitch, GetRandomGames, SearchForGame } from '$lib/wailsjs/go/main/App';
-	import { ArrowLeft, LoaderCircle, Search, SearchX, X } from 'lucide-svelte';
+	import { ArrowLeft, LoaderCircle, Search, SearchX } from 'lucide-svelte';
 	import { defaults, superForm } from 'sveltekit-superforms';
 	import { zod, zodClient } from 'sveltekit-superforms/adapters';
 	import * as Pagination from '$lib/components/ui/pagination';
@@ -12,6 +12,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { useQuery } from '@sveltestack/svelte-query';
+	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 
 	let queriedGame = '';
 	const gamesPerPage = 18;
@@ -92,10 +93,13 @@
 	{#if $gameSearchQuery.isLoading || $randomGamesQuery.isLoading || $gameSearchQuery.isRefetching}
 		<LoaderCircle size={64} class="animate-spin mx-auto" />
 	{:else if $gameSearchQuery.isError || $randomGamesQuery.isError || !games}
-		<div class="mx-auto text-center">
-			<X size={64} class="text-red-500 rounded-full border-2 border-red-500 mx-auto mb-2" />
-			<h2 class="text-2xl font-bold">Uh oh!</h2>
-			<p class="text-gray-500">Something went wrong. Please try again later.</p>
+		<div class="mx-auto grid grid-cols-6 gap-4 container relative">
+			{#each Array(gamesPerPage) as _}
+				<span class="h-full aspect-[3/4] rounded-3xl bg-white/5" />
+			{/each}
+			<ErrorMessage error={$gameSearchQuery.error || $randomGamesQuery.error}
+				>Couldn't get any games</ErrorMessage
+			>
 		</div>
 	{:else if games.length === 0}
 		<div class="mx-auto text-center">
