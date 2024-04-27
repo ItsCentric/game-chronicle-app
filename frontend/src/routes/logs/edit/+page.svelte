@@ -77,7 +77,7 @@
 			}
 			return gameResponse.games[0];
 		},
-		{ staleTime: Infinity }
+		{ staleTime: Infinity, onError: () => toast.error('Failed to retrieve game data') }
 	);
 	const logForm = superForm(defaults(zod(logSchema)), {
 		validators: zodClient(logSchema),
@@ -137,9 +137,11 @@
 		<h1 class="text-3xl font-heading font-bold">{isEditing ? 'Edit' : 'New'} Log</h1>
 		{#if $logQuery.isLoading}
 			<Skeleton class="w-72 h-4 mt-2" />
+		{:else if $logQuery.isError || !$logQuery.data}
+			<span class="w-72 h-4 mt-2 bg-white/5 rounded-xl block" />
 		{:else}
 			<p class="text-gray-500 text-lg font-heading">
-				What was it like playing {$logQuery.data?.name}?
+				What was it like playing {$logQuery.data.name}?
 			</p>
 		{/if}
 	</div>
@@ -147,10 +149,12 @@
 		<div>
 			{#if $logQuery.isLoading}
 				<Skeleton class="aspect-[3/4] rounded-3xl w-full mb-4" />
+			{:else if $logQuery.isError || !$logQuery.data}
+				<span class="aspect-[3/4] rounded-3xl block mb-4 w-full bg-white/5" />
 			{:else}
 				<img
 					src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' +
-						$logQuery.data?.cover.image_id +
+						$logQuery.data.cover.image_id +
 						'.jpg'}
 					alt="cover"
 					class="aspect-[3/4] rounded-3xl mb-4 w-full"
@@ -173,8 +177,10 @@
 			<div>
 				{#if $logQuery.isLoading}
 					<Skeleton class="w-52 h-6 mb-2" />
+				{:else if $logQuery.isError || !$logQuery.data}
+					<span class="w-52 h-6 mb-2 bg-white/5 rounded-xl block" />
 				{:else}
-					<p class="text-2xl font-heading font-semibold">{$logQuery.data?.name}</p>
+					<p class="text-2xl font-heading font-semibold">{$logQuery.data.name}</p>
 				{/if}
 				<Form.Fieldset form={logForm} name="rating">
 					<RadioGroup.Root
