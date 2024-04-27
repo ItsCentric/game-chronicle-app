@@ -39,7 +39,7 @@
 		const accessTokenResponse = await AuthenticateWithTwitch();
 		const gameIds = logs.map((log) => log.gameId);
 		const gamesResponse = await GetGamesById(gameIds, accessTokenResponse.access_token);
-		if (gamesResponse.error) {
+		if (gamesResponse.error && gamesResponse.error !== 'No IDs provided') {
 			throw new Error(gamesResponse.error);
 		}
 		return logs.map((log) => {
@@ -124,6 +124,7 @@
 					variant="outline"
 					size="sm"
 					class={`rounded-3xl px-4 py-2 ${active ? 'bg-accent text-accent-foreground' : ''}`}
+					disabled={$logsQuery.isLoading || $logsQuery.isError}
 					on:click={() => {
 						if (active) {
 							statusFilter = statusFilter.filter((s) => s !== status);
@@ -139,7 +140,7 @@
 		<div class="flex gap-2 items-center">
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger asChild let:builder>
-					<Button builders={[builder]}>
+					<Button builders={[builder]} disabled={$logsQuery.isLoading || $logsQuery.isError}>
 						<ArrowDownUp size="1.5em" class="mr-1" />
 						<p>Sort</p>
 					</Button>
@@ -265,6 +266,17 @@
 			</Pagination.Content>
 		</Pagination.Root>
 	{:else}
-		<p class="text-red-500">{$logsQuery.error}</p>
+		<div class="grid grid-cols-6 gap-2 relative">
+			<div
+				class="absolute px-4 py-2 bg-red-800/80 shadow-lg rounded-xl text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+			>
+				<p class="font-semibold font-heading text-lg">Couldn't get your logs</p>
+				<p>If the issue persists, try reaching out.</p>
+				<p>{$logsQuery.error}</p>
+			</div>
+			{#each Array(18) as _}
+				<span class="rounded-3xl bg-white/5 aspect-[3/4]" />
+			{/each}
+		</div>
 	{/if}
 </main>
