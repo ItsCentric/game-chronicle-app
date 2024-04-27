@@ -153,7 +153,7 @@
 			<h3 class="text-xl font-heading font-semibold">Recently Played</h3>
 			<Button variant="link" href="/logs">View all games</Button>
 		</div>
-		<div class="flex gap-4 relative">
+		<div class="grid grid-cols-6 gap-4 relative">
 			{#if $recentLogsQuery.isLoading}
 				{#each Array(6) as _}
 					<Skeleton class="h-full w-full aspect-[3/4] rounded-3xl" />
@@ -187,7 +187,7 @@
 			<h3 class="text-xl font-heading font-semibold">Similar to What You Play</h3>
 			<Button variant="link" href="">View all similar titles</Button>
 		</div>
-		<div class="flex gap-4 relative">
+		<div class="grid grid-cols-6 gap-4 relative">
 			{#if $similarGamesQuery.isLoading}
 				{#each Array(6) as _}
 					<Skeleton class="h-full w-full aspect-[3/4] rounded-3xl" />
