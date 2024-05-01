@@ -34,6 +34,18 @@ pub struct Log {
     pub igdb_id: i32,
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct LogData {
+    pub title: String,
+    pub date: String,
+    pub rating: i32,
+    pub notes: String,
+    pub status: String,
+    pub completed: bool,
+    pub minutes_played: i32,
+    pub igdb_id: i32,
+}
+
 pub fn initialize_database() -> Result<rusqlite::Connection, Error> {
     let tmp_dir = std::env::temp_dir();
     let conn = Connection::open(tmp_dir.to_str().unwrap().to_owned() + "/logs.db")?;
@@ -247,6 +259,97 @@ pub fn get_logs(
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(logs)
+}
+
+#[tauri::command]
+pub fn delete_log(state: State<Mutex<Connection>>, id: i32) -> Result<i32, Error> {
+    let conn = state.lock().unwrap();
+    conn.execute("DELETE FROM logs WHERE id = ?", [id])?;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn get_log_by_id(state: State<Mutex<Connection>>, id: i32) -> Result<Log, Error> {
+    let conn = state.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT * FROM logs WHERE id = ?")?;
+    let log = stmt.query_row([id], |row| {
+        Ok(Log {
+            id: row.get(0)?,
+            created_at: row.get(1)?,
+            updated_at: row.get(2)?,
+            title: row.get(3)?,
+            date: row.get(4)?,
+            rating: row.get(5)?,
+            notes: row.get(6)?,
+            status: row.get(7)?,
+            completed: row.get(8)?,
+            minutes_played: row.get(9)?,
+            igdb_id: row.get(10)?,
+        })
+    })?;
+    Ok(log)
+}
+
+#[tauri::command]
+pub fn add_log(state: State<Mutex<Connection>>, log_data: LogData) -> Result<i32, Error> {
+    let conn = state.lock().unwrap();
+    conn.execute(
+        "INSERT INTO logs (title, date, rating, notes, status, completed, minutes_played, igdb_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        [
+            log_data.title,
+            log_data.date,
+            log_data.rating.to_string(),
+            log_data.notes,
+            log_data.status,
+            log_data.completed.to_string(),
+            log_data.minutes_played.to_string(),
+            log_data.igdb_id.to_string(),
+        ],
+    )?;
+    let id = conn.last_insert_rowid() as i32;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn update_log(
+    state: State<Mutex<Connection>>,
+    id: i32,
+    log_data: LogData,
+) -> Result<i32, Error> {
+    let conn = state.lock().unwrap();
+    conn.execute(
+        "UPDATE logs SET title = ?1, date = ?2, rating = ?3, notes = ?4, status = ?5, completed = ?6, minutes_played = ?7, igdb_id = ?8 WHERE id = ?9",
+        [
+            log_data.title,
+            log_data.date,
+            log_data.rating.to_string(),
+            log_data.notes,
+            log_data.status,
+            log_data.completed.to_string(),
+            log_data.minutes_played.to_string(),
+            log_data.igdb_id.to_string(),
+            id.to_string(),
+        ],
+    )?;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn add_executable_details(
+    state: State<Mutex<Connection>>,
+    executable_details: ExecutableDetails,
+) -> Result<i32, Error> {
+    let conn = state.lock().unwrap();
+    conn.execute(
+        "INSERT INTO executable_details (executable_name, igdb_id, minutes_played) VALUES (?1, ?2, ?3)",
+        [
+            executable_details.name,
+            executable_details.igdb_id.to_string(),
+            executable_details.minutes_played.to_string(),
+        ],
+    )?;
+    let id = conn.last_insert_rowid() as i32;
+    Ok(id)
 }
 
 #[cfg(test)]

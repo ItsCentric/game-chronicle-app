@@ -27,6 +27,16 @@ const logSchema = z.object({
 	igdb_id: z.number()
 });
 
+const executableDetailsSchema = z.object({
+	name: z.string(),
+	igdb_id: z.number(),
+	minutes_played: z.number()
+});
+
+export type Log = z.infer<typeof logSchema>;
+export type LogData = Omit<Log, 'id' | 'created_at' | 'updated_at'>;
+export type ExecutableDetails = z.infer<typeof executableDetailsSchema>;
+
 export async function getCurrentUsername() {
 	const username = await invoke('get_current_username');
 	return username as string;
@@ -55,4 +65,29 @@ export async function getLogs(sortBy: string, sortOrder: 'asc' | 'desc', filter:
 	});
 	console.log('get logs called');
 	return logs.map((log: unknown) => logSchema.parse(log));
+}
+
+export async function deleteLog(id: number) {
+	const deletedLogId = await invoke('delete_log', { id });
+	return deletedLogId as number;
+}
+
+export async function getLogById(id: number) {
+	const log = await invoke('get_log_by_id', { id });
+	return logSchema.parse(log);
+}
+
+export async function updateLog(log: Omit<Log, 'created_at' | 'updated_at'>) {
+	const updatedLogId = await invoke('update_log', { log });
+	return updatedLogId as number;
+}
+
+export async function addExecutableDetails(executableDetails: ExecutableDetails) {
+	const addedExecutableDetailsId = await invoke('add_executable_details', { executableDetails });
+	return addedExecutableDetailsId as number;
+}
+
+export async function addLog(log: LogData) {
+	const addedLogId = await invoke('add_log', { log });
+	return addedLogId as number;
 }

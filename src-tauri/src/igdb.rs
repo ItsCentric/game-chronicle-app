@@ -62,7 +62,7 @@ pub async fn get_games_by_id(
         return Ok(vec![]);
     }
     let body = format!(
-        "fields name, cover.image_id; where id = ({})",
+        "fields name, cover.image_id; where id = ({});",
         game_ids
             .iter()
             .map(|id| id.to_string())

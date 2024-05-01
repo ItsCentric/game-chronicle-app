@@ -130,7 +130,12 @@ fn main() {
             database::get_recent_logs,
             database::get_logs,
             get_user_settings,
-            save_user_settings
+            save_user_settings,
+            database::delete_log,
+            database::get_log_by_id,
+            database::add_log,
+            database::update_log,
+            database::add_executable_details,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,20 +1,17 @@
-import type { z } from "zod";
-import type { NewLogFormSchema } from "./schemas";
-import { main } from "./wailsjs/go/models";
+import type { z } from 'zod';
+import type { LogFormSchema } from './schemas';
+import type { IgdbGame } from './rust-bindings/igdb';
+import type { LogData } from './rust-bindings/database';
 
-export function logDataFromForm(igdbGame: main.IgdbGame, formData: z.infer<NewLogFormSchema>) {
-    const timePlayed = new main.TimePlayed();
-    const newLogData = new main.LogData();
-    timePlayed.hours = formData.timePlayedHours ?? 0;
-    timePlayed.minutes = formData.timePlayedMinutes ?? 0;
-    newLogData.title = igdbGame.name;
-    newLogData.date = formData.logDate;
-    newLogData.rating = formData.rating;
-    newLogData.finished = formData.finished;
-    newLogData.status = formData.status;
-    newLogData.notes = formData.notes ?? '';
-    newLogData.timePlayed = timePlayed;
-    newLogData.gameId = igdbGame.id;
-
-    return newLogData;
+export function logDataFromForm(igdbGame: IgdbGame, formData: z.infer<LogFormSchema>): LogData {
+	return {
+		title: igdbGame.name,
+		status: formData.status,
+		rating: formData.rating,
+		date: formData.logDate.toISOString(),
+		notes: formData.notes ?? '',
+		completed: formData.finished,
+		minutes_played: formData.timePlayedHours * 60 + formData.timePlayedMinutes,
+		igdb_id: igdbGame.id
+	};
 }
