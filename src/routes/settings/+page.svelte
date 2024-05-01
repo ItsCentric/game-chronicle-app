@@ -1,14 +1,7 @@
 <script lang="ts">
 	import { settingsSchema } from '$lib/schemas';
-	import {
-		OpenDirectoryDialog,
-		GetUserSettings,
-		SaveUserSettings,
-		GetCurrentUsername
-	} from '$lib/wailsjs/go/main/App';
-	import { WindowReloadApp } from '$lib/wailsjs/runtime/runtime';
 	import { PencilIcon, Plus, Trash } from 'lucide-svelte';
-	import { defaults, superForm } from 'sveltekit-superforms';
+	import { superForm } from 'sveltekit-superforms';
 	import * as Form from '$lib/components/ui/form';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as Table from '$lib/components/ui/table';
@@ -18,85 +11,44 @@
 	import Input from '$lib/components/ui/input/input.svelte';
 	import { useMutation, useQuery, useQueryClient } from '@sveltestack/svelte-query';
 	import { toast } from 'svelte-sonner';
-	import type { main } from '$lib/wailsjs/go/models';
+	import { saveUserSettings } from '$lib/rust-bindings/main';
+	import { getCurrentUsername } from '$lib/rust-bindings/database';
+	import { open } from '@tauri-apps/api/dialog';
+	import { relaunch } from '@tauri-apps/api/process';
+	import type { PageData } from './$types';
 
+	export let data: PageData;
 	let openReloadApplicationModal = false;
 
 	const queryClient = useQueryClient();
-	const userPreferencesMutation = useMutation(
-		'userPreferences',
-		async (newSettings: main.UserSettingsData) => {
-			const response = await SaveUserSettings(newSettings);
-			if (response.error != '') {
-				throw new Error(response.error);
-			}
-			return response.newSettings;
-		},
-		{
-			onSuccess: (data) => {
-				queryClient.invalidateQueries('userPreferences');
-				if (data.username !== $usernameQuery.data) {
-					queryClient.invalidateQueries('username');
-				}
-				openReloadApplicationModal = true;
+	const userPreferencesMutation = useMutation('userSettings', saveUserSettings, {
+		onSuccess: (queryData) => {
+			queryClient.invalidateQueries('userPreferences');
+			openReloadApplicationModal = true;
+			if (queryData.username !== $usernameQuery.data) {
+				queryClient.invalidateQueries('username');
 			}
 		}
-	);
-	useQuery(
-		'userPreferences',
-		async () => {
-			const response = await GetUserSettings();
-			if (response.error) {
-				throw new Error(response.error);
-			}
-			return response.preferences;
-		},
-		{
-			onSuccess: (data) => {
-				const executablePathsString = data.executablePaths;
-				let executablePathsArray = executablePathsString.split(';');
-				executablePathsArray = executablePathsArray.filter((path) => path !== '');
-				$settingsFormData.processMonitoringEnabled = data.processMonitoringEnabled;
-				$settingsFormData.executablePaths = executablePathsArray;
-				$settingsFormData.processMonitoringDirectoryDepth = data.processMonitoringDirectoryDepth;
-				if ($settingsFormData.username === '') {
-					$settingsFormData.username = data.username;
-				} else {
-					$settingsFormData.username = $usernameQuery.data ?? '';
-				}
-			},
-			onError: () => {
-				toast.error('Failed to load user preferences');
+	});
+	const usernameQuery = useQuery('username', getCurrentUsername, {
+		onSuccess: (queryData) => {
+			if ($settingsFormData.username === '') {
+				$settingsFormData.username = queryData;
 			}
 		}
-	);
-	const usernameQuery = useQuery(
-		'username',
-		async () => {
-			const response = await GetCurrentUsername();
-			if (response.error) {
-				throw new Error(response.error);
-			}
-			return response.username;
-		},
-		{
-			onSuccess: (data) => {
-				if ($settingsFormData.username === '') {
-					$settingsFormData.username = data;
-				}
-			}
-		}
-	);
-	const settingsForm = superForm(defaults(zod(settingsSchema)), {
+	});
+	const settingsForm = superForm(data.form, {
 		validators: zod(settingsSchema),
 		SPA: true,
 		onUpdate: async ({ form }) => {
 			if (form.valid) {
 				var newSettings = {
-					processMonitoringEnabled: form.data.processMonitoringEnabled,
-					executablePaths: form.data.executablePaths.join(';'),
+					executable_paths: form.data.executablePaths.join(';'),
 					username: form.data.username,
-					processMonitoringDirectoryDepth: form.data.processMonitoringDirectoryDepth
+					process_monitoring: {
+						enabled: form.data.processMonitoringEnabled,
+						directory_depth: form.data.processMonitoringDirectoryDepth
+					}
 				};
 				toast.promise($userPreferencesMutation.mutateAsync(newSettings), {
 					loading: 'Saving new settings...',
@@ -113,16 +65,22 @@
 	} = settingsForm;
 
 	async function newDirectoryDialog() {
-		var result = await OpenDirectoryDialog();
-		if (result.selectedDirectory) {
-			addPath(result.selectedDirectory);
+		const selectedDirectory = await open({
+			directory: true,
+			multiple: false
+		});
+		if (selectedDirectory) {
+			addPath(selectedDirectory as string);
 		}
 	}
 	async function editDirectoryDialog(pathToEdit: string) {
-		var result = await OpenDirectoryDialog();
-		if (result.selectedDirectory) {
+		const selectedDirectory = await open({
+			directory: true,
+			multiple: false
+		});
+		if (selectedDirectory) {
 			removePath(pathToEdit);
-			addPath(result.selectedDirectory);
+			addPath(selectedDirectory as string);
 		}
 	}
 	function removePath(path: string) {
@@ -270,7 +228,7 @@
 				</Dialog.Description>
 			</Dialog.Header>
 			<Dialog.Footer>
-				<Button on:click={() => WindowReloadApp()}>Reload now</Button>
+				<Button on:click={async () => await relaunch()}>Reload now</Button>
 				<Button on:click={() => (openReloadApplicationModal = false)}>I'll wait</Button>
 			</Dialog.Footer>
 		</Dialog.Content>

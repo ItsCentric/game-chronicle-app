@@ -27,6 +27,12 @@ pub enum Error {
     Reqwest(#[from] reqwest::Error),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    TomlDer(#[from] toml::de::Error),
+    #[error(transparent)]
+    TomlSer(#[from] toml::ser::Error),
 }
 
 #[derive(serde::Serialize, Debug, Deserialize)]
@@ -38,7 +44,7 @@ pub struct UserSettings {
 
 #[derive(serde::Serialize, Debug, Deserialize)]
 struct ProcessMonitoringSettings {
-    enabled: i32,
+    enabled: bool,
     directory_depth: i32,
 }
 
@@ -69,7 +75,7 @@ fn main() {
                         username: whoami::username(),
                         executable_paths: "".to_string(),
                         process_monitoring: ProcessMonitoringSettings {
-                            enabled: 0,
+                            enabled: false,
                             directory_depth: 3,
                         },
                     };
@@ -78,7 +84,7 @@ fn main() {
                     user_settings = settings;
                 }
             }
-            if user_settings.process_monitoring.enabled == 0 {
+            if !user_settings.process_monitoring.enabled {
                 return Ok(());
             }
             let executable_paths = user_settings.executable_paths.split(";");
@@ -123,7 +129,26 @@ fn main() {
             igdb::authenticate_with_twitch,
             database::get_recent_logs,
             database::get_logs,
+            get_user_settings,
+            save_user_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn get_user_settings() -> Result<UserSettings, Error> {
+    let config_path = path::config_dir().unwrap();
+    let mut file = fs::File::open(config_path.join("settings.toml"))?;
+    let mut file_contents = String::new();
+    file.read_to_string(&mut file_contents)?;
+    Ok(toml::from_str::<UserSettings>(&file_contents)?)
+}
+
+#[tauri::command]
+fn save_user_settings(user_settings: UserSettings) -> Result<UserSettings, Error> {
+    let config_path = path::config_dir().unwrap();
+    let settings_str = toml::to_string(&user_settings)?;
+    fs::write(config_path.join("settings.toml"), settings_str)?;
+    Ok(user_settings)
 }
