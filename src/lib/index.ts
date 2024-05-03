@@ -6,7 +6,7 @@ import type { LogData } from './rust-bindings/database';
 export function logDataFromForm(igdbGame: IgdbGame, formData: z.infer<LogFormSchema>): LogData {
 	return {
 		title: igdbGame.name,
-		status: formData.status,
+		status: formData.status.toLowerCase(),
 		rating: formData.rating,
 		date: formData.logDate.toISOString(),
 		notes: formData.notes ?? '',

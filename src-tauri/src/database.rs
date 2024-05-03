@@ -63,7 +63,7 @@ pub fn initialize_database() -> Result<rusqlite::Connection, Error> {
     minutes_played INTEGER DEFAULT 0,
     igdb_id INTEGER,
     CONSTRAINT valid_rating CHECK (rating >= 0 AND rating <= 5),
-    CONSTRAINT valid_status CHECK (status IN ('backlog', 'playing', 'completed', 'dropped'))
+    CONSTRAINT valid_status CHECK (status IN ('wishlist', 'backlog', 'playing', 'completed', 'played', 'abandoned', 'retired'))
     CONSTRAINT valid_date CHECK (date(date) IS NOT NULL)
 );
 

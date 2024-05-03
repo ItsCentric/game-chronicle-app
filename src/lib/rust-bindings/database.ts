@@ -88,6 +88,6 @@ export async function addExecutableDetails(executableDetails: ExecutableDetails)
 }
 
 export async function addLog(log: LogData) {
-	const addedLogId = await invoke('add_log', { log });
+	const addedLogId = await invoke('add_log', { logData: log });
 	return addedLogId as number;
 }
