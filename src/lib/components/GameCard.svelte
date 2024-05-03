@@ -13,7 +13,7 @@
 	role="button"
 	tabindex="0"
 >
-	{#if data.cover.image_id}
+	{#if data.cover?.image_id}
 		<img
 			src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' + data.cover.image_id + '.jpg'}
 			alt="cover"

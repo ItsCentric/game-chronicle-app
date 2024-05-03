@@ -141,9 +141,6 @@
 				<Plus size="1.5em" class="mr-1" />
 				<p>Add log</p>
 			</Button>
-			<Button href="/logs/edit?gameId=1">
-				<p>Test</p>
-			</Button>
 		</div>
 	</div>
 	{#if filteredLogs.length === 0}

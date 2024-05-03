@@ -2,6 +2,7 @@ use reqwest::Client;
 
 use crate::Error;
 
+use rand::Rng;
 use std::env;
 
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
@@ -15,7 +16,7 @@ pub struct AccessTokenResponse {
 pub struct IgdbGame {
     pub id: i32,
     pub name: String,
-    pub cover: Cover,
+    pub cover: Option<Cover>,
 }
 
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
@@ -88,6 +89,34 @@ pub async fn get_similar_games(
             .map(|id| id.to_string())
             .collect::<Vec<String>>()
             .join(",")
+    );
+    let response = send_igdb_request(&"games".to_string(), &access_token, body).await;
+    serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
+}
+
+#[tauri::command]
+pub async fn get_random_top_games(
+    access_token: String,
+    amount: i32,
+) -> Result<Vec<IgdbGame>, Error> {
+    let random_offset = rand::thread_rng().gen_range(0..900);
+    let body = format!(
+        "fields name, cover.image_id; limit {}; where category = 0 & total_rating >= 85 & platforms.category = (1, 6); offset {};",
+        amount,
+        random_offset
+    );
+    let response = send_igdb_request(&"games".to_string(), &access_token, body).await;
+    serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
+}
+
+#[tauri::command]
+pub async fn search_game(
+    access_token: String,
+    search_query: String,
+) -> Result<Vec<IgdbGame>, Error> {
+    let body = format!(
+        "fields name, cover.image_id; search \"{}\"; where category = 0 & version_parent = null;",
+        search_query
     );
     let response = send_igdb_request(&"games".to_string(), &access_token, body).await;
     serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)

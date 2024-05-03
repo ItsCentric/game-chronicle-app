@@ -3,7 +3,6 @@
 	import * as Form from '$lib/components/ui/form';
 	import { Input } from '$lib/components/ui/input';
 	import { gameSearchSchema } from '$lib/schemas';
-	import { AuthenticateWithTwitch, GetRandomGames, SearchForGame } from '$lib/wailsjs/go/main/App';
 	import { ArrowLeft, LoaderCircle, Search, SearchX } from 'lucide-svelte';
 	import { defaults, superForm } from 'sveltekit-superforms';
 	import { zod, zodClient } from 'sveltekit-superforms/adapters';
@@ -13,41 +12,20 @@
 	import { page } from '$app/stores';
 	import { useQuery } from '@sveltestack/svelte-query';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
+	import type { PageData } from './$types';
+	import { authenticateWithTwitch, searchGame } from '$lib/rust-bindings/igdb';
 
+	export let data: PageData;
 	let queriedGame = '';
 	const gamesPerPage = 18;
 	const gameSearchQuery = useQuery(
 		['gameSearch', queriedGame],
 		async () => {
-			const authenticateRes = await AuthenticateWithTwitch();
-			if (!authenticateRes.access_token) {
-				console.error('Failed to authenticate with Twitch');
-			}
-			const searchResponse = await SearchForGame(queriedGame, authenticateRes.access_token);
-			if (searchResponse.error) {
-				throw new Error(searchResponse.error);
-			}
-			return searchResponse.games;
+			const authenticateRes = await authenticateWithTwitch();
+			const matchingGames = await searchGame(authenticateRes.access_token, queriedGame);
+			return matchingGames;
 		},
 		{ enabled: queriedGame.length > 0 }
-	);
-	const randomGamesQuery = useQuery(
-		'randomGames',
-		async () => {
-			const authenticateRes = await AuthenticateWithTwitch();
-			if (!authenticateRes.access_token) {
-				console.error('Failed to authenticate with Twitch');
-			}
-			const randomGamesResponse = await GetRandomGames(
-				gamesPerPage * 4,
-				authenticateRes.access_token
-			);
-			if (randomGamesResponse.error) {
-				throw new Error(randomGamesResponse.error);
-			}
-			return randomGamesResponse.games;
-		},
-		{ staleTime: Infinity }
 	);
 	let currentPage = 1;
 	$: beginningPageIndex = (currentPage - 1) * gamesPerPage;
@@ -64,8 +42,7 @@
 	});
 	const { form: gameSearchFormData, enhance: gameSearchEnhance } = gameSearchForm;
 
-	$: games =
-		$gameSearchQuery.data?.length ?? 0 > 0 ? $gameSearchQuery.data : $randomGamesQuery.data;
+	$: games = $gameSearchQuery.data?.length ?? 0 > 0 ? $gameSearchQuery.data : data.randomGames;
 </script>
 
 <main class="min-h-full px-16 py-8">
@@ -90,16 +67,14 @@
 		<Form.Button class="rounded-l-none"><Search size={24} /></Form.Button>
 	</form>
 	<div class="flex w-full justify-center items-center"></div>
-	{#if $gameSearchQuery.isLoading || $randomGamesQuery.isLoading || $gameSearchQuery.isRefetching}
+	{#if $gameSearchQuery.isLoading || $gameSearchQuery.isRefetching}
 		<LoaderCircle size={64} class="animate-spin mx-auto" />
-	{:else if $gameSearchQuery.isError || $randomGamesQuery.isError || !games}
+	{:else if $gameSearchQuery.isError || !games}
 		<div class="mx-auto grid grid-cols-6 gap-4 container relative">
 			{#each Array(gamesPerPage) as _}
 				<span class="h-full aspect-[3/4] rounded-3xl bg-white/5" />
 			{/each}
-			<ErrorMessage error={$gameSearchQuery.error || $randomGamesQuery.error}
-				>Couldn't get any games</ErrorMessage
-			>
+			<ErrorMessage error={$gameSearchQuery.error}>Couldn't get any games</ErrorMessage>
 		</div>
 	{:else if games.length === 0}
 		<div class="mx-auto text-center">

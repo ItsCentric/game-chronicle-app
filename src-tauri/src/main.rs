@@ -138,6 +138,8 @@ fn main() {
             database::add_log,
             database::update_log,
             database::add_executable_details,
+            igdb::get_random_top_games,
+            igdb::search_game,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -15,7 +15,7 @@ const coverSchema = z.object({
 const igdbGameSchema = z.object({
 	id: z.number(),
 	name: z.string(),
-	cover: coverSchema
+	cover: coverSchema.optional().nullable()
 });
 
 export type IgdbGame = z.infer<typeof igdbGameSchema>;
@@ -32,5 +32,16 @@ export async function getGamesById(accessToken: string, gameIds: number[]) {
 
 export async function getSimilarGames(accessToken: string, gameIds: number[]) {
 	const games: object[] = await invoke('get_similar_games', { accessToken, gameIds });
+	return games.map((game: unknown) => igdbGameSchema.parse(game));
+}
+
+export async function getRandomTopGames(accessToken: string, amount: number) {
+	const games: object[] = await invoke('get_random_top_games', { accessToken, amount });
+	return games.map((game: unknown) => igdbGameSchema.parse(game));
+}
+
+export async function searchGame(accessToken: string, query: string) {
+	const games: object[] = await invoke('search_game', { accessToken, searchQuery: query });
+	console.log(games);
 	return games.map((game: unknown) => igdbGameSchema.parse(game));
 }
