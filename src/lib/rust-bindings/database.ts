@@ -1,5 +1,5 @@
 import type { StatusOption } from '$lib/schemas';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { z } from 'zod';
 
 const dashboardStatisticsSchema = z.object({

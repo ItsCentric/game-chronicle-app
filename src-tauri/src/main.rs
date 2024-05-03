@@ -5,9 +5,9 @@ use std::{fs, io::Read, path::PathBuf, thread};
 
 use serde::Deserialize;
 
-use tauri::api::path;
-
 use std::path::Path;
+
+use tauri::Manager;
 
 mod database;
 mod igdb;
@@ -59,10 +59,12 @@ impl serde::Serialize for Error {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             dotenv::dotenv().ok();
             let _conn = database::initialize_database().unwrap();
-            let config_path = path::config_dir().unwrap();
+            let config_path = app.path().config_dir().unwrap();
             let user_settings: UserSettings;
             match fs::File::open(config_path.join("settings.toml")) {
                 Ok(mut file) => {
@@ -105,7 +107,7 @@ fn main() {
                     paths_to_monitor.push(path.to_string_lossy().to_string().into());
                 }
             }
-            let app_handle = app.handle();
+            let app_handle = app.handle().clone();
             let handle = thread::spawn(move || {
                 let mut process_monitor = process_monitor::ProcessMonitor::new();
                 loop {
@@ -142,8 +144,8 @@ fn main() {
 }
 
 #[tauri::command]
-fn get_user_settings() -> Result<UserSettings, Error> {
-    let config_path = path::config_dir().unwrap();
+fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, Error> {
+    let config_path = app_handle.path().config_dir().unwrap();
     let mut file = fs::File::open(config_path.join("settings.toml"))?;
     let mut file_contents = String::new();
     file.read_to_string(&mut file_contents)?;
@@ -151,8 +153,11 @@ fn get_user_settings() -> Result<UserSettings, Error> {
 }
 
 #[tauri::command]
-fn save_user_settings(user_settings: UserSettings) -> Result<UserSettings, Error> {
-    let config_path = path::config_dir().unwrap();
+fn save_user_settings(
+    user_settings: UserSettings,
+    app_handle: tauri::AppHandle,
+) -> Result<UserSettings, Error> {
+    let config_path = app_handle.path().config_dir().unwrap();
     let settings_str = toml::to_string(&user_settings)?;
     fs::write(config_path.join("settings.toml"), settings_str)?;
     Ok(user_settings)

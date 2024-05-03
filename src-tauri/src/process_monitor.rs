@@ -74,7 +74,7 @@ impl ProcessMonitor {
                 let conn = rusqlite::Connection::open("logs.db")?;
                 match get_executable_details(&conn, &process.name) {
                     Ok(details) => {
-                        app.emit_all(
+                        app.emit(
                             "game-stopped",
                             &GameStoppedPayload {
                                 name: details.name,
@@ -85,7 +85,7 @@ impl ProcessMonitor {
                     }
                     Err(e) => {
                         if e.type_id() == rusqlite::Error::QueryReturnedNoRows.type_id() {
-                            app.emit_all(
+                            app.emit(
                                 "game-stopped",
                                 &GameStoppedPayload {
                                     name: process.name.clone(),

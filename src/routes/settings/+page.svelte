@@ -13,8 +13,8 @@
 	import { toast } from 'svelte-sonner';
 	import { saveUserSettings } from '$lib/rust-bindings/main';
 	import { getCurrentUsername } from '$lib/rust-bindings/database';
-	import { open } from '@tauri-apps/api/dialog';
-	import { relaunch } from '@tauri-apps/api/process';
+	import { open } from '@tauri-apps/plugin-dialog';
+	import { relaunch } from '@tauri-apps/plugin-process';
 	import type { PageData } from './$types';
 
 	export let data: PageData;
