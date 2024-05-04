@@ -357,17 +357,3 @@ pub fn add_executable_details(
     let id = conn.last_insert_rowid() as i32;
     Ok(id)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn dates() {
-        let this_month = chrono::NaiveDate::from_ymd_opt(2024, 1, 1).expect("valid date");
-        let end_of_last_month = this_month.pred_opt().expect("valid date");
-        println!("{:?}", this_month);
-        println!("{:?}", end_of_last_month);
-        assert_eq!(end_of_last_month.month(), 12);
-    }
-}
