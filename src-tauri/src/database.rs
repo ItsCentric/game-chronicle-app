@@ -216,7 +216,7 @@ pub fn get_recent_logs(
                 date: row.get(4)?,
                 rating: row.get(5)?,
                 notes: row.get(6)?,
-                status: row.get(7)?,
+                status: row.get::<usize, String>(7)?.try_into().unwrap(),
                 completed: row.get(8)?,
                 minutes_played: row.get(9)?,
                 igdb_id: row.get(10)?,
@@ -234,15 +234,20 @@ pub fn get_logs(
     filter: Vec<String>,
 ) -> Result<Vec<Log>, Error> {
     let conn = state.lock().unwrap();
+    let joined_filter = filter
+        .iter()
+        .map(|s| format!("'{}'", s))
+        .collect::<Vec<String>>()
+        .join(",");
     let mut stmt = conn.prepare(
         format!(
-            "SELECT * FROM logs WHERE status IN (?) ORDER BY ? {}",
-            sort_order
+            "SELECT * FROM logs WHERE status IN ({}) ORDER BY ? {}",
+            joined_filter, sort_order
         )
         .as_str(),
     )?;
     let logs = stmt
-        .query_map([filter.join(","), sort_by], |row| {
+        .query_map([sort_by], |row| {
             Ok(Log {
                 id: row.get(0)?,
                 created_at: row.get(1)?,
@@ -293,6 +298,7 @@ pub fn get_log_by_id(state: State<Mutex<Connection>>, id: i32) -> Result<Log, Er
 #[tauri::command]
 pub fn add_log(state: State<Mutex<Connection>>, log_data: LogData) -> Result<i32, Error> {
     let conn = state.lock().unwrap();
+    let completed_int: i32 = log_data.completed.try_into().unwrap();
     conn.execute(
         "INSERT INTO logs (title, date, rating, notes, status, completed, minutes_played, igdb_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         [
@@ -301,7 +307,7 @@ pub fn add_log(state: State<Mutex<Connection>>, log_data: LogData) -> Result<i32
             log_data.rating.to_string(),
             log_data.notes,
             log_data.status,
-            log_data.completed.to_string(),
+            completed_int.to_string(),
             log_data.minutes_played.to_string(),
             log_data.igdb_id.to_string(),
         ],

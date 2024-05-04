@@ -15,15 +15,20 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { logDataFromForm } from '$lib';
-	import { useMutation } from '@sveltestack/svelte-query';
+	import { useMutation, useQueryClient } from '@sveltestack/svelte-query';
 	import { addExecutableDetails, addLog, updateLog } from '$lib/rust-bindings/database';
 	import type { PageData } from './$types';
 
 	export let data: PageData;
 	const searchParams = $page.url.searchParams;
 	const isEditing = searchParams.has('id');
-	const insertLogMutation = useMutation(addLog);
-	const updateLogMutation = useMutation(updateLog);
+	const insertLogMutation = useMutation(addLog, {
+		onSuccess: () => queryClient.invalidateQueries('logs')
+	});
+	const updateLogMutation = useMutation(updateLog, {
+		onSuccess: () => queryClient.invalidateQueries('logs')
+	});
+	const queryClient = useQueryClient();
 	const logForm = superForm(defaults(zod(logSchema)), {
 		validators: zodClient(logSchema),
 		SPA: true,

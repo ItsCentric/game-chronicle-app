@@ -1,4 +1,4 @@
-import type { StatusOption } from '$lib/schemas';
+import { statusOptions, type StatusOption } from '$lib/schemas';
 import { invoke } from '@tauri-apps/api/core';
 import { z } from 'zod';
 
@@ -58,6 +58,9 @@ export async function getRecentLogs(amount: number, filter: StatusOption[]) {
 
 export async function getLogs(sortBy: string, sortOrder: 'asc' | 'desc', filter: StatusOption[]) {
 	console.log('getting logs...');
+	if (filter.length === 0) {
+		filter = [...statusOptions];
+	}
 	const logs: object[] = await invoke('get_logs', {
 		sortBy,
 		sortOrder,
