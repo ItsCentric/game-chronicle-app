@@ -51,6 +51,5 @@ export async function getRandomTopGames(accessToken: string, amount: number) {
 
 export async function searchGame(accessToken: string, query: string) {
 	const games: object[] = await invoke('search_game', { accessToken, searchQuery: query });
-	console.log(games);
 	return games.map((game: unknown) => igdbGameSchema.parse(game));
 }

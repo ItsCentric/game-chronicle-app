@@ -49,7 +49,6 @@ export async function getDashboardStatistics() {
 
 export async function getRecentLogs(amount: number, filter: StatusOption[]) {
 	const logs: object[] = await invoke('get_recent_logs', { amount, filter });
-	console.log(logs);
 	if (logs.length === 0) {
 		return [];
 	}
@@ -57,7 +56,6 @@ export async function getRecentLogs(amount: number, filter: StatusOption[]) {
 }
 
 export async function getLogs(sortBy: string, sortOrder: 'asc' | 'desc', filter: StatusOption[]) {
-	console.log('getting logs...');
 	if (filter.length === 0) {
 		filter = [...statusOptions];
 	}
@@ -66,7 +64,6 @@ export async function getLogs(sortBy: string, sortOrder: 'asc' | 'desc', filter:
 		sortOrder,
 		filter: filter.map((option) => option.toLowerCase())
 	});
-	console.log('get logs called');
 	return logs.map((log: unknown) => logSchema.parse(log));
 }
 
