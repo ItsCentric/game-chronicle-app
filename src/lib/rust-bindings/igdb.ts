@@ -18,6 +18,10 @@ const igdbGameSchema = z.object({
 	cover: coverSchema.optional().nullable()
 });
 
+const similarGamesSchema = z.object({
+	similar_games: z.array(igdbGameSchema)
+});
+
 export type IgdbGame = z.infer<typeof igdbGameSchema>;
 
 export async function authenticateWithTwitch() {
@@ -32,7 +36,12 @@ export async function getGamesById(accessToken: string, gameIds: number[]) {
 
 export async function getSimilarGames(accessToken: string, gameIds: number[]) {
 	const games: object[] = await invoke('get_similar_games', { accessToken, gameIds });
-	return games.map((game: unknown) => igdbGameSchema.parse(game));
+	const similarGames: IgdbGame[] = [];
+	for (const game of games) {
+		const similarGameRes = similarGamesSchema.parse(game);
+		similarGames.push(...similarGameRes.similar_games);
+	}
+	return similarGames;
 }
 
 export async function getRandomTopGames(accessToken: string, amount: number) {

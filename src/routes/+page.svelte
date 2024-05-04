@@ -1,57 +1,58 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import GameCard from '$lib/components/GameCard.svelte';
-	import { onMount } from 'svelte';
 	import Statistic from '$lib/components/Statistic.svelte';
 	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
 	import { goto } from '$app/navigation';
 	import { statusOptions, type StatusOption } from '$lib/schemas';
 	import { useQuery } from '@sveltestack/svelte-query';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
-	import {
-		getCurrentUsername,
-		getDashboardStatistics,
-		getLogs,
-		getRecentLogs
-	} from '$lib/rust-bindings/database';
+	import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindings/database';
 	import { authenticateWithTwitch, getGamesById, getSimilarGames } from '$lib/rust-bindings/igdb';
+	import type { PageData } from './$types';
 
-	const dashboardStatisticsQuery = useQuery('dashboardStatistics', getDashboardStatistics);
-	const recentLogsQuery = useQuery('recentLogs', async () => {
-		const accessTokenResponse = await authenticateWithTwitch();
-		const recentLogs = await getRecentLogs(
-			6,
-			statusOptions.filter((status) => status != 'Wishlist')
-		);
-		const recentGameIds = recentLogs.map((log) => log.igdb_id);
-		const games = await getGamesById(accessTokenResponse.access_token, recentGameIds);
-		const sortedGames = [];
-		for (let i = 0; i < recentGameIds.length; i++) {
-			const game = games.find((game) => game.id === recentGameIds[i]);
-			if (game) {
-				sortedGames.push(game);
+	export let data: PageData;
+	const dashboardStatisticsQuery = useQuery('dashboardStatistics', getDashboardStatistics, {
+		initialData: data.dashboardStatistics
+	});
+	const recentLogsQuery = useQuery(
+		'recentLogs',
+		async () => {
+			const accessTokenResponse = await authenticateWithTwitch();
+			const recentLogs = await getRecentLogs(
+				6,
+				statusOptions.filter((status) => status != 'Wishlist')
+			);
+			const recentGameIds = recentLogs.map((log) => log.igdb_id);
+			const games = await getGamesById(accessTokenResponse.access_token, recentGameIds);
+			const sortedGames = [];
+			for (let i = 0; i < recentGameIds.length; i++) {
+				const game = games.find((game) => game.id === recentGameIds[i]);
+				if (game) {
+					sortedGames.push(game);
+				}
 			}
-		}
-		return sortedGames;
-	});
-	const similarGamesQuery = useQuery('similarGames', async () => {
-		const logs = await getLogs('date', 'desc', statusOptions as unknown as StatusOption[]);
-		const gameIds = logs.map((log) => log.igdb_id);
-		const accessTokenResponse = await authenticateWithTwitch();
-		const similarGames = await getSimilarGames(accessTokenResponse.access_token, gameIds);
-		return similarGames;
-	});
-	let username: string | undefined;
-
-	onMount(async () => {
-		username = await getCurrentUsername();
-	});
+			return sortedGames;
+		},
+		{ initialData: data.recentGames }
+	);
+	const similarGamesQuery = useQuery(
+		'similarGames',
+		async () => {
+			const logs = await getLogs('date', 'desc', statusOptions as unknown as StatusOption[]);
+			const gameIds = logs.map((log) => log.igdb_id);
+			const accessTokenResponse = await authenticateWithTwitch();
+			const similarGames = await getSimilarGames(accessTokenResponse.access_token, gameIds);
+			return similarGames;
+		},
+		{ initialData: data.similarGames }
+	);
 </script>
 
 <main class="flex flex-col gap-12 h-full p-12 container">
 	<div>
 		<h1 class="font-heading font-bold text-3xl">
-			Hello, <span class="capitalize">{username}</span>
+			Hello, <span class="capitalize">{data.username}</span>
 		</h1>
 		<h2 class="text-xl font-heading font-semibold mb-4">Welcome to your journal</h2>
 		<div class="flex gap-2">
@@ -175,7 +176,7 @@
 					<p>Start logging your games to see your suggestions here</p>
 				</div>
 			{:else}
-				{#each $similarGamesQuery.data as game}
+				{#each $similarGamesQuery.data.slice(0, 6) as game}
 					<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />
 				{/each}
 			{/if}

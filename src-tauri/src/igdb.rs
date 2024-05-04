@@ -25,6 +25,11 @@ pub struct Cover {
     pub image_id: String,
 }
 
+#[derive(serde::Serialize, Debug, serde::Deserialize)]
+pub struct SimilarGames {
+    pub similar_games: Vec<IgdbGame>,
+}
+
 pub async fn send_igdb_request(
     endpoint: &String,
     access_token: &String,
@@ -78,12 +83,12 @@ pub async fn get_games_by_id(
 pub async fn get_similar_games(
     access_token: String,
     game_ids: Vec<i32>,
-) -> Result<Vec<IgdbGame>, Error> {
+) -> Result<Vec<SimilarGames>, Error> {
     if game_ids.is_empty() {
         return Ok(vec![]);
     }
     let body = format!(
-        "fields name, cover.image_id; where id = ({})",
+        "fields similar_games.name, similar_games.cover.image_id; where id = ({}) & category = 0 & platforms.category = (1, 6); exclude id;",
         game_ids
             .iter()
             .map(|id| id.to_string())
