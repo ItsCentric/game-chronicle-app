@@ -1,61 +1,61 @@
 {
-  "build": {
-    "beforeBuildCommand": "bun run build",
-    "beforeDevCommand": "bun run dev",
-    "frontendDist": "../../src/build",
-    "devUrl": "http://localhost:5173"
-  },
-  "bundle": {
-    "active": true,
-    "category": "DeveloperTool",
-    "copyright": "",
-    "targets": "all",
-    "externalBin": [],
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
-    "windows": {
-      "certificateThumbprint": null,
-      "digestAlgorithm": "sha256",
-      "timestampUrl": ""
-    },
-    "longDescription": "",
-    "macOS": {
-      "entitlements": null,
-      "exceptionDomain": "",
-      "frameworks": [],
-      "providerShortName": null,
-      "signingIdentity": null
-    },
-    "resources": [],
-    "shortDescription": "",
-    "linux": {
-      "deb": {
-        "depends": []
-      }
-    }
-  },
-  "productName": "Game Chronicle",
-  "version": "0.1.0",
-  "identifier": "com.tauri.dev",
-  "plugins": {},
-  "app": {
-    "windows": [
-      {
-        "fullscreen": false,
-        "maximized": true,
-        "height": 600,
-        "resizable": true,
-        "title": "Game Chronicle",
-        "width": 800
-      }
-    ],
-    "security": {
-      "csp": null
-    }
-  }
+	"build": {
+		"beforeBuildCommand": "bun run build",
+		"beforeDevCommand": "bun run dev",
+		"frontendDist": "../../src/build",
+		"devUrl": "http://localhost:5173"
+	},
+	"bundle": {
+		"active": true,
+		"category": "DeveloperTool",
+		"copyright": "",
+		"targets": "all",
+		"externalBin": [],
+		"icon": [
+			"icons/32x32.png",
+			"icons/128x128.png",
+			"icons/128x128@2x.png",
+			"icons/icon.icns",
+			"icons/icon.ico"
+		],
+		"windows": {
+			"certificateThumbprint": null,
+			"digestAlgorithm": "sha256",
+			"timestampUrl": ""
+		},
+		"longDescription": "",
+		"macOS": {
+			"entitlements": null,
+			"exceptionDomain": "",
+			"frameworks": [],
+			"providerShortName": null,
+			"signingIdentity": null
+		},
+		"resources": [],
+		"shortDescription": "",
+		"linux": {
+			"deb": {
+				"depends": []
+			}
+		}
+	},
+	"productName": "Game Chronicle",
+	"version": "0.7.0",
+	"identifier": "com.tauri.dev",
+	"plugins": {},
+	"app": {
+		"windows": [
+			{
+				"height": 600,
+				"resizable": true,
+				"title": "Game Chronicle",
+				"width": 800,
+				"minHeight": 600,
+				"minWidth": 800
+			}
+		],
+		"security": {
+			"csp": null
+		}
+	}
 }
