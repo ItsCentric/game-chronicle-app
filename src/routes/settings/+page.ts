@@ -4,6 +4,9 @@ import { superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 
 export const load = async () => {
+	if (typeof window === 'undefined') {
+		return {};
+	}
 	const userSettings = await getUserSettings();
 	const formData = {
 		username: userSettings.username,

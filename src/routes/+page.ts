@@ -8,6 +8,9 @@ import { authenticateWithTwitch, getGamesById, getSimilarGames } from '$lib/rust
 import { statusOptions, type StatusOption } from '$lib/schemas';
 
 export const load = async () => {
+	if (typeof window === 'undefined') {
+		return {};
+	}
 	const accessTokenResponse = await authenticateWithTwitch();
 	const recentLogs = await getRecentLogs(
 		6,

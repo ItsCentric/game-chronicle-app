@@ -8,6 +8,9 @@ import { superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 
 export const load: PageLoad = async ({ url }) => {
+	if (typeof window === 'undefined') {
+		return {};
+	}
 	if (!url.searchParams.has('gameId')) {
 		error(404, 'Game ID is required');
 	}

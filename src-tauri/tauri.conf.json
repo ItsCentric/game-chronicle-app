@@ -2,7 +2,7 @@
 	"build": {
 		"beforeBuildCommand": "bun run build",
 		"beforeDevCommand": "bun run dev",
-		"frontendDist": "../../src/build",
+		"frontendDist": "../build",
 		"devUrl": "http://localhost:5173"
 	},
 	"bundle": {
@@ -41,7 +41,7 @@
 	},
 	"productName": "Game Chronicle",
 	"version": "0.7.0",
-	"identifier": "com.tauri.dev",
+	"identifier": "com.gamechronicle.www",
 	"plugins": {},
 	"app": {
 		"windows": [

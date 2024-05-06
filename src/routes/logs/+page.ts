@@ -3,6 +3,9 @@ import { authenticateWithTwitch, getGamesById } from '$lib/rust-bindings/igdb';
 import type { StatusOption } from '$lib/schemas';
 
 export const load = async () => {
+	if (typeof window === 'undefined') {
+		return {};
+	}
 	const logs = await getLogs('date', 'desc', []);
 	const accessTokenResponse = await authenticateWithTwitch();
 	const gameIds = logs.map((log) => log.igdb_id);
