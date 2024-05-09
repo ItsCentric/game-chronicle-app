@@ -7,7 +7,9 @@ const userSettingsSchema = z.object({
 	process_monitoring: z.object({
 		enabled: z.boolean(),
 		directory_depth: z.number()
-	})
+	}),
+	twitch_client_id: z.string().nullable(),
+	twitch_client_secret: z.string().nullable()
 });
 
 export type UserSettings = z.infer<typeof userSettingsSchema>;

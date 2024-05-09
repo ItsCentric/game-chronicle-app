@@ -33,6 +33,20 @@ pub enum Error {
     TomlDer(#[from] toml::de::Error),
     #[error(transparent)]
     TomlSer(#[from] toml::ser::Error),
+    #[error("Error: {0}")]
+    Custom(String),
+}
+
+impl From<String> for Error {
+    fn from(err: String) -> Self {
+        Error::Custom(err)
+    }
+}
+
+impl From<&str> for Error {
+    fn from(err: &str) -> Self {
+        Error::Custom(err.to_string())
+    }
 }
 
 #[derive(serde::Serialize, Debug, Deserialize)]
@@ -40,6 +54,8 @@ pub struct UserSettings {
     username: String,
     executable_paths: String,
     process_monitoring: ProcessMonitoringSettings,
+    twitch_client_id: Option<String>,
+    twitch_client_secret: Option<String>,
 }
 
 #[derive(serde::Serialize, Debug, Deserialize)]
@@ -62,7 +78,6 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            dotenv::dotenv().ok();
             let _conn = database::initialize_database().unwrap();
             let config_path = app.path().config_dir().unwrap();
             let user_settings: UserSettings;
@@ -80,6 +95,8 @@ fn main() {
                             enabled: false,
                             directory_depth: 3,
                         },
+                        twitch_client_id: None,
+                        twitch_client_secret: None,
                     };
                     let settings_str = toml::to_string(&settings).unwrap();
                     fs::write(config_path.join("settings.toml"), settings_str).unwrap();

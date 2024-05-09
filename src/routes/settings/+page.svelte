@@ -48,7 +48,9 @@
 					process_monitoring: {
 						enabled: form.data.processMonitoringEnabled,
 						directory_depth: form.data.processMonitoringDirectoryDepth
-					}
+					},
+					twitch_client_id: form.data.twitchClientId,
+					twitch_client_secret: form.data.twitchClientSecret
 				};
 				toast.promise($userPreferencesMutation.mutateAsync(newSettings), {
 					loading: 'Saving new settings...',
@@ -105,6 +107,22 @@
 					<div class="flex justify-between items-center">
 						<Form.Label>Username</Form.Label>
 						<Input {...attrs} bind:value={$settingsFormData.username} class="max-w-xs" />
+					</div>
+				</Form.Control>
+			</Form.Field>
+			<Form.Field form={settingsForm} name="twitchClientId">
+				<Form.Control let:attrs>
+					<div class="flex justify-between items-center">
+						<Form.Label>Client ID</Form.Label>
+						<Input {...attrs} bind:value={$settingsFormData.twitchClientId} class="max-w-xs" />
+					</div>
+				</Form.Control>
+			</Form.Field>
+			<Form.Field form={settingsForm} name="twitchClientSecret">
+				<Form.Control let:attrs>
+					<div class="flex justify-between items-center">
+						<Form.Label>Client Secret</Form.Label>
+						<Input {...attrs} bind:value={$settingsFormData.twitchClientSecret} class="max-w-xs" />
 					</div>
 				</Form.Control>
 			</Form.Field>
@@ -213,7 +231,13 @@
 		</section>
 		<div class="flex justify-end gap-2">
 			<Button type="submit">Save</Button>
-			<Button variant="destructive" type="reset" on:click={() => window.history.back()}
+			<Button
+				variant="destructive"
+				type="reset"
+				on:click={() => window.history.back()}
+				disabled={($settingsFormData.twitchClientId === '' ||
+					$settingsFormData.twitchClientSecret === '') &&
+					(data.form.data.twitchClientId === '' || data.form.data.twitchClientSecret === '')}
 				>Cancel</Button
 			>
 		</div>
