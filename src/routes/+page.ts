@@ -10,7 +10,15 @@ import { statusOptions, type StatusOption } from '$lib/schemas';
 
 export const load = async () => {
 	if (typeof window === 'undefined') {
-		return {};
+		return {
+			username: '',
+			dashboardStatistics: [
+				{ total_games_played: 0, total_minutes_played: 0, total_games_completed: 0 },
+				{ total_games_played: 0, total_minutes_played: 0, total_games_completed: 0 }
+			],
+			recentGames: [],
+			similarGames: []
+		};
 	}
 	try {
 		const accessTokenResponse = await authenticateWithTwitch();

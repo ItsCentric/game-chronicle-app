@@ -4,7 +4,7 @@ import type { StatusOption } from '$lib/schemas';
 
 export const load = async () => {
 	if (typeof window === 'undefined') {
-		return {};
+		return { logs: [] };
 	}
 	const logs = await getLogs('date', 'desc', []);
 	const accessTokenResponse = await authenticateWithTwitch();

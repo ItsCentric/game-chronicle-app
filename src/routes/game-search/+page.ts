@@ -2,7 +2,7 @@ import { authenticateWithTwitch, getRandomTopGames } from '$lib/rust-bindings/ig
 
 export const load = async () => {
 	if (typeof window === 'undefined') {
-		return {};
+		return { randomGames: [] };
 	}
 	const authenticateRes = await authenticateWithTwitch();
 	const randomGames = await getRandomTopGames(authenticateRes.access_token, 72);

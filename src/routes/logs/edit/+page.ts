@@ -1,7 +1,7 @@
 import { getLogById } from '$lib/rust-bindings/database';
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-import { authenticateWithTwitch, getGamesById } from '$lib/rust-bindings/igdb';
+import { authenticateWithTwitch, getGamesById, type IgdbGame } from '$lib/rust-bindings/igdb';
 import type { z } from 'zod';
 import { logSchema, type LogFormSchema, type StatusOption } from '$lib/schemas';
 import { superValidate } from 'sveltekit-superforms';
@@ -9,7 +9,7 @@ import { zod } from 'sveltekit-superforms/adapters';
 
 export const load: PageLoad = async ({ url }) => {
 	if (typeof window === 'undefined') {
-		return {};
+		return { igdbGame: { id: 0, name: '' } as IgdbGame, form: superValidate(zod(logSchema)) };
 	}
 	if (!url.searchParams.has('gameId')) {
 		error(404, 'Game ID is required');
