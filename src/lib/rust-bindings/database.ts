@@ -78,7 +78,8 @@ export async function getLogById(id: number) {
 }
 
 export async function updateLog(log: Omit<Log, 'created_at' | 'updated_at'>) {
-	const updatedLogId = await invoke('update_log', { log });
+	const { id: _, ...logData } = log;
+	const updatedLogId = await invoke('update_log', { id: log.id, logData });
 	return updatedLogId as number;
 }
 

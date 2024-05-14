@@ -323,6 +323,7 @@ pub fn update_log(
     log_data: LogData,
 ) -> Result<i32, Error> {
     let conn = state.lock().unwrap();
+    let completed: i32 = log_data.completed.try_into().unwrap();
     conn.execute(
         "UPDATE logs SET title = ?1, date = ?2, rating = ?3, notes = ?4, status = ?5, completed = ?6, minutes_played = ?7, igdb_id = ?8 WHERE id = ?9",
         [
@@ -331,7 +332,7 @@ pub fn update_log(
             log_data.rating.to_string(),
             log_data.notes,
             log_data.status,
-            log_data.completed.to_string(),
+            completed.to_string(),
             log_data.minutes_played.to_string(),
             log_data.igdb_id.to_string(),
             id.to_string(),
