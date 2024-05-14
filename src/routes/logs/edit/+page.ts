@@ -26,7 +26,6 @@ export const load: PageLoad = async ({ url }) => {
 			rating: log.rating,
 			notes: log.notes,
 			status: log.status as StatusOption,
-			finished: log.completed,
 			timePlayedMinutes: log.minutes_played % 60,
 			timePlayedHours: Math.floor(log.minutes_played / 60)
 		};

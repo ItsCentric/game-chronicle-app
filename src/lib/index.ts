@@ -10,7 +10,6 @@ export function logDataFromForm(igdbGame: IgdbGame, formData: z.infer<LogFormSch
 		rating: formData.rating,
 		date: formData.logDate.toISOString(),
 		notes: formData.notes ?? '',
-		completed: formData.finished,
 		minutes_played: formData.timePlayedHours * 60 + formData.timePlayedMinutes,
 		igdb_id: igdbGame.id
 	};

@@ -22,7 +22,6 @@ const logSchema = z.object({
 	rating: z.number(),
 	notes: z.string(),
 	status: z.string(),
-	completed: z.boolean(),
 	minutes_played: z.number(),
 	igdb_id: z.number()
 });

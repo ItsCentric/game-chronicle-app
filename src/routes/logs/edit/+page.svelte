@@ -13,7 +13,6 @@
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import { Button } from '$lib/components/ui/button';
-	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { logDataFromForm } from '$lib';
 	import { useMutation, useQueryClient } from '@sveltestack/svelte-query';
 	import { addExecutableDetails, addLog, updateLog } from '$lib/rust-bindings/database';
@@ -52,6 +51,7 @@
 						});
 					}
 				} else {
+					console.log(searchParams.get('id'), candidateLog);
 					toast.promise(
 						$updateLogMutation.mutateAsync({
 							id: parseInt(searchParams.get('id') as string),
@@ -164,13 +164,6 @@
 						placeholder="Log date"
 						max={today(getLocalTimeZone())}
 					/>
-				</Form.Control>
-				<Form.FieldErrors />
-			</Form.Field>
-			<Form.Field form={logForm} name="finished">
-				<Form.Control let:attrs>
-					<Form.Label class="mr-2">Finished?</Form.Label>
-					<Checkbox {...attrs} bind:checked={$logFormData.finished} />
 				</Form.Control>
 				<Form.FieldErrors />
 			</Form.Field>

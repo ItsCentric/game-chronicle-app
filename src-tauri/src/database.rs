@@ -29,7 +29,6 @@ pub struct Log {
     pub rating: i32,
     pub notes: String,
     pub status: String,
-    pub completed: bool,
     pub minutes_played: i32,
     pub igdb_id: i32,
 }
@@ -41,7 +40,6 @@ pub struct LogData {
     pub rating: i32,
     pub notes: String,
     pub status: String,
-    pub completed: bool,
     pub minutes_played: i32,
     pub igdb_id: i32,
 }
@@ -59,7 +57,6 @@ pub fn initialize_database() -> Result<rusqlite::Connection, Error> {
     rating INTEGER DEFAULT 0,
     notes TEXT,
     status TEXT,
-    completed BOOLEAN DEFAULT FALSE,
     minutes_played INTEGER DEFAULT 0,
     igdb_id INTEGER,
     CONSTRAINT valid_rating CHECK (rating >= 0 AND rating <= 5),
@@ -196,9 +193,8 @@ pub fn get_recent_logs(
                     rating: row.get(5)?,
                     notes: row.get(6)?,
                     status: row.get(7)?,
-                    completed: row.get(8)?,
-                    minutes_played: row.get(9)?,
-                    igdb_id: row.get(10)?,
+                    minutes_played: row.get(8)?,
+                    igdb_id: row.get(9)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -217,9 +213,8 @@ pub fn get_recent_logs(
                 rating: row.get(5)?,
                 notes: row.get(6)?,
                 status: row.get::<usize, String>(7)?.try_into().unwrap(),
-                completed: row.get(8)?,
-                minutes_played: row.get(9)?,
-                igdb_id: row.get(10)?,
+                minutes_played: row.get(8)?,
+                igdb_id: row.get(9)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -257,9 +252,8 @@ pub fn get_logs(
                 rating: row.get(5)?,
                 notes: row.get(6)?,
                 status: row.get(7)?,
-                completed: row.get(8)?,
-                minutes_played: row.get(9)?,
-                igdb_id: row.get(10)?,
+                minutes_played: row.get(8)?,
+                igdb_id: row.get(9)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -287,9 +281,8 @@ pub fn get_log_by_id(state: State<Mutex<Connection>>, id: i32) -> Result<Log, Er
             rating: row.get(5)?,
             notes: row.get(6)?,
             status: row.get(7)?,
-            completed: row.get(8)?,
-            minutes_played: row.get(9)?,
-            igdb_id: row.get(10)?,
+            minutes_played: row.get(8)?,
+            igdb_id: row.get(9)?,
         })
     })?;
     Ok(log)
@@ -298,16 +291,14 @@ pub fn get_log_by_id(state: State<Mutex<Connection>>, id: i32) -> Result<Log, Er
 #[tauri::command]
 pub fn add_log(state: State<Mutex<Connection>>, log_data: LogData) -> Result<i32, Error> {
     let conn = state.lock().unwrap();
-    let completed_int: i32 = log_data.completed.try_into().unwrap();
     conn.execute(
-        "INSERT INTO logs (title, date, rating, notes, status, completed, minutes_played, igdb_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO logs (title, date, rating, notes, status, minutes_played, igdb_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         [
             log_data.title,
             log_data.date,
             log_data.rating.to_string(),
             log_data.notes,
             log_data.status,
-            completed_int.to_string(),
             log_data.minutes_played.to_string(),
             log_data.igdb_id.to_string(),
         ],
@@ -323,16 +314,14 @@ pub fn update_log(
     log_data: LogData,
 ) -> Result<i32, Error> {
     let conn = state.lock().unwrap();
-    let completed: i32 = log_data.completed.try_into().unwrap();
     conn.execute(
-        "UPDATE logs SET title = ?1, date = ?2, rating = ?3, notes = ?4, status = ?5, completed = ?6, minutes_played = ?7, igdb_id = ?8 WHERE id = ?9",
+        "UPDATE logs SET title = ?1, date = ?2, rating = ?3, notes = ?4, status = ?5, minutes_played = ?6, igdb_id = ?7 WHERE id = ?8",
         [
             log_data.title,
             log_data.date,
             log_data.rating.to_string(),
             log_data.notes,
             log_data.status,
-            completed.to_string(),
             log_data.minutes_played.to_string(),
             log_data.igdb_id.to_string(),
             id.to_string(),

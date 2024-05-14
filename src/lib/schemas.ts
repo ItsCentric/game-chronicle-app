@@ -37,7 +37,6 @@ export const logSchema = z.object({
 		.default(new Date()),
 	status: z.enum(statusOptions),
 	notes: z.string().max(1000, { message: 'Notes must be less than 1000 characters' }).optional(),
-	finished: z.boolean().default(false),
 	timePlayedHours: z
 		.number({ invalid_type_error: 'Invalid value for hour' })
 		.min(0)
