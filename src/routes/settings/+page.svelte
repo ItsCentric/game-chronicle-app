@@ -63,7 +63,8 @@
 	const {
 		form: settingsFormData,
 		enhance: settingsFormEnhance,
-		validate: validateSettingsFormField
+		validate: validateSettingsFormField,
+		allErrors: settingsFormErrors
 	} = settingsForm;
 
 	async function newDirectoryDialog() {
@@ -230,7 +231,7 @@
 			{/if}
 		</section>
 		<div class="flex justify-end gap-2">
-			<Button type="submit">Save</Button>
+			<Button type="submit" disabled={$settingsFormErrors.length > 0}>Save</Button>
 			<Button
 				variant="destructive"
 				type="reset"
