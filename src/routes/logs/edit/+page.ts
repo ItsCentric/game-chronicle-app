@@ -9,16 +9,10 @@ import { zod } from 'sveltekit-superforms/adapters';
 
 export const load: PageLoad = async ({ url }) => {
 	if (typeof window === 'undefined') {
-		return { igdbGame: { id: 0, name: '' } as IgdbGame, form: superValidate(zod(logSchema)) };
+		return { igdbGame: { id: 0, title: '' } as IgdbGame, form: superValidate(zod(logSchema)) };
 	}
-	if (!url.searchParams.has('gameId')) {
-		error(404, 'Game ID is required');
-	}
-	const tokenRes = await authenticateWithTwitch();
 	const id = url.searchParams.get('id') as string;
-	const gameId = url.searchParams.get('gameId') as string;
 	const minutesPlayed = url.searchParams.get('minutesPlayed') as string;
-	const games = await getGamesById(tokenRes.access_token, [parseInt(gameId)]);
 	if (id) {
 		const log = await getLogById(parseInt(id));
 		const formData: z.infer<LogFormSchema> = {
@@ -30,11 +24,18 @@ export const load: PageLoad = async ({ url }) => {
 			timePlayedHours: Math.floor(log.minutes_played / 60)
 		};
 		const form = await superValidate(formData, zod(logSchema));
+		const { cover_id, ...game } = log.game;
 		return {
-			igdbGame: games[0],
+			igdbGame: cover_id ? { ...game, cover: { id: 0, cover_id } } : { ...game },
 			form
 		};
 	} else {
+		if (!url.searchParams.has('gameId')) {
+			error(404, 'Game ID is required');
+		}
+		const tokenRes = await authenticateWithTwitch();
+		const gameId = url.searchParams.get('gameId') as string;
+		const games = await getGamesById(tokenRes.access_token, [parseInt(gameId)]);
 		const form = await superValidate(zod(logSchema));
 		return {
 			igdbGame: games[0],

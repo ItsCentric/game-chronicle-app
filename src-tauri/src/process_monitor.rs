@@ -78,7 +78,7 @@ impl ProcessMonitor {
                             "game-stopped",
                             &GameStoppedPayload {
                                 name: details.name,
-                                igdb_id: details.igdb_id,
+                                igdb_id: details.game_id,
                                 minutes_played: details.minutes_played + minutes_played as i32,
                             },
                         )?;

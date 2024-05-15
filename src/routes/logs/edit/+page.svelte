@@ -47,7 +47,7 @@
 					if (executableName && minutesPlayed) {
 						await addExecutableDetails({
 							name: executableName,
-							igdb_id: data.igdbGame.id,
+							game_id: data.igdbGame.id,
 							minutes_played: parseInt(minutesPlayed)
 						});
 					}
@@ -87,14 +87,14 @@
 	<div class="mb-4">
 		<h1 class="text-3xl font-heading font-bold">{isEditing ? 'Edit' : 'New'} Log</h1>
 		<p class="text-gray-500 text-lg font-heading">
-			What was it like playing {data.igdbGame.name}?
+			What was it like playing {data.igdbGame.title}?
 		</p>
 	</div>
 	<form method="post" class="grid-cols-[25%,_1fr] grid gap-4" id="logForm" use:logEnhance>
 		<div>
 			<img
 				src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' +
-					data.igdbGame.cover?.image_id +
+					data.igdbGame.cover?.cover_id +
 					'.jpg'}
 				alt="cover"
 				class="aspect-[3/4] rounded-3xl mb-4 w-full"
@@ -113,7 +113,7 @@
 		</div>
 		<div class="flex flex-col gap-2">
 			<div>
-				<p class="text-2xl font-heading font-semibold">{data.igdbGame.name}</p>
+				<p class="text-2xl font-heading font-semibold">{data.igdbGame.title}</p>
 				<Form.Fieldset form={logForm} name="rating">
 					<RadioGroup.Root
 						value={`${$logFormData.rating}`}

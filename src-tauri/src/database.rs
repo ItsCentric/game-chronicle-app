@@ -1,4 +1,4 @@
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use std::sync::Mutex;
 
 use crate::Error;
@@ -8,7 +8,7 @@ use tauri::State;
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ExecutableDetails {
     pub name: String,
-    pub igdb_id: i32,
+    pub game_id: i32,
     pub minutes_played: i32,
 }
 
@@ -24,24 +24,39 @@ pub struct Log {
     pub id: i32,
     pub created_at: String,
     pub updated_at: String,
-    pub title: String,
     pub date: String,
     pub rating: i32,
     pub notes: String,
     pub status: String,
     pub minutes_played: i32,
-    pub igdb_id: i32,
+    pub game: Game,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct LogData {
-    pub title: String,
     pub date: String,
     pub rating: i32,
     pub notes: String,
     pub status: String,
     pub minutes_played: i32,
-    pub igdb_id: i32,
+    pub game: Game,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct LogUpdateData {
+    id: i32,
+    pub date: String,
+    pub rating: i32,
+    pub notes: String,
+    pub status: String,
+    pub minutes_played: i32,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct Game {
+    pub id: i32,
+    pub title: String,
+    pub cover_id: String,
 }
 
 pub fn initialize_database() -> Result<rusqlite::Connection, Error> {
@@ -50,15 +65,15 @@ pub fn initialize_database() -> Result<rusqlite::Connection, Error> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id INTEGER NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    title TEXT,
     date TEXT DEFAULT CURRENT_TIMESTAMP,
     rating INTEGER DEFAULT 0,
     notes TEXT,
     status TEXT,
     minutes_played INTEGER DEFAULT 0,
-    igdb_id INTEGER,
+    FOREIGN KEY (game_id) REFERENCES logged_games(id),
     CONSTRAINT valid_rating CHECK (rating >= 0 AND rating <= 5),
     CONSTRAINT valid_status CHECK (status IN ('wishlist', 'backlog', 'playing', 'completed', 'played', 'abandoned', 'retired'))
     CONSTRAINT valid_date CHECK (date(date) IS NOT NULL)
@@ -80,10 +95,19 @@ CREATE TABLE IF NOT EXISTS executable_details (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     executable_name TEXT,
-    igdb_id INTEGER,
+    game_id INTEGER NOT NULL,
     minutes_played INTEGER DEFAULT 0,
+    FOREIGN KEY (game_id) REFERENCES logged_games(id),
     CONSTRAINT unique_executable_name UNIQUE (executable_name)
-);",
+);
+
+CREATE TABLE IF NOT EXISTS logged_games (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL,
+    cover_id TEXT,
+    UNIQUE (title)
+);
+",
     )?;
     Ok(conn)
 }
@@ -93,11 +117,11 @@ pub fn get_executable_details(
     executable_name: &str,
 ) -> Result<ExecutableDetails, Error> {
     let mut stmt =
-        conn.prepare("SELECT name, igdb_id, minutes_played FROM executables WHERE name = ?")?;
+        conn.prepare("SELECT name, game_id, minutes_played FROM executables WHERE name = ?")?;
     let executable = stmt.query_row(&[executable_name], |row| {
         Ok(ExecutableDetails {
             name: row.get(0)?,
-            igdb_id: row.get(1)?,
+            game_id: row.get(1)?,
             minutes_played: row.get(2)?,
         })
     })?;
@@ -181,40 +205,46 @@ pub fn get_recent_logs(
 ) -> Result<Vec<Log>, Error> {
     let conn = state.lock().unwrap();
     if filter.len() == 0 {
-        let mut stmt = conn.prepare("SELECT * FROM logs ORDER BY date DESC LIMIT ?")?;
+        let mut stmt = conn.prepare("SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id ORDER BY date DESC LIMIT ?")?;
         let logs = stmt
             .query_map([amount], |row| {
                 Ok(Log {
                     id: row.get(0)?,
-                    created_at: row.get(1)?,
-                    updated_at: row.get(2)?,
-                    title: row.get(3)?,
+                    created_at: row.get(2)?,
+                    updated_at: row.get(3)?,
                     date: row.get(4)?,
                     rating: row.get(5)?,
                     notes: row.get(6)?,
                     status: row.get(7)?,
                     minutes_played: row.get(8)?,
-                    igdb_id: row.get(9)?,
+                    game: Game {
+                        id: row.get(9)?,
+                        title: row.get(10)?,
+                        cover_id: row.get(11)?,
+                    },
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
         return Ok(logs);
     }
     let mut stmt =
-        conn.prepare("SELECT * FROM logs WHERE status IN (?) ORDER BY date DESC LIMIT ?")?;
+        conn.prepare("SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id WHERE status IN (?) ORDER BY date DESC LIMIT ?")?;
     let logs = stmt
         .query_map((filter.join(","), amount), |row| {
             Ok(Log {
                 id: row.get(0)?,
-                created_at: row.get(1)?,
-                updated_at: row.get(2)?,
-                title: row.get(3)?,
+                created_at: row.get(2)?,
+                updated_at: row.get(3)?,
                 date: row.get(4)?,
                 rating: row.get(5)?,
                 notes: row.get(6)?,
-                status: row.get::<usize, String>(7)?.try_into().unwrap(),
+                status: row.get(7)?,
                 minutes_played: row.get(8)?,
-                igdb_id: row.get(9)?,
+                game: Game {
+                    id: row.get(9)?,
+                    title: row.get(10)?,
+                    cover_id: row.get(11)?,
+                },
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -236,7 +266,7 @@ pub fn get_logs(
         .join(",");
     let mut stmt = conn.prepare(
         format!(
-            "SELECT * FROM logs WHERE status IN ({}) ORDER BY ? {}",
+            "SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id WHERE status IN ({}) ORDER BY ? {}",
             joined_filter, sort_order
         )
         .as_str(),
@@ -245,15 +275,18 @@ pub fn get_logs(
         .query_map([sort_by], |row| {
             Ok(Log {
                 id: row.get(0)?,
-                created_at: row.get(1)?,
-                updated_at: row.get(2)?,
-                title: row.get(3)?,
+                created_at: row.get(2)?,
+                updated_at: row.get(3)?,
                 date: row.get(4)?,
                 rating: row.get(5)?,
                 notes: row.get(6)?,
                 status: row.get(7)?,
                 minutes_played: row.get(8)?,
-                igdb_id: row.get(9)?,
+                game: Game {
+                    id: row.get(9)?,
+                    title: row.get(10)?,
+                    cover_id: row.get(11)?,
+                },
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -270,19 +303,24 @@ pub fn delete_log(state: State<Mutex<Connection>>, id: i32) -> Result<i32, Error
 #[tauri::command]
 pub fn get_log_by_id(state: State<Mutex<Connection>>, id: i32) -> Result<Log, Error> {
     let conn = state.lock().unwrap();
-    let mut stmt = conn.prepare("SELECT * FROM logs WHERE id = ?")?;
+    let mut stmt = conn.prepare(
+        "SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id WHERE logs.id = ?",
+    )?;
     let log = stmt.query_row([id], |row| {
         Ok(Log {
             id: row.get(0)?,
-            created_at: row.get(1)?,
-            updated_at: row.get(2)?,
-            title: row.get(3)?,
+            created_at: row.get(2)?,
+            updated_at: row.get(3)?,
             date: row.get(4)?,
             rating: row.get(5)?,
             notes: row.get(6)?,
             status: row.get(7)?,
             minutes_played: row.get(8)?,
-            igdb_id: row.get(9)?,
+            game: Game {
+                id: row.get(9)?,
+                title: row.get(10)?,
+                cover_id: row.get(11)?,
+            },
         })
     })?;
     Ok(log)
@@ -291,16 +329,33 @@ pub fn get_log_by_id(state: State<Mutex<Connection>>, id: i32) -> Result<Log, Er
 #[tauri::command]
 pub fn add_log(state: State<Mutex<Connection>>, log_data: LogData) -> Result<i32, Error> {
     let conn = state.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT id FROM logged_games WHERE id = ?")?;
+    let game = stmt
+        .query_row([log_data.game.id.to_string()], |row| Ok(row.get(0)?))
+        .optional()?;
+    let game_id = match game {
+        Some(id) => id,
+        None => {
+            conn.execute(
+                "INSERT INTO logged_games (id, title, cover_id) VALUES (?1, ?2, ?3)",
+                [
+                    log_data.game.id.to_string(),
+                    log_data.game.title,
+                    log_data.game.cover_id,
+                ],
+            )?;
+            conn.last_insert_rowid() as i32
+        }
+    };
     conn.execute(
-        "INSERT INTO logs (title, date, rating, notes, status, minutes_played, igdb_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT INTO logs (game_id, date, rating, notes, status, minutes_played) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         [
-            log_data.title,
+            game_id.to_string(),
             log_data.date,
             log_data.rating.to_string(),
             log_data.notes,
             log_data.status,
             log_data.minutes_played.to_string(),
-            log_data.igdb_id.to_string(),
         ],
     )?;
     let id = conn.last_insert_rowid() as i32;
@@ -308,26 +363,20 @@ pub fn add_log(state: State<Mutex<Connection>>, log_data: LogData) -> Result<i32
 }
 
 #[tauri::command]
-pub fn update_log(
-    state: State<Mutex<Connection>>,
-    id: i32,
-    log_data: LogData,
-) -> Result<i32, Error> {
+pub fn update_log(state: State<Mutex<Connection>>, log_data: LogUpdateData) -> Result<i32, Error> {
     let conn = state.lock().unwrap();
     conn.execute(
-        "UPDATE logs SET title = ?1, date = ?2, rating = ?3, notes = ?4, status = ?5, minutes_played = ?6, igdb_id = ?7 WHERE id = ?8",
+        "UPDATE logs SET date = ?1, rating = ?2, notes = ?3, status = ?4, minutes_played = ?5 WHERE id = ?6",
         [
-            log_data.title,
             log_data.date,
             log_data.rating.to_string(),
             log_data.notes,
             log_data.status,
             log_data.minutes_played.to_string(),
-            log_data.igdb_id.to_string(),
-            id.to_string(),
+            log_data.id.to_string(),
         ],
     )?;
-    Ok(id)
+    Ok(log_data.id)
 }
 
 #[tauri::command]
@@ -340,7 +389,7 @@ pub fn add_executable_details(
         "INSERT INTO executable_details (executable_name, igdb_id, minutes_played) VALUES (?1, ?2, ?3)",
         [
             executable_details.name,
-            executable_details.igdb_id.to_string(),
+            executable_details.game_id.to_string(),
             executable_details.minutes_played.to_string(),
         ],
     )?;

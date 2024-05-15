@@ -17,14 +17,16 @@ pub struct AccessTokenResponse {
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
 pub struct IgdbGame {
     pub id: i32,
-    pub name: String,
+    #[serde(rename(deserialize = "name"))]
+    pub title: String,
     pub cover: Option<Cover>,
 }
 
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
 pub struct Cover {
     pub id: i32,
-    pub image_id: String,
+    #[serde(rename(deserialize = "image_id"))]
+    pub cover_id: String,
 }
 
 #[derive(serde::Serialize, Debug, serde::Deserialize)]

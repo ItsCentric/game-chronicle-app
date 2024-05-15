@@ -21,9 +21,9 @@
 			const accessTokenResponse = await authenticateWithTwitch();
 			const recentLogs = await getRecentLogs(
 				6,
-				statusOptions.filter((status) => status != 'Wishlist')
+				statusOptions.filter((status) => status != 'wishlist')
 			);
-			const recentGameIds = recentLogs.map((log) => log.igdb_id);
+			const recentGameIds = recentLogs.map((log) => log.game.id);
 			const games = await getGamesById(accessTokenResponse.access_token, recentGameIds);
 			const sortedGames = [];
 			for (let i = 0; i < recentGameIds.length; i++) {
@@ -40,7 +40,7 @@
 		'similarGames',
 		async () => {
 			const logs = await getLogs('date', 'desc', statusOptions as unknown as StatusOption[]);
-			const gameIds = logs.map((log) => log.igdb_id);
+			const gameIds = logs.map((log) => log.game.id);
 			const accessTokenResponse = await authenticateWithTwitch();
 			const similarGames = await getSimilarGames(accessTokenResponse.access_token, gameIds);
 			return similarGames;
