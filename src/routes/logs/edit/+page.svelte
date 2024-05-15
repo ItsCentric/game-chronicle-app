@@ -52,7 +52,6 @@
 						});
 					}
 				} else {
-					console.log(searchParams.get('id'), candidateLog);
 					toast.promise(
 						$updateLogMutation.mutateAsync({
 							id: parseInt(searchParams.get('id') as string),

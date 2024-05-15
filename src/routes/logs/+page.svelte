@@ -88,9 +88,6 @@
 				return 0;
 		}
 	});
-	$: console.log('filtered logs', filteredLogs);
-	$: console.log('logs', data.logs);
-	$: console.log('query logs', $logsQuery.data);
 	$: start = (currentLogPage - 1) * 18;
 	$: end = currentLogPage * 18;
 </script>
