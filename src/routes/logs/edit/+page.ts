@@ -37,6 +37,8 @@ export const load: PageLoad = async ({ url }) => {
 		const gameId = url.searchParams.get('gameId') as string;
 		const games = await getGamesById(tokenRes.access_token, [parseInt(gameId)]);
 		const form = await superValidate(zod(logSchema));
+		form.data.timePlayedHours = 0;
+		form.data.timePlayedMinutes = 0;
 		return {
 			igdbGame: games[0],
 			form
