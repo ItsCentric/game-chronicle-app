@@ -9,13 +9,13 @@ export const sortFormSchema = z.object({
 });
 
 export const statusOptions = [
-	'Wishlist',
-	'Backlog',
-	'Playing',
-	'Completed',
-	'Played',
-	'Abandoned',
-	'Retired'
+	'wishlist',
+	'backlog',
+	'playing',
+	'completed',
+	'played',
+	'abandoned',
+	'retired'
 ] as const;
 export type StatusOption = (typeof statusOptions)[number];
 

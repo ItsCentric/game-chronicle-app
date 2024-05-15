@@ -22,6 +22,7 @@
 	import type { PageData } from './$types';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
+	import { toTitleCase } from '$lib/utils';
 
 	type GameLog = Log & { game: IgdbGame; status: StatusOption };
 
@@ -57,13 +58,13 @@
 		{ initialData: data.logs }
 	);
 	const logStatusColorMap: Record<StatusOption, string> = {
-		Backlog: 'bg-gray-500',
-		Wishlist: 'bg-blue-500',
-		Playing: 'bg-green-500',
-		Played: 'bg-green-500',
-		Completed: 'bg-green-500',
-		Abandoned: 'bg-red-500',
-		Retired: 'bg-yellow-500'
+		backlog: 'bg-gray-500',
+		wishlist: 'bg-blue-500',
+		playing: 'bg-green-500',
+		played: 'bg-green-500',
+		completed: 'bg-green-500',
+		abandoned: 'bg-red-500',
+		retired: 'bg-yellow-500'
 	};
 
 	function logStatusColor(status: StatusOption) {
@@ -230,7 +231,7 @@
 						<span
 							class={`absolute left-2 shadow-black shadow text-black bottom-2 rounded-2xl px-2 py-1 text-sm pointer-events-none ${logStatusColor(
 								gameLog.status
-							)}`}>{gameLog.status}</span
+							)}`}>{toTitleCase(gameLog.status)}</span
 						>
 					</GameCard>
 				{/each}

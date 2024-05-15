@@ -17,6 +17,7 @@
 	import { useMutation, useQueryClient } from '@sveltestack/svelte-query';
 	import { addExecutableDetails, addLog, updateLog } from '$lib/rust-bindings/database';
 	import type { PageData } from './$types';
+	import { toTitleCase } from '$lib/utils';
 
 	export let data: PageData;
 	const searchParams = $page.url.searchParams;
@@ -102,7 +103,7 @@
 				<Form.Control let:attrs>
 					<Combobox
 						{...attrs}
-						options={statusOptions.map((status) => ({ value: status, label: status }))}
+						options={statusOptions.map((status) => ({ value: status, label: toTitleCase(status) }))}
 						placeholder="Pick a status"
 						emptyText="No status found!"
 						bind:value={$logFormData.status}
