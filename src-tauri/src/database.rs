@@ -71,9 +71,12 @@ pub fn initialize_database(app_handle: tauri::AppHandle) -> Result<rusqlite::Con
         + "/game-chronicle";
     match fs::File::open(data_dir.clone()) {
         Ok(_) => (),
-        Err(_) => {
-            fs::create_dir(data_dir.clone())?;
-        }
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::NotFound => {
+                fs::create_dir(data_dir.clone())?;
+            }
+            _ => {}
+        },
     }
     let conn = Connection::open(data_dir.as_str().to_owned() + "/data.db")?;
     conn.execute_batch(

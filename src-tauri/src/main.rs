@@ -83,7 +83,7 @@ fn main() {
             app.manage(std::sync::Mutex::new(conn));
             let config_path = app.path().config_dir().unwrap();
             let user_settings: UserSettings;
-            match fs::File::open(config_path.join("/game-chronicle/settings.toml")) {
+            match fs::File::open(config_path.join("game-chronicle/settings.toml")) {
                 Ok(mut file) => {
                     let mut file_contents = String::new();
                     file.read_to_string(&mut file_contents).unwrap();
@@ -101,18 +101,21 @@ fn main() {
                         twitch_client_secret: None,
                     };
                     let settings_str = toml::to_string(&settings).unwrap();
-                    match fs::create_dir(config_path.join("/game-chronicle")) {
+                    match fs::create_dir(config_path.join("game-chronicle")) {
                         Ok(_) => {}
                         Err(e) => match e.kind() {
                             std::io::ErrorKind::PermissionDenied => {
                                 app.dialog().message("Could not create needed files. Please run the application as an administrator.").title("Permission denied").kind(tauri_plugin_dialog::MessageDialogKind::Error).blocking_show();
                                 app.handle().exit(1);
                             }
-                            _ => {}
+                            std::io::ErrorKind::AlreadyExists => {},
+                            e => {
+                                panic!("{}", e)
+                            }
                         },
                     }
                     fs::write(
-                        config_path.join("/game-chronicle/settings.toml"),
+                        config_path.join("game-chronicle/settings.toml"),
                         settings_str,
                     )
                     .unwrap();
@@ -178,7 +181,7 @@ fn main() {
 #[tauri::command]
 fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, Error> {
     let config_path = app_handle.path().config_dir().unwrap();
-    let mut file = fs::File::open(config_path.join("/game-chronicle/settings.toml"))?;
+    let mut file = fs::File::open(config_path.join("game-chronicle/settings.toml"))?;
     let mut file_contents = String::new();
     file.read_to_string(&mut file_contents)?;
     Ok(toml::from_str::<UserSettings>(&file_contents)?)
@@ -192,7 +195,7 @@ fn save_user_settings(
     let config_path = app_handle.path().config_dir().unwrap();
     let settings_str = toml::to_string(&user_settings)?;
     fs::write(
-        config_path.join("/game-chronicle/settings.toml"),
+        config_path.join("game-chronicle/settings.toml"),
         settings_str,
     )?;
     Ok(user_settings)

@@ -66,7 +66,10 @@ pub async fn authenticate_with_twitch(
     app_handle: tauri::AppHandle,
 ) -> Result<AccessTokenResponse, Error> {
     let client = Client::new();
-    let settings_path = app_handle.path().config_dir()?.join("settings.toml");
+    let settings_path = app_handle
+        .path()
+        .config_dir()?
+        .join("game-chronicle/settings.toml");
     let mut contents = String::new();
     let mut file = std::fs::File::open(settings_path)?;
     file.read_to_string(&mut contents).unwrap();
@@ -111,7 +114,10 @@ pub async fn get_games_by_id(
         &"games".to_string(),
         &access_token,
         body,
-        app_handle.path().config_dir()?.join("settings.toml"),
+        app_handle
+            .path()
+            .config_dir()?
+            .join("game-chronicle/settings.toml"),
     )
     .await;
     serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
@@ -138,7 +144,10 @@ pub async fn get_similar_games(
         &"games".to_string(),
         &access_token,
         body,
-        app_handle.path().config_dir()?.join("settings.toml"),
+        app_handle
+            .path()
+            .config_dir()?
+            .join("game-chronicle/settings.toml"),
     )
     .await;
     serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
@@ -160,7 +169,10 @@ pub async fn get_random_top_games(
         &"games".to_string(),
         &access_token,
         body,
-        app_handle.path().config_dir()?.join("settings.toml"),
+        app_handle
+            .path()
+            .config_dir()?
+            .join("game-chronicle/settings.toml"),
     )
     .await;
     serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
@@ -180,7 +192,10 @@ pub async fn search_game(
         &"games".to_string(),
         &access_token,
         body,
-        app_handle.path().config_dir()?.join("settings.toml"),
+        app_handle
+            .path()
+            .config_dir()?
+            .join("game-chronicle/settings.toml"),
     )
     .await;
     serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
