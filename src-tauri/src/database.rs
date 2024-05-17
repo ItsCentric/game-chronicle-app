@@ -1,9 +1,9 @@
 use rusqlite::{Connection, OptionalExtension};
-use std::sync::Mutex;
+use std::{fs, sync::Mutex};
 
 use crate::Error;
 use chrono::{Datelike, Local, Months};
-use tauri::State;
+use tauri::{Manager, State};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ExecutableDetails {
@@ -59,9 +59,23 @@ pub struct Game {
     pub cover_id: String,
 }
 
-pub fn initialize_database() -> Result<rusqlite::Connection, Error> {
-    let tmp_dir = std::env::temp_dir();
-    let conn = Connection::open(tmp_dir.to_str().unwrap().to_owned() + "/logs.db")?;
+pub fn initialize_database(app_handle: tauri::AppHandle) -> Result<rusqlite::Connection, Error> {
+    let data_dir = app_handle
+        .path()
+        .data_dir()
+        .unwrap()
+        .to_str()
+        .to_owned()
+        .unwrap()
+        .to_owned()
+        + "/game-chronicle";
+    match fs::File::open(data_dir.clone()) {
+        Ok(_) => (),
+        Err(_) => {
+            fs::create_dir(data_dir.clone())?;
+        }
+    }
+    let conn = Connection::open(data_dir.as_str().to_owned() + "/data.db")?;
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

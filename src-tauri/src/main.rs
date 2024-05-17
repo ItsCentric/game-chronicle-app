@@ -4,6 +4,7 @@
 use std::{fs, io::Read, path::PathBuf, thread};
 
 use serde::Deserialize;
+use tauri_plugin_dialog::DialogExt;
 
 use std::path::Path;
 
@@ -78,10 +79,11 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            let _conn = database::initialize_database().unwrap();
+            let conn = database::initialize_database(app.handle().clone()).unwrap();
+            app.manage(std::sync::Mutex::new(conn));
             let config_path = app.path().config_dir().unwrap();
             let user_settings: UserSettings;
-            match fs::File::open(config_path.join("settings.toml")) {
+            match fs::File::open(config_path.join("/game-chronicle/settings.toml")) {
                 Ok(mut file) => {
                     let mut file_contents = String::new();
                     file.read_to_string(&mut file_contents).unwrap();
@@ -99,7 +101,21 @@ fn main() {
                         twitch_client_secret: None,
                     };
                     let settings_str = toml::to_string(&settings).unwrap();
-                    fs::write(config_path.join("settings.toml"), settings_str).unwrap();
+                    match fs::create_dir(config_path.join("/game-chronicle")) {
+                        Ok(_) => {}
+                        Err(e) => match e.kind() {
+                            std::io::ErrorKind::PermissionDenied => {
+                                app.dialog().message("Could not create needed files. Please run the application as an administrator.").title("Permission denied").kind(tauri_plugin_dialog::MessageDialogKind::Error).blocking_show();
+                                app.handle().exit(1);
+                            }
+                            _ => {}
+                        },
+                    }
+                    fs::write(
+                        config_path.join("/game-chronicle/settings.toml"),
+                        settings_str,
+                    )
+                    .unwrap();
                     user_settings = settings;
                 }
             }
@@ -137,9 +153,6 @@ fn main() {
             handle.join().unwrap();
             Ok(())
         })
-        .manage(std::sync::Mutex::new(
-            database::initialize_database().unwrap(),
-        ))
         .invoke_handler(tauri::generate_handler![
             database::get_current_username,
             database::get_dashboard_statistics,
@@ -165,7 +178,7 @@ fn main() {
 #[tauri::command]
 fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, Error> {
     let config_path = app_handle.path().config_dir().unwrap();
-    let mut file = fs::File::open(config_path.join("settings.toml"))?;
+    let mut file = fs::File::open(config_path.join("/game-chronicle/settings.toml"))?;
     let mut file_contents = String::new();
     file.read_to_string(&mut file_contents)?;
     Ok(toml::from_str::<UserSettings>(&file_contents)?)
@@ -178,6 +191,9 @@ fn save_user_settings(
 ) -> Result<UserSettings, Error> {
     let config_path = app_handle.path().config_dir().unwrap();
     let settings_str = toml::to_string(&user_settings)?;
-    fs::write(config_path.join("settings.toml"), settings_str)?;
+    fs::write(
+        config_path.join("/game-chronicle/settings.toml"),
+        settings_str,
+    )?;
     Ok(user_settings)
 }
