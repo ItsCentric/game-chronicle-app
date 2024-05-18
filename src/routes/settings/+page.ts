@@ -10,7 +10,7 @@ export const load = async () => {
 	const userSettings = await getUserSettings();
 	const formData = {
 		username: userSettings.username,
-		executablePaths: userSettings.executable_paths.split(';'),
+		executablePaths: userSettings.executable_paths ? userSettings.executable_paths.split(';') : [],
 		processMonitoringEnabled: userSettings.process_monitoring.enabled,
 		processMonitoringDirectoryDepth: userSettings.process_monitoring.directory_depth,
 		twitchClientId: userSettings.twitch_client_id ?? '',

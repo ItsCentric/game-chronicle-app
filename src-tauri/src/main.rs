@@ -54,7 +54,7 @@ impl From<&str> for Error {
 #[derive(serde::Serialize, Debug, Deserialize)]
 pub struct UserSettings {
     username: String,
-    executable_paths: String,
+    executable_paths: Option<String>,
     process_monitoring: ProcessMonitoringSettings,
     twitch_client_id: Option<String>,
     twitch_client_secret: Option<String>,
@@ -87,7 +87,7 @@ fn main() {
                 Err(_) => {
                     let settings = UserSettings {
                         username: whoami::username(),
-                        executable_paths: "".to_string(),
+                        executable_paths: None,
                         process_monitoring: ProcessMonitoringSettings {
                             enabled: false,
                             directory_depth: 3,
@@ -111,12 +111,13 @@ fn main() {
                     saved_settings
                 }
             };
-            if !user_settings.process_monitoring.enabled {
+            if !user_settings.process_monitoring.enabled || user_settings.executable_paths.is_none() {
                 return Ok(());
             }
-            let executable_paths = user_settings.executable_paths.split(";");
+            let executable_paths = user_settings.executable_paths.expect("None check to not fail");
+            let executable_paths_vec = executable_paths.split(";");
             let mut paths_to_monitor: Vec<PathBuf> = Vec::new();
-            for path in executable_paths {
+            for path in executable_paths_vec {
                 let path = Path::new(path);
                 if path.is_dir() {
                     let walker = walkdir::WalkDir::new(path)
