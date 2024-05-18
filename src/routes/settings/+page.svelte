@@ -11,7 +11,7 @@
 	import Input from '$lib/components/ui/input/input.svelte';
 	import { useMutation, useQuery, useQueryClient } from '@sveltestack/svelte-query';
 	import { toast } from 'svelte-sonner';
-	import { saveUserSettings } from '$lib/rust-bindings/main';
+	import { saveUserSettings } from '$lib/rust-bindings/helpers';
 	import { getCurrentUsername } from '$lib/rust-bindings/database';
 	import { open } from '@tauri-apps/plugin-dialog';
 	import { relaunch } from '@tauri-apps/plugin-process';

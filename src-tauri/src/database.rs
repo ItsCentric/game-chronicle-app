@@ -1,7 +1,7 @@
 use rusqlite::{Connection, OptionalExtension};
-use std::{fs, sync::Mutex};
+use std::sync::Mutex;
 
-use crate::Error;
+use crate::{helpers, Error};
 use chrono::{Datelike, Local, Months};
 use tauri::{Manager, State};
 
@@ -60,25 +60,9 @@ pub struct Game {
 }
 
 pub fn initialize_database(app_handle: tauri::AppHandle) -> Result<rusqlite::Connection, Error> {
-    let data_dir = app_handle
-        .path()
-        .data_dir()
-        .unwrap()
-        .to_str()
-        .to_owned()
-        .unwrap()
-        .to_owned()
-        + "/game-chronicle";
-    match fs::File::open(data_dir.clone()) {
-        Ok(_) => (),
-        Err(e) => match e.kind() {
-            std::io::ErrorKind::NotFound => {
-                fs::create_dir(data_dir.clone())?;
-            }
-            _ => {}
-        },
-    }
-    let conn = Connection::open(data_dir.as_str().to_owned() + "/data.db")?;
+    let data_dir = app_handle.path().data_dir()?.join("game-chronicle");
+    helpers::create_dir_if_not_exists(data_dir.as_path())?;
+    let conn = Connection::open(data_dir.join("data.db"))?;
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -143,17 +127,6 @@ pub fn get_executable_details(
         })
     })?;
     Ok(executable)
-}
-
-#[tauri::command]
-pub fn get_current_username(state: State<Mutex<Connection>>) -> Result<String, Error> {
-    let conn = state.lock().unwrap();
-    let mut stmt = conn.prepare("SELECT username FROM user_settings")?;
-    match stmt.query_row([], |row| Ok(row.get(0)?)) {
-        Ok(username) => Ok(username),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(whoami::username()),
-        Err(e) => Err(Error::from(e)),
-    }
 }
 
 #[tauri::command]

@@ -1,4 +1,4 @@
-import { getUserSettings } from '$lib/rust-bindings/main';
+import { getUserSettings } from '$lib/rust-bindings/helpers';
 import { settingsSchema } from '$lib/schemas';
 import { superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';

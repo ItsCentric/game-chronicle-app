@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 const userSettingsSchema = z.object({
 	username: z.string(),
-	executable_paths: z.string(),
+	executable_paths: z.string().nullable(),
 	process_monitoring: z.object({
 		enabled: z.boolean(),
 		directory_depth: z.number()
@@ -22,4 +22,8 @@ export async function getUserSettings() {
 export async function saveUserSettings(settings: UserSettings) {
 	const newUserSettings = await invoke('save_user_settings', { userSettings: settings });
 	return userSettingsSchema.parse(newUserSettings);
+}
+export async function getCurrentUsername() {
+	const username = await invoke('get_current_username');
+	return username as string;
 }

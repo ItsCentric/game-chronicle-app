@@ -1,10 +1,6 @@
 import { goto } from '$app/navigation';
-import {
-	getCurrentUsername,
-	getDashboardStatistics,
-	getLogs,
-	getRecentLogs
-} from '$lib/rust-bindings/database';
+import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindings/database';
+import { getCurrentUsername } from '$lib/rust-bindings/helpers';
 import { authenticateWithTwitch, getSimilarGames } from '$lib/rust-bindings/igdb';
 import { statusOptions, type StatusOption } from '$lib/schemas';
 
