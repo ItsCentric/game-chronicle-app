@@ -8,11 +8,6 @@ const dashboardStatisticsSchema = z.object({
 	total_games_completed: z.number()
 });
 
-const dashboardStatisticsResponseSchema = z.tuple([
-	dashboardStatisticsSchema,
-	dashboardStatisticsSchema
-]);
-
 const gameSchema = z.object({
 	id: z.number(),
 	title: z.string(),
@@ -50,9 +45,12 @@ export async function getCurrentUsername() {
 	return username as string;
 }
 
-export async function getDashboardStatistics() {
-	const statistics = await invoke('get_dashboard_statistics');
-	return dashboardStatisticsResponseSchema.parse(statistics);
+export async function getDashboardStatistics(startDate: Date, endDate: Date) {
+	const statistics = await invoke('get_dashboard_statistics', {
+		startDate: startDate.toISOString(),
+		endDate: endDate.toISOString()
+	});
+	return dashboardStatisticsSchema.parse(statistics);
 }
 
 export async function getRecentLogs(amount: number, filter: StatusOption[]) {

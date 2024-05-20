@@ -12,9 +12,29 @@
 	import type { PageData } from './$types';
 
 	export let data: PageData;
-	const dashboardStatisticsQuery = useQuery('dashboardStatistics', getDashboardStatistics, {
-		initialData: data.dashboardStatistics
-	});
+	const dashboardStatisticsQuery = useQuery(
+		'dashboardStatistics',
+		async () => {
+			const now = new Date();
+			const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+			const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+			const thisMonthStatistics = await getDashboardStatistics(endOfLastMonth, startOfNextMonth);
+			const startOfLastMonth = new Date(
+				endOfLastMonth.getFullYear(),
+				endOfLastMonth.getMonth() - 1,
+				1
+			);
+			const lastMonthStatistics = await getDashboardStatistics(
+				new Date(startOfLastMonth.getFullYear(), startOfLastMonth.getMonth(), 0),
+				new Date(startOfNextMonth.getFullYear(), startOfNextMonth.getMonth() - 1, 1)
+			);
+
+			return [lastMonthStatistics, thisMonthStatistics];
+		},
+		{
+			initialData: data.dashboardStatistics
+		}
+	);
 	const recentLogsQuery = useQuery(
 		'recentLogs',
 		async () => {
@@ -97,7 +117,7 @@
 				>Couldn't get your statistics</ErrorMessage
 			>
 		{:else}
-			{@const [thisMonthStatistics, lastMonthStatistics] = $dashboardStatisticsQuery.data}
+			{@const [lastMonthStatistics, thisMonthStatistics] = $dashboardStatisticsQuery.data}
 			{@const hoursPlayed = Math.floor(thisMonthStatistics.total_minutes_played / 60)}
 			<Statistic
 				lastMonthStat={lastMonthStatistics.total_games_played}

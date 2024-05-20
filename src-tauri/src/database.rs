@@ -2,7 +2,6 @@ use rusqlite::{Connection, OptionalExtension};
 use std::sync::Mutex;
 
 use crate::{helpers, Error};
-use chrono::{Datelike, Local, Months};
 use tauri::{Manager, State};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -59,6 +58,8 @@ pub struct Game {
     pub cover_id: String,
 }
 
+type SafeConnection = Mutex<Connection>;
+
 pub fn initialize_database(app_handle: tauri::AppHandle) -> Result<rusqlite::Connection, Error> {
     let data_dir = app_handle.path().data_dir()?.join("game-chronicle");
     helpers::create_dir_if_not_exists(data_dir.as_path())?;
@@ -66,6 +67,24 @@ pub fn initialize_database(app_handle: tauri::AppHandle) -> Result<rusqlite::Con
     let sql_file_contents = include_str!("../sql/initialize_database.sql");
     conn.execute_batch(sql_file_contents)?;
     Ok(conn)
+}
+
+fn log_from_row(row: &rusqlite::Row) -> Result<Log, rusqlite::Error> {
+    Ok(Log {
+        id: row.get(0)?,
+        created_at: row.get(2)?,
+        updated_at: row.get(3)?,
+        date: row.get(4)?,
+        rating: row.get(5)?,
+        notes: row.get(6)?,
+        status: row.get(7)?,
+        minutes_played: row.get(8)?,
+        game: Game {
+            id: row.get(9)?,
+            title: row.get(10)?,
+            cover_id: row.get(11)?,
+        },
+    })
 }
 
 pub fn get_executable_details(
@@ -86,65 +105,33 @@ pub fn get_executable_details(
 
 #[tauri::command]
 pub fn get_dashboard_statistics(
-    state: State<Mutex<Connection>>,
-) -> Result<(DashboardStatistics, DashboardStatistics), Error> {
+    state: State<SafeConnection>,
+    start_date: String,
+    end_date: String,
+) -> Result<DashboardStatistics, Error> {
     let conn = state.lock().unwrap();
-    let this_month = Local::now().date_naive();
-    let beginning_of_this_month = this_month.with_day(1).expect("this_month to be valid");
-    let end_of_last_month = beginning_of_this_month
-        .pred_opt()
-        .expect("beginning_of_this_month to not be epoch");
-    let this_month_statistics_range = [
-        end_of_last_month.to_string(),
-        beginning_of_this_month
-            .checked_add_months(Months::new(1))
-            .expect("Next month to be in range")
-            .to_string(),
-    ];
-    let last_month_statistics_range = [
-        beginning_of_this_month
-            .checked_sub_months(Months::new(1))
-            .expect("Previous month to be in range")
-            .to_string(),
-        beginning_of_this_month.to_string(),
-    ];
-    let mut this_minutes_and_games_played_stmt = conn.prepare("SELECT COALESCE(SUM(minutes_played), 0), COUNT(*) FROM logs WHERE (date BETWEEN ?1 AND ?2) AND status != 'wishlist'")?;
-    let this_minutes_and_games_played: (i32, i32) = this_minutes_and_games_played_stmt
-        .query_row(this_month_statistics_range.clone(), |row| {
+    let mut minutes_and_games_played_stmt = conn.prepare("SELECT COALESCE(SUM(minutes_played), 0), COUNT(*) FROM logs WHERE (date BETWEEN ?1 AND ?2) AND status != 'wishlist'")?;
+    let this_minutes_and_games_played: (i32, i32) = minutes_and_games_played_stmt
+        .query_row([start_date.clone(), end_date.clone()], |row| {
             Ok((row.get(0)?, row.get(1)?))
         })?;
-    let mut this_completed_games_stmt = conn.prepare(
+    let mut completed_games_stmt = conn.prepare(
         "SELECT COUNT(*) FROM logs WHERE (date BETWEEN ?1 AND ?2) AND status = 'completed'",
     )?;
     let this_completed_games: i32 =
-        this_completed_games_stmt.query_row(this_month_statistics_range, |row| Ok(row.get(0)?))?;
-    let mut last_minutes_and_games_played_stmt = conn.prepare("SELECT COALESCE(SUM(minutes_played), 0), COUNT(*) FROM logs WHERE (date BETWEEN ?1 AND ?2) AND status != 'wishlist'")?;
-    let last_minutes_and_games_played: (i32, i32) = last_minutes_and_games_played_stmt
-        .query_row(last_month_statistics_range.clone(), |row| {
-            Ok((row.get(0)?, row.get(1)?))
+        completed_games_stmt.query_row([start_date.clone(), end_date.clone()], |row| {
+            Ok(row.get(0)?)
         })?;
-    let mut last_completed_games_stmt = conn.prepare(
-        "SELECT COUNT(*) FROM logs WHERE (date BETWEEN ?1 AND ?2) AND status = 'completed'",
-    )?;
-    let last_completed_games: i32 =
-        last_completed_games_stmt.query_row(last_month_statistics_range, |row| Ok(row.get(0)?))?;
-    Ok((
-        DashboardStatistics {
-            total_minutes_played: this_minutes_and_games_played.0,
-            total_games_played: this_minutes_and_games_played.1,
-            total_games_completed: this_completed_games,
-        },
-        DashboardStatistics {
-            total_minutes_played: last_minutes_and_games_played.0,
-            total_games_played: last_minutes_and_games_played.1,
-            total_games_completed: last_completed_games,
-        },
-    ))
+    Ok(DashboardStatistics {
+        total_minutes_played: this_minutes_and_games_played.0,
+        total_games_played: this_minutes_and_games_played.1,
+        total_games_completed: this_completed_games,
+    })
 }
 
 #[tauri::command]
 pub fn get_recent_logs(
-    state: State<Mutex<Connection>>,
+    state: State<SafeConnection>,
     amount: i32,
     filter: Vec<String>,
 ) -> Result<Vec<Log>, Error> {
@@ -152,53 +139,21 @@ pub fn get_recent_logs(
     if filter.len() == 0 {
         let mut stmt = conn.prepare("SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id ORDER BY date DESC LIMIT ?")?;
         let logs = stmt
-            .query_map([amount], |row| {
-                Ok(Log {
-                    id: row.get(0)?,
-                    created_at: row.get(2)?,
-                    updated_at: row.get(3)?,
-                    date: row.get(4)?,
-                    rating: row.get(5)?,
-                    notes: row.get(6)?,
-                    status: row.get(7)?,
-                    minutes_played: row.get(8)?,
-                    game: Game {
-                        id: row.get(9)?,
-                        title: row.get(10)?,
-                        cover_id: row.get(11)?,
-                    },
-                })
-            })?
+            .query_map([amount], |row| Ok(log_from_row(row)?))?
             .collect::<Result<Vec<_>, _>>()?;
         return Ok(logs);
     }
     let mut stmt =
         conn.prepare("SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id WHERE status IN (?) ORDER BY date DESC LIMIT ?")?;
     let logs = stmt
-        .query_map((filter.join(","), amount), |row| {
-            Ok(Log {
-                id: row.get(0)?,
-                created_at: row.get(2)?,
-                updated_at: row.get(3)?,
-                date: row.get(4)?,
-                rating: row.get(5)?,
-                notes: row.get(6)?,
-                status: row.get(7)?,
-                minutes_played: row.get(8)?,
-                game: Game {
-                    id: row.get(9)?,
-                    title: row.get(10)?,
-                    cover_id: row.get(11)?,
-                },
-            })
-        })?
+        .query_map((filter.join(","), amount), |row| Ok(log_from_row(row)?))?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(logs)
 }
 
 #[tauri::command]
 pub fn get_logs(
-    state: State<Mutex<Connection>>,
+    state: State<SafeConnection>,
     sort_by: String,
     sort_order: String,
     filter: Vec<String>,
@@ -217,62 +172,30 @@ pub fn get_logs(
         .as_str(),
     )?;
     let logs = stmt
-        .query_map([sort_by], |row| {
-            Ok(Log {
-                id: row.get(0)?,
-                created_at: row.get(2)?,
-                updated_at: row.get(3)?,
-                date: row.get(4)?,
-                rating: row.get(5)?,
-                notes: row.get(6)?,
-                status: row.get(7)?,
-                minutes_played: row.get(8)?,
-                game: Game {
-                    id: row.get(9)?,
-                    title: row.get(10)?,
-                    cover_id: row.get(11)?,
-                },
-            })
-        })?
+        .query_map([sort_by], |row| Ok(log_from_row(row)?))?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(logs)
 }
 
 #[tauri::command]
-pub fn delete_log(state: State<Mutex<Connection>>, id: i32) -> Result<i32, Error> {
+pub fn delete_log(state: State<SafeConnection>, id: i32) -> Result<i32, Error> {
     let conn = state.lock().unwrap();
     conn.execute("DELETE FROM logs WHERE id = ?", [id])?;
     Ok(id)
 }
 
 #[tauri::command]
-pub fn get_log_by_id(state: State<Mutex<Connection>>, id: i32) -> Result<Log, Error> {
+pub fn get_log_by_id(state: State<SafeConnection>, id: i32) -> Result<Log, Error> {
     let conn = state.lock().unwrap();
     let mut stmt = conn.prepare(
         "SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id WHERE logs.id = ?",
     )?;
-    let log = stmt.query_row([id], |row| {
-        Ok(Log {
-            id: row.get(0)?,
-            created_at: row.get(2)?,
-            updated_at: row.get(3)?,
-            date: row.get(4)?,
-            rating: row.get(5)?,
-            notes: row.get(6)?,
-            status: row.get(7)?,
-            minutes_played: row.get(8)?,
-            game: Game {
-                id: row.get(9)?,
-                title: row.get(10)?,
-                cover_id: row.get(11)?,
-            },
-        })
-    })?;
+    let log = stmt.query_row([id], |row| Ok(log_from_row(row)?))?;
     Ok(log)
 }
 
 #[tauri::command]
-pub fn add_log(state: State<Mutex<Connection>>, log_data: LogData) -> Result<i32, Error> {
+pub fn add_log(state: State<SafeConnection>, log_data: LogData) -> Result<i32, Error> {
     let conn = state.lock().unwrap();
     let mut stmt = conn.prepare("SELECT id FROM logged_games WHERE id = ?")?;
     let game = stmt
@@ -308,7 +231,7 @@ pub fn add_log(state: State<Mutex<Connection>>, log_data: LogData) -> Result<i32
 }
 
 #[tauri::command]
-pub fn update_log(state: State<Mutex<Connection>>, log_data: LogUpdateData) -> Result<i32, Error> {
+pub fn update_log(state: State<SafeConnection>, log_data: LogUpdateData) -> Result<i32, Error> {
     let conn = state.lock().unwrap();
     conn.execute(
         "UPDATE logs SET date = ?1, rating = ?2, notes = ?3, status = ?4, minutes_played = ?5 WHERE id = ?6",
@@ -326,7 +249,7 @@ pub fn update_log(state: State<Mutex<Connection>>, log_data: LogUpdateData) -> R
 
 #[tauri::command]
 pub fn add_executable_details(
-    state: State<Mutex<Connection>>,
+    state: State<SafeConnection>,
     executable_details: ExecutableDetails,
 ) -> Result<i32, Error> {
     let conn = state.lock().unwrap();

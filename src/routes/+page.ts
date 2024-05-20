@@ -25,10 +25,23 @@ export const load = async () => {
 		const accessTokenResponse = await authenticateWithTwitch();
 		const gameIds = logs.map((log) => log.game.id);
 		const similarGames = await getSimilarGames(accessTokenResponse.access_token, gameIds);
+		const now = new Date();
+		const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+		const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+		const thisMonthStatistics = await getDashboardStatistics(endOfLastMonth, startOfNextMonth);
+		const startOfLastMonth = new Date(
+			endOfLastMonth.getFullYear(),
+			endOfLastMonth.getMonth() - 1,
+			1
+		);
+		const lastMonthStatistics = await getDashboardStatistics(
+			new Date(startOfLastMonth.getFullYear(), startOfLastMonth.getMonth(), 0),
+			new Date(startOfNextMonth.getFullYear(), startOfNextMonth.getMonth() - 1, 1)
+		);
 
 		return {
 			username: await getCurrentUsername(),
-			dashboardStatistics: await getDashboardStatistics(),
+			dashboardStatistics: [lastMonthStatistics, thisMonthStatistics],
 			recentGames: recentLogs,
 			similarGames
 		};
