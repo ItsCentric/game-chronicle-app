@@ -17,3 +17,7 @@ export function logDataFromForm(igdbGame: IgdbGame, formData: z.infer<LogFormSch
 		}
 	};
 }
+
+export function toTitleCase(str: string) {
+	return str.replace(/\b\w/g, (char) => char.toUpperCase());
+}

@@ -17,7 +17,7 @@
 	import { useMutation, useQueryClient } from '@sveltestack/svelte-query';
 	import { addExecutableDetails, addLog, updateLog } from '$lib/rust-bindings/database';
 	import type { PageData } from './$types';
-	import { toTitleCase } from '$lib/utils';
+	import { toTitleCase } from '$lib';
 
 	export let data: PageData;
 	const searchParams = $page.url.searchParams;

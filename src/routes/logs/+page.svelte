@@ -21,7 +21,7 @@
 	import type { PageData } from './$types';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
-	import { toTitleCase } from '$lib/utils';
+	import { toTitleCase } from '$lib';
 
 	export let data: PageData;
 
