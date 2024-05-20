@@ -1,4 +1,9 @@
-use std::{fs, io::Read, path::Path, sync::Mutex};
+use std::{
+    fs,
+    io::Read,
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 
 use tauri::{Manager, State};
 
@@ -48,4 +53,14 @@ pub fn get_current_username(state: State<Mutex<Connection>>) -> Result<String, E
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(whoami::username()),
         Err(e) => Err(Error::from(e)),
     }
+}
+
+pub fn get_app_config_directory(app_handle: &tauri::AppHandle) -> Result<PathBuf, Error> {
+    let dir = app_handle.path().config_dir()?;
+    Ok(dir.join("game-chronicle"))
+}
+
+pub fn get_app_data_directory(app_handle: &tauri::AppHandle) -> Result<PathBuf, Error> {
+    let dir = app_handle.path().data_dir()?;
+    Ok(dir.join("game-chronicle"))
 }

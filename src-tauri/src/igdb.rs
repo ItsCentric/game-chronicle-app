@@ -1,9 +1,8 @@
 use std::io::Read;
 
 use reqwest::Client;
-use tauri::Manager;
 
-use crate::{Error, UserSettings};
+use crate::{helpers::get_app_config_directory, Error, UserSettings};
 
 use rand::Rng;
 
@@ -66,10 +65,8 @@ pub async fn authenticate_with_twitch(
     app_handle: tauri::AppHandle,
 ) -> Result<AccessTokenResponse, Error> {
     let client = Client::new();
-    let settings_path = app_handle
-        .path()
-        .config_dir()?
-        .join("game-chronicle/settings.toml");
+    let config_dir = get_app_config_directory(&app_handle)?;
+    let settings_path = config_dir.join("settings.toml");
     let mut contents = String::new();
     let mut file = std::fs::File::open(settings_path)?;
     file.read_to_string(&mut contents).unwrap();
@@ -114,10 +111,7 @@ pub async fn get_games_by_id(
         &"games".to_string(),
         &access_token,
         body,
-        app_handle
-            .path()
-            .config_dir()?
-            .join("game-chronicle/settings.toml"),
+        get_app_config_directory(&app_handle)?.join("settings.toml"),
     )
     .await;
     serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
@@ -144,10 +138,7 @@ pub async fn get_similar_games(
         &"games".to_string(),
         &access_token,
         body,
-        app_handle
-            .path()
-            .config_dir()?
-            .join("game-chronicle/settings.toml"),
+        get_app_config_directory(&app_handle)?.join("settings.toml"),
     )
     .await;
     serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
@@ -169,10 +160,7 @@ pub async fn get_random_top_games(
         &"games".to_string(),
         &access_token,
         body,
-        app_handle
-            .path()
-            .config_dir()?
-            .join("game-chronicle/settings.toml"),
+        get_app_config_directory(&app_handle)?.join("settings.toml"),
     )
     .await;
     serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
@@ -192,10 +180,7 @@ pub async fn search_game(
         &"games".to_string(),
         &access_token,
         body,
-        app_handle
-            .path()
-            .config_dir()?
-            .join("game-chronicle/settings.toml"),
+        get_app_config_directory(&app_handle)?.join("settings.toml"),
     )
     .await;
     serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)

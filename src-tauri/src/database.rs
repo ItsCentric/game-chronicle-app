@@ -1,8 +1,11 @@
 use rusqlite::{Connection, OptionalExtension};
 use std::sync::Mutex;
 
-use crate::{helpers, Error};
-use tauri::{Manager, State};
+use crate::{
+    helpers::{create_dir_if_not_exists, get_app_data_directory},
+    Error,
+};
+use tauri::State;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ExecutableDetails {
@@ -61,8 +64,8 @@ pub struct Game {
 type SafeConnection = Mutex<Connection>;
 
 pub fn initialize_database(app_handle: tauri::AppHandle) -> Result<rusqlite::Connection, Error> {
-    let data_dir = app_handle.path().data_dir()?.join("game-chronicle");
-    helpers::create_dir_if_not_exists(data_dir.as_path())?;
+    let data_dir = get_app_data_directory(&app_handle)?;
+    create_dir_if_not_exists(data_dir.as_path())?;
     let conn = Connection::open(data_dir.join("data.db"))?;
     let sql_file_contents = include_str!("../sql/initialize_database.sql");
     conn.execute_batch(sql_file_contents)?;
