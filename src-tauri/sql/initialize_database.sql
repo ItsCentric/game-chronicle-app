@@ -31,7 +31,6 @@ CREATE TABLE IF NOT EXISTS executable_details (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     executable_name TEXT,
     game_id INTEGER NOT NULL,
-    minutes_played INTEGER DEFAULT 0,
     FOREIGN KEY (game_id) REFERENCES logged_games(id),
     CONSTRAINT unique_executable_name UNIQUE (executable_name)
 );

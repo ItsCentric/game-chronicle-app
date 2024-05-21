@@ -124,7 +124,7 @@ fn main() {
                         .max_depth(user_settings.process_monitoring.directory_depth as usize);
                     for entry in walker {
                         let entry = entry.unwrap();
-                        if entry.file_type().is_file() {
+                        if entry.file_type().is_file() && !entry.path().to_string_lossy().contains("CrashHandler") {
                             let path = entry.path().to_string_lossy().to_string();
                             paths_to_monitor.push(path.into());
                         }
@@ -134,7 +134,7 @@ fn main() {
                 }
             }
             let app_handle = app.handle().clone();
-            let handle = thread::spawn(move || {
+            thread::spawn(move || {
                 let mut process_monitor = process_monitor::ProcessMonitor::new();
                 loop {
                     process_monitor
@@ -143,7 +143,6 @@ fn main() {
                     thread::sleep(std::time::Duration::from_secs(1));
                 }
             });
-            handle.join().unwrap();
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -163,6 +162,7 @@ fn main() {
             database::add_executable_details,
             igdb::get_random_top_games,
             igdb::search_game,
+            database::get_logged_game,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

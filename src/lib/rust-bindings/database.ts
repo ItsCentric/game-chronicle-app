@@ -97,3 +97,8 @@ export async function addLog(log: LogData) {
 	const addedLogId = await invoke('add_log', { logData: log });
 	return addedLogId as number;
 }
+
+export async function getLoggedGame(id: number) {
+	const game = await invoke('get_logged_game', { id });
+	return gameSchema.parse(game);
+}

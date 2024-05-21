@@ -23,7 +23,18 @@
 	const searchParams = $page.url.searchParams;
 	const isEditing = searchParams.has('id');
 	const insertLogMutation = useMutation(addLog, {
-		onSuccess: () => queryClient.invalidateQueries('logs')
+		onSuccess: async () => {
+			queryClient.invalidateQueries('logs');
+			const executableName = searchParams.get('executableName');
+			const minutesPlayed = searchParams.get('minutesPlayed');
+			if (executableName && minutesPlayed) {
+				await addExecutableDetails({
+					name: executableName,
+					game_id: data.igdbGame.id,
+					minutes_played: parseInt(minutesPlayed)
+				});
+			}
+		}
 	});
 	const updateLogMutation = useMutation(updateLog, {
 		onSuccess: () => queryClient.invalidateQueries('logs')
@@ -42,15 +53,6 @@
 						error: 'Failed to create log'
 					});
 					goto('/logs');
-					const executableName = searchParams.get('executableName');
-					const minutesPlayed = searchParams.get('minutesPlayed');
-					if (executableName && minutesPlayed) {
-						await addExecutableDetails({
-							name: executableName,
-							game_id: data.igdbGame.id,
-							minutes_played: parseInt(minutesPlayed)
-						});
-					}
 				} else {
 					toast.promise(
 						$updateLogMutation.mutateAsync({

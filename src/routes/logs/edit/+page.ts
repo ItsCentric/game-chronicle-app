@@ -1,4 +1,4 @@
-import { getLogById } from '$lib/rust-bindings/database';
+import { getLogById, getLoggedGame } from '$lib/rust-bindings/database';
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 import { authenticateWithTwitch, getGamesById, type IgdbGame } from '$lib/rust-bindings/igdb';
@@ -11,8 +11,8 @@ export const load: PageLoad = async ({ url }) => {
 	if (typeof window === 'undefined') {
 		return { igdbGame: { id: 0, title: '' } as IgdbGame, form: superValidate(zod(logSchema)) };
 	}
-	const id = url.searchParams.get('id') as string;
-	const minutesPlayed = url.searchParams.get('minutesPlayed') as string;
+	const id = url.searchParams.get('id');
+	const minutesPlayed = url.searchParams.has('minutesPlayed') ? parseInt(url.searchParams.get('minutesPlayed') as string) : undefined;
 	if (id) {
 		const log = await getLogById(parseInt(id));
 		const formData: z.infer<LogFormSchema> = {
@@ -37,8 +37,14 @@ export const load: PageLoad = async ({ url }) => {
 		const gameId = url.searchParams.get('gameId') as string;
 		const games = await getGamesById(tokenRes.access_token, [parseInt(gameId)]);
 		const form = await superValidate(zod(logSchema));
-		form.data.timePlayedHours = 0;
-		form.data.timePlayedMinutes = 0;
+		if (minutesPlayed != undefined) {
+			form.data.timePlayedHours = Math.floor(minutesPlayed / 60); 
+			form.data.timePlayedMinutes = minutesPlayed % 60;
+			form.data.status = 'playing';
+		} else {
+			form.data.timePlayedHours = 0;
+			form.data.timePlayedMinutes = 0;
+		}
 		return {
 			igdbGame: games[0],
 			form

@@ -11,7 +11,6 @@ use tauri::State;
 pub struct ExecutableDetails {
     pub name: String,
     pub game_id: i32,
-    pub minutes_played: i32,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -94,13 +93,13 @@ pub fn get_executable_details(
     conn: &Connection,
     executable_name: &str,
 ) -> Result<ExecutableDetails, Error> {
-    let mut stmt =
-        conn.prepare("SELECT name, game_id, minutes_played FROM executables WHERE name = ?")?;
+    let mut stmt = conn.prepare(
+        "SELECT executable_name, game_id FROM executable_details WHERE executable_name = ?",
+    )?;
     let executable = stmt.query_row(&[executable_name], |row| {
         Ok(ExecutableDetails {
             name: row.get(0)?,
             game_id: row.get(1)?,
-            minutes_played: row.get(2)?,
         })
     })?;
     Ok(executable)
@@ -257,13 +256,26 @@ pub fn add_executable_details(
 ) -> Result<i32, Error> {
     let conn = state.lock().unwrap();
     conn.execute(
-        "INSERT INTO executable_details (executable_name, igdb_id, minutes_played) VALUES (?1, ?2, ?3)",
+        "INSERT INTO executable_details (executable_name, game_id) VALUES (?1, ?2)",
         [
             executable_details.name,
             executable_details.game_id.to_string(),
-            executable_details.minutes_played.to_string(),
         ],
     )?;
     let id = conn.last_insert_rowid() as i32;
     Ok(id)
+}
+
+#[tauri::command]
+pub fn get_logged_game(state: State<SafeConnection>, id: i32) -> Result<Game, Error> {
+    let conn = state.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT * FROM logged_games WHERE id = ?")?;
+    let game = stmt.query_row([id], |row| {
+        Ok(Game {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            cover_id: row.get(2)?,
+        })
+    })?;
+    Ok(game)
 }
