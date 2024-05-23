@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { settingsSchema } from '$lib/schemas';
+	import { settingsSchema, type SettingsFormSchema } from '$lib/schemas';
 	import { PencilIcon, Plus, Trash } from 'lucide-svelte';
 	import { superForm } from 'sveltekit-superforms';
 	import * as Form from '$lib/components/ui/form';
@@ -16,15 +16,39 @@
 	import { open } from '@tauri-apps/plugin-dialog';
 	import { relaunch } from '@tauri-apps/plugin-process';
 	import type { PageData } from './$types';
+	import type { z } from 'zod';
 
 	export let data: PageData;
+	const settingsKeysThatShouldReload: (keyof z.infer<SettingsFormSchema>)[] = [
+		'processMonitoringEnabled',
+		'processMonitoringDirectoryDepth',
+		'executablePaths'
+	];
 	let openReloadApplicationModal = false;
 
 	const queryClient = useQueryClient();
 	const userPreferencesMutation = useMutation('userSettings', saveUserSettings, {
 		onSuccess: (queryData) => {
 			queryClient.invalidateQueries('userPreferences');
-			openReloadApplicationModal = true;
+			for (const key of settingsKeysThatShouldReload) {
+				if (Array.isArray(data.form.data[key]) && Array.isArray($settingsFormData[key])) {
+					const initialArray = data.form.data[key] as unknown[];
+					const newArray = $settingsFormData[key] as unknown[];
+					if (initialArray.length !== newArray.length) {
+						openReloadApplicationModal = true;
+						break;
+					}
+					for (let i = 0; i < initialArray.length; i++) {
+						if (initialArray[i] !== newArray[i]) {
+							openReloadApplicationModal = true;
+							break;
+						}
+					}
+				} else if (data.form.data[key] !== $settingsFormData[key]) {
+					openReloadApplicationModal = true;
+					break;
+				}
+			}
 			if (queryData.username !== $usernameQuery.data) {
 				queryClient.invalidateQueries('username');
 			}
