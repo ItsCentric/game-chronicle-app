@@ -66,7 +66,6 @@ impl ProcessMonitor {
         }
         for (path, process) in &self.previous_running_processes {
             if !running_processes.contains_key(path) {
-                println!("Process {} has been stopped", process.name);
                 let minutes_played = process.run_time / 60;
                 let data_dir = helpers::get_app_data_directory(app)?;
                 let conn = rusqlite::Connection::open(data_dir.join("data.db"))?;
