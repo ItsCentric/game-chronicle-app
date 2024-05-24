@@ -23,7 +23,3 @@ export async function saveUserSettings(settings: UserSettings) {
 	const newUserSettings = await invoke('save_user_settings', { userSettings: settings });
 	return userSettingsSchema.parse(newUserSettings);
 }
-export async function getCurrentUsername() {
-	const username = await invoke('get_current_username');
-	return username as string;
-}

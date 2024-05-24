@@ -9,10 +9,9 @@
 	import { Button } from '$lib/components/ui/button';
 	import { zod } from 'sveltekit-superforms/adapters';
 	import Input from '$lib/components/ui/input/input.svelte';
-	import { useMutation, useQuery, useQueryClient } from '@sveltestack/svelte-query';
+	import { useMutation, useQueryClient } from '@sveltestack/svelte-query';
 	import { toast } from 'svelte-sonner';
 	import { saveUserSettings } from '$lib/rust-bindings/helpers';
-	import { getCurrentUsername } from '$lib/rust-bindings/database';
 	import { open } from '@tauri-apps/plugin-dialog';
 	import { relaunch } from '@tauri-apps/plugin-process';
 	import type { PageData } from './$types';
@@ -28,7 +27,7 @@
 
 	const queryClient = useQueryClient();
 	const userPreferencesMutation = useMutation('userSettings', saveUserSettings, {
-		onSuccess: (queryData) => {
+		onSuccess: () => {
 			queryClient.invalidateQueries('userPreferences');
 			for (const key of settingsKeysThatShouldReload) {
 				if (Array.isArray(data.form.data[key]) && Array.isArray($settingsFormData[key])) {
@@ -49,19 +48,10 @@
 					break;
 				}
 			}
-			if (queryData.username !== $usernameQuery.data) {
-				queryClient.invalidateQueries('username');
-			}
-		}
-	});
-	const usernameQuery = useQuery('username', getCurrentUsername, {
-		onSuccess: (queryData) => {
-			if ($settingsFormData.username === '') {
-				$settingsFormData.username = queryData;
-			}
 		}
 	});
 	const settingsForm = superForm(data.form, {
+		resetForm: false,
 		validators: zod(settingsSchema),
 		SPA: true,
 		onUpdate: async ({ form }) => {

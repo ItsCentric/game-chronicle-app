@@ -146,7 +146,6 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            helpers::get_current_username,
             database::get_dashboard_statistics,
             igdb::get_games_by_id,
             igdb::get_similar_games,
