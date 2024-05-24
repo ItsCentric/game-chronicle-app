@@ -92,7 +92,7 @@
 					data={game}
 					on:click={() =>
 						goto(
-							`/logs/edit?gameId=${game.id}` +
+							`/logs/edit?game=${JSON.stringify(game)}` +
 								(isNewGame
 									? `&executableName=${executableName}&minutesPlayed=${minutesPlayed}`
 									: '')

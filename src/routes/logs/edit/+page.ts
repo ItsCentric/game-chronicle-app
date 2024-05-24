@@ -1,18 +1,20 @@
 import { getLogById, getLoggedGame } from '$lib/rust-bindings/database';
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-import { authenticateWithTwitch, getGamesById, type IgdbGame } from '$lib/rust-bindings/igdb';
 import type { z } from 'zod';
 import { logSchema, type LogFormSchema, type StatusOption } from '$lib/schemas';
 import { superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
+import type { IgdbGame } from '$lib/rust-bindings/igdb';
 
 export const load: PageLoad = async ({ url }) => {
 	if (typeof window === 'undefined') {
 		return { igdbGame: { id: 0, title: '' } as IgdbGame, form: superValidate(zod(logSchema)) };
 	}
 	const id = url.searchParams.get('id');
-	const minutesPlayed = url.searchParams.has('minutesPlayed') ? parseInt(url.searchParams.get('minutesPlayed') as string) : undefined;
+	const minutesPlayed = url.searchParams.has('minutesPlayed')
+		? parseInt(url.searchParams.get('minutesPlayed') as string)
+		: undefined;
 	if (id) {
 		const log = await getLogById(parseInt(id));
 		const formData: z.infer<LogFormSchema> = {
@@ -30,15 +32,14 @@ export const load: PageLoad = async ({ url }) => {
 			form
 		};
 	} else {
-		if (!url.searchParams.has('gameId')) {
-			error(404, 'Game ID is required');
+		if (!url.searchParams.has('game')) {
+			error(404, 'Game is required');
 		}
-		const tokenRes = await authenticateWithTwitch();
-		const gameId = url.searchParams.get('gameId') as string;
-		const games = await getGamesById(tokenRes.access_token, [parseInt(gameId)]);
+		const gameString = url.searchParams.get('game') as string;
+		const game = JSON.parse(gameString) as IgdbGame;
 		const form = await superValidate(zod(logSchema));
 		if (minutesPlayed != undefined) {
-			form.data.timePlayedHours = Math.floor(minutesPlayed / 60); 
+			form.data.timePlayedHours = Math.floor(minutesPlayed / 60);
 			form.data.timePlayedMinutes = minutesPlayed % 60;
 			form.data.status = 'playing';
 		} else {
@@ -46,7 +47,7 @@ export const load: PageLoad = async ({ url }) => {
 			form.data.timePlayedMinutes = 0;
 		}
 		return {
-			igdbGame: games[0],
+			igdbGame: game,
 			form
 		};
 	}
