@@ -1,6 +1,6 @@
 import { goto } from '$app/navigation';
 import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindings/database';
-import { getCurrentUsername } from '$lib/rust-bindings/helpers';
+import { getUserSettings } from '$lib/rust-bindings/helpers';
 import { authenticateWithTwitch, getSimilarGames } from '$lib/rust-bindings/igdb';
 import { statusOptions } from '$lib/schemas';
 
@@ -38,9 +38,10 @@ export const load = async () => {
 			new Date(startOfLastMonth.getFullYear(), startOfLastMonth.getMonth(), 0),
 			new Date(startOfNextMonth.getFullYear(), startOfNextMonth.getMonth() - 1, 1)
 		);
+		const settings = await getUserSettings();
 
 		return {
-			username: await getCurrentUsername(),
+			username: settings.username,
 			dashboardStatistics: [lastMonthStatistics, thisMonthStatistics],
 			recentGames: recentLogs,
 			similarGames

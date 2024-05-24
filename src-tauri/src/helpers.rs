@@ -2,14 +2,11 @@ use std::{
     fs,
     io::Read,
     path::{Path, PathBuf},
-    sync::Mutex,
 };
 
-use tauri::{Manager, State};
+use tauri::Manager;
 
 use crate::{Error, UserSettings};
-
-use rusqlite::Connection;
 
 #[tauri::command]
 pub fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, Error> {
@@ -41,17 +38,6 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
             std::io::ErrorKind::AlreadyExists => Ok(()),
             e => Err(e.into()),
         },
-    }
-}
-
-#[tauri::command]
-pub fn get_current_username(state: State<Mutex<Connection>>) -> Result<String, Error> {
-    let conn = state.lock().unwrap();
-    let mut stmt = conn.prepare("SELECT username FROM user_settings")?;
-    match stmt.query_row([], |row| Ok(row.get(0)?)) {
-        Ok(username) => Ok(username),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(whoami::username()),
-        Err(e) => Err(Error::from(e)),
     }
 }
 
