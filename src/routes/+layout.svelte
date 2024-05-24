@@ -9,7 +9,7 @@
 	import { tweened } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
 
-	const queryClient = new QueryClient();
+	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 	const loadProgress = tweened(0, { duration: 2500, easing: cubicOut });
 	let showProgress = false;
 
