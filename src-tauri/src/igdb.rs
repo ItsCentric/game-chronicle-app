@@ -30,7 +30,7 @@ pub struct Cover {
 
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
 pub struct SimilarGames {
-    pub similar_games: Vec<IgdbGame>,
+    pub similar_games: Option<Vec<IgdbGame>>,
 }
 
 pub async fn send_igdb_request(
@@ -141,7 +141,12 @@ pub async fn get_similar_games(
         get_app_config_directory(&app_handle)?.join("settings.toml"),
     )
     .await;
-    serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
+    let deserialized_response: Vec<SimilarGames> =
+        serde_json::from_str(response?.text().await?.as_str())?;
+    Ok(deserialized_response
+        .into_iter()
+        .filter(|s| s.similar_games.is_some())
+        .collect())
 }
 
 #[tauri::command]
