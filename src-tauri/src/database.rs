@@ -145,10 +145,15 @@ pub fn get_recent_logs(
             .collect::<Result<Vec<_>, _>>()?;
         return Ok(logs);
     }
+    let joined_filter = filter
+        .iter()
+        .map(|s| format!("'{}'", s))
+        .collect::<Vec<String>>()
+        .join(",");
     let mut stmt =
-        conn.prepare("SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id WHERE status IN (?) ORDER BY date DESC LIMIT ?")?;
+        conn.prepare(format!("SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id WHERE status IN ({}) ORDER BY date DESC LIMIT ?", joined_filter).as_str())?;
     let logs = stmt
-        .query_map((filter.join(","), amount), |row| Ok(log_from_row(row)?))?
+        .query_map([amount], |row| Ok(log_from_row(row)?))?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(logs)
 }
