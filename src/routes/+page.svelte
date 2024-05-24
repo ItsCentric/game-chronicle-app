@@ -167,7 +167,7 @@
 				</div>
 			{:else}
 				{#each $recentLogsQuery.data as game}
-					<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />
+					<GameCard data={game} on:click={() => goto(`/logs/edit?game=${JSON.stringify(game)}`)} />
 				{/each}
 			{/if}
 		</div>
@@ -201,7 +201,7 @@
 				</div>
 			{:else}
 				{#each $similarGamesQuery.data.slice(0, 6) as game}
-					<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />
+					<GameCard data={game} on:click={() => goto(`/logs/edit?game=${JSON.stringify(game)}`)} />
 				{/each}
 			{/if}
 		</div>
