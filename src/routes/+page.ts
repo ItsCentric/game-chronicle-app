@@ -2,7 +2,7 @@ import { goto } from '$app/navigation';
 import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindings/database';
 import { getCurrentUsername } from '$lib/rust-bindings/helpers';
 import { authenticateWithTwitch, getSimilarGames } from '$lib/rust-bindings/igdb';
-import { statusOptions, type StatusOption } from '$lib/schemas';
+import { statusOptions } from '$lib/schemas';
 
 export const load = async () => {
 	if (typeof window === 'undefined') {
@@ -17,11 +17,11 @@ export const load = async () => {
 		};
 	}
 	try {
-		const recentLogs = await getRecentLogs(
-			6,
-			statusOptions.filter((status) => status != 'wishlist')
+		const allButWishlistedOrBacklogged = statusOptions.filter(
+			(status) => status != 'wishlist' && status != 'backlog'
 		);
-		const logs = await getLogs('date', 'desc', statusOptions as unknown as StatusOption[]);
+		const recentLogs = await getRecentLogs(6, allButWishlistedOrBacklogged);
+		const logs = await getLogs('date', 'desc', allButWishlistedOrBacklogged);
 		const accessTokenResponse = await authenticateWithTwitch();
 		const gameIds = logs.map((log) => log.game.id);
 		const similarGames = await getSimilarGames(accessTokenResponse.access_token, gameIds);
