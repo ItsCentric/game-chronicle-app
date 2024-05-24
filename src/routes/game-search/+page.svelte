@@ -55,7 +55,7 @@
 			variant="ghost"
 			class="mr-4"
 			on:click={() => {
-				window.history.back();
+				goto('/logs');
 				$gameSearchQuery.remove();
 			}}><ArrowLeft size={32} /></Button
 		>

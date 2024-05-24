@@ -98,7 +98,7 @@
 			variant="ghost"
 			size="icon"
 			class="absolute -left-4 -translate-x-full"
-			on:click={() => window.history.back()}><ArrowLeft size={32} /></Button
+			on:click={() => goto('/')}><ArrowLeft size={32} /></Button
 		>
 		<h1 class="font-heading text-3xl font-bold">Your Logs</h1>
 	</div>
