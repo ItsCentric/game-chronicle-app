@@ -4,7 +4,7 @@
 	import Statistic from '$lib/components/Statistic.svelte';
 	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
 	import { goto } from '$app/navigation';
-	import { statusOptions, type StatusOption } from '$lib/schemas';
+	import { statusOptions } from '$lib/schemas';
 	import { useQuery } from '@sveltestack/svelte-query';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 	import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindings/database';
@@ -41,7 +41,7 @@
 			const accessTokenResponse = await authenticateWithTwitch();
 			const recentLogs = await getRecentLogs(
 				6,
-				statusOptions.filter((status) => status != 'wishlist')
+				statusOptions.filter((status) => status != 'wishlist' && status != 'backlog')
 			);
 			const recentGameIds = recentLogs.map((log) => log.game.id);
 			const games = await getGamesById(accessTokenResponse.access_token, recentGameIds);
@@ -59,7 +59,11 @@
 	const similarGamesQuery = useQuery(
 		'similarGames',
 		async () => {
-			const logs = await getLogs('date', 'desc', statusOptions as unknown as StatusOption[]);
+			const logs = await getLogs(
+				'date',
+				'desc',
+				statusOptions.filter((status) => status != 'wishlist' && status != 'backlog')
+			);
 			const gameIds = logs.map((log) => log.game.id);
 			const accessTokenResponse = await authenticateWithTwitch();
 			const similarGames = await getSimilarGames(accessTokenResponse.access_token, gameIds);
