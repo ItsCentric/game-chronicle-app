@@ -56,7 +56,20 @@
 				"title": "Game Chronicle",
 				"width": 800,
 				"minHeight": 600,
-				"minWidth": 800
+				"minWidth": 800,
+				"label": "main"
+			},
+			{
+				"title": "Game Chronicle Updater",
+				"label": "updater",
+				"url": "/updater",
+				"height": 400,
+				"width": 600,
+				"resizable": false,
+				"decorations": false,
+				"hiddenTitle": true,
+				"center": true,
+				"visible": false
 			}
 		],
 		"security": {

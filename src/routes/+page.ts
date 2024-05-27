@@ -3,6 +3,9 @@ import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindin
 import { getUserSettings } from '$lib/rust-bindings/helpers';
 import { authenticateWithTwitch, getSimilarGames } from '$lib/rust-bindings/igdb';
 import { statusOptions } from '$lib/schemas';
+import { redirect } from '@sveltejs/kit';
+import { check } from '@tauri-apps/plugin-updater';
+import { getCurrent } from '@tauri-apps/api/webview';
 
 export const load = async () => {
 	if (typeof window === 'undefined') {
@@ -15,6 +18,16 @@ export const load = async () => {
 			recentGames: [],
 			similarGames: []
 		};
+	}
+	let update: Awaited<ReturnType<typeof check>> = null;
+	try {
+		update = await check();
+	} catch (error) {
+		console.error(error);
+	}
+	if (update?.available) {
+		await getCurrent().window.hide();
+		redirect(301, '/updater');
 	}
 	try {
 		const allButWishlistedOrBacklogged = statusOptions.filter(
