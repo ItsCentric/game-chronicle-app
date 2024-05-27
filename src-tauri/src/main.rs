@@ -58,6 +58,7 @@ pub struct UserSettings {
     process_monitoring: ProcessMonitoringSettings,
     twitch_client_id: Option<String>,
     twitch_client_secret: Option<String>,
+    new: bool,
 }
 
 #[derive(serde::Serialize, Debug, Deserialize)]
@@ -95,6 +96,7 @@ fn main() {
                         },
                         twitch_client_id: None,
                         twitch_client_secret: None,
+                        new: true,
                     };
                     match helpers::create_dir_if_not_exists(app.path().config_dir()?.join("game-chronicle").as_path()) {
                         Ok(_) => {}

@@ -9,7 +9,8 @@ const userSettingsSchema = z.object({
 		directory_depth: z.number()
 	}),
 	twitch_client_id: z.string().nullable(),
-	twitch_client_secret: z.string().nullable()
+	twitch_client_secret: z.string().nullable(),
+	new: z.boolean()
 });
 
 export type UserSettings = z.infer<typeof userSettingsSchema>;
