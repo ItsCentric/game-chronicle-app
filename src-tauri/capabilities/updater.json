@@ -1,0 +1,15 @@
+{
+	"identifier": "updater",
+	"description": "permissions for updater window",
+	"local": true,
+	"windows": ["updater"],
+	"permissions": [
+		"event:default",
+		"window:default",
+		"app:default",
+		"resources:default",
+		"updater:default",
+		"window:allow-close",
+		"window:allow-show"
+	]
+}
