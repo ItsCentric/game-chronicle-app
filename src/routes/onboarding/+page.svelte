@@ -8,7 +8,7 @@
 		<p class="text-lg mb-4">Coming from somewhere? Easily import your game data from anywhere.</p>
 	</div>
 	<div class="flex flex-col gap-4 flex-1">
-		<Button class="w-3/4 mx-auto" size="lg" disabled>Steam</Button>
+		<Button class="w-3/4 mx-auto" size="lg" href="onboarding/import/steam">Steam</Button>
 		<Button class="w-3/4 mx-auto" size="lg" disabled>Backloggd</Button>
 		<Button class="w-3/4 mx-auto" size="lg" disabled>Tracker.gg</Button>
 	</div>

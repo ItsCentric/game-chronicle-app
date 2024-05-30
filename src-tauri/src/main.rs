@@ -10,6 +10,7 @@ use std::path::Path;
 
 use tauri::Manager;
 
+mod data_import;
 mod database;
 mod helpers;
 mod igdb;
@@ -165,6 +166,8 @@ fn main() {
             igdb::get_random_top_games,
             igdb::search_game,
             database::get_logged_game,
+            data_import::get_steam_data,
+            data_import::import_igdb_games,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

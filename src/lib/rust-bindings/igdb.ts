@@ -12,7 +12,7 @@ const coverSchema = z.object({
 	cover_id: z.string()
 });
 
-const igdbGameSchema = z.object({
+export const igdbGameSchema = z.object({
 	id: z.number(),
 	title: z.string(),
 	cover: coverSchema.optional().nullable()
