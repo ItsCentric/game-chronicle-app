@@ -15,14 +15,13 @@ export async function importIgdbGames(data: z.infer<typeof logAndIgdbDataSchema>
 		if (!igdbData.cover) {
 			return [logData, igdbData];
 		}
-		const newObject = { ...igdbData } as Record<string, unknown>;
-		// @ts-expect-error - we know that cover is defined
-		newObject['cover']['image_id'] = newObject.cover.cover_id;
-		// @ts-expect-error - we know that cover is defined
-		delete newObject.cover.cover_id;
-		newObject['name'] = newObject.title;
-		delete newObject.title;
-		return [logData, newObject];
+		const { cover, title, ...restOfIgdbData } = igdbData;
+		const newIgdbData = {
+			...restOfIgdbData,
+			cover: { image_id: cover.cover_id, id: cover.id },
+			name: title
+		};
+		return [logData, newIgdbData];
 	});
 	return (await invoke('import_igdb_games', { data: newData })) as number;
 }
