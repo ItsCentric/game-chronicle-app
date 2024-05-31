@@ -5,8 +5,8 @@ import { logDataSchema } from './database';
 
 const logAndIgdbDataSchema = z.array(z.tuple([logDataSchema, igdbGameSchema]));
 
-export async function getSteamData(steamId: string) {
-	const steamData = await invoke('get_steam_data', { steamId });
+export async function getSteamData(steamId: string, steamKey: string) {
+	const steamData = await invoke('get_steam_data', { steamId, steamKey });
 	return logAndIgdbDataSchema.parse(steamData);
 }
 

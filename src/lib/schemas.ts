@@ -62,3 +62,10 @@ export const settingsSchema = z.object({
 	twitchClientSecret: z.string().min(1)
 });
 export type SettingsFormSchema = typeof settingsSchema;
+
+export const steamImportFormSchema = z.object({
+	steamKey: z.string().length(32, { message: 'Steam key must be 32 characters' }),
+	steamId: z.string().min(1)
+});
+
+export type SteamImportFormSchema = typeof steamImportFormSchema;

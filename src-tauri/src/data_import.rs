@@ -1,5 +1,4 @@
 use std::{
-    env,
     sync::{Arc, Condvar, Mutex, RwLock},
     thread,
 };
@@ -53,9 +52,9 @@ struct ImportProgressPayload {
 pub async fn get_steam_data(
     app_handle: tauri::AppHandle,
     steam_id: String,
+    steam_key: String,
 ) -> Result<LogAndIgdbData, Error> {
     let http_client = Client::new();
-    let steam_key = env::var("STEAM_KEY")?;
     let owned_steam_games_http_response = http_client
         .get("https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?")
         .query(&[
