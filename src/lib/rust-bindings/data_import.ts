@@ -24,5 +24,5 @@ export async function importIgdbGames(data: z.infer<typeof logAndIgdbDataSchema>
 		delete newObject.title;
 		return [logData, newObject];
 	});
-	await invoke('import_igdb_games', { data: newData });
+	return (await invoke('import_igdb_games', { data: newData })) as number;
 }

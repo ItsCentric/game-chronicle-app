@@ -1,4 +1,8 @@
-use std::env;
+use std::{
+    env,
+    sync::{Arc, Condvar, Mutex, RwLock},
+    thread,
+};
 
 use crate::{
     database::{Game, LogData, SafeConnection},
@@ -7,7 +11,7 @@ use crate::{
 use chrono::{DateTime, Local};
 use reqwest::Client;
 use rusqlite::{params, OptionalExtension};
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::Error;
 
@@ -33,6 +37,18 @@ struct SteamResponse<T> {
 
 type LogAndIgdbData = Vec<(LogData, IgdbGame)>;
 
+#[derive(serde::Deserialize, Debug, serde::Serialize, Clone)]
+struct RetrievePayload {
+    status: String,
+    total_games: Option<i32>,
+    games_retrieved: Option<i32>,
+}
+
+#[derive(serde::Deserialize, Debug, serde::Serialize, Clone)]
+struct ImportProgressPayload {
+    games_imported: i32,
+}
+
 #[tauri::command]
 pub async fn get_steam_data(
     app_handle: tauri::AppHandle,
@@ -40,7 +56,7 @@ pub async fn get_steam_data(
 ) -> Result<LogAndIgdbData, Error> {
     let http_client = Client::new();
     let steam_key = env::var("STEAM_KEY")?;
-    let owned_steam_games_response = http_client
+    let owned_steam_games_http_response = http_client
         .get("https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?")
         .query(&[
             ("key", steam_key),
@@ -50,14 +66,53 @@ pub async fn get_steam_data(
         ])
         .send()
         .await?;
-    let owned_steam_games = owned_steam_games_response
+    let owned_steam_games_response = owned_steam_games_http_response
         .json::<SteamResponse<OwnedGames>>()
         .await?
-        .response
-        .games;
+        .response;
+    app_handle.emit(
+        "retrieval",
+        RetrievePayload {
+            status: "started".to_string(),
+            total_games: Some(owned_steam_games_response.game_count),
+            games_retrieved: None,
+        },
+    )?;
+    let retrieval_finished = Arc::new((Mutex::new(false), Condvar::new()));
+    let games_retrieved = Arc::new(RwLock::new(0));
+    let retrieval_finished_clone = Arc::clone(&retrieval_finished);
+    let games_retrieved_clone = Arc::clone(&games_retrieved);
+    let app_handle_clone = app_handle.clone();
+    let handle = thread::spawn(move || {
+        let (retrieval_finished_lock, cvar) = &*retrieval_finished_clone;
+        loop {
+            let mut retrieval_finished_lock = retrieval_finished_lock.lock().unwrap();
+            if *retrieval_finished_lock {
+                break;
+            }
+            {
+                let mut games_retrieved_lock = games_retrieved_clone.write().unwrap();
+                app_handle_clone
+                    .emit(
+                        "retrieval",
+                        RetrievePayload {
+                            status: "progress".to_string(),
+                            total_games: None,
+                            games_retrieved: Some(*games_retrieved_lock),
+                        },
+                    )
+                    .unwrap();
+                *games_retrieved_lock = 0;
+            }
+            retrieval_finished_lock = cvar
+                .wait_timeout(retrieval_finished_lock, std::time::Duration::from_secs(2))
+                .unwrap()
+                .0;
+        }
+    });
     let access_token_response = authenticate_with_twitch(app_handle.clone()).await?;
     let mut logs_and_games_data: LogAndIgdbData = Vec::new();
-    for steam_game_chunk in owned_steam_games.chunks(8) {
+    for steam_game_chunk in owned_steam_games_response.games.chunks(8) {
         let steam_links = steam_game_chunk
             .iter()
             .map(|s_game| format!("https://store.steampowered.com/app/{}", s_game.appid))
@@ -120,17 +175,57 @@ pub async fn get_steam_data(
                 },
                 igdb_game.clone(),
             ));
+            let mut games_retrieved_lock = games_retrieved.write().unwrap();
+            *games_retrieved_lock += 1;
         }
     }
+    {
+        let (retrieval_finished_lock, cvar) = &*retrieval_finished;
+        let mut retrieval_finished_lock = retrieval_finished_lock.lock().unwrap();
+        *retrieval_finished_lock = true;
+        cvar.notify_one();
+    }
+    handle.join().unwrap();
     Ok(logs_and_games_data)
 }
 
 #[tauri::command]
 pub fn import_igdb_games(
+    app_handle: tauri::AppHandle,
     state: State<'_, SafeConnection>,
     data: Vec<(crate::database::LogData, IgdbGame)>,
-) -> Result<(), Error> {
+) -> Result<usize, Error> {
     let mut conn = state.lock().unwrap();
+    let app_handle_clone = app_handle.clone();
+    let import_finished = Arc::new((Mutex::new(false), Condvar::new()));
+    let games_imported = Arc::new(RwLock::new(0));
+    let import_finished_clone = Arc::clone(&import_finished);
+    let games_imported_clone = Arc::clone(&games_imported);
+    let handle = thread::spawn(move || {
+        let (import_finished_lock, cvar) = &*import_finished_clone;
+        loop {
+            let mut import_finished_lock = import_finished_lock.lock().unwrap();
+            if *import_finished_lock {
+                break;
+            }
+            {
+                let mut games_imported_lock = games_imported_clone.write().unwrap();
+                app_handle_clone
+                    .emit(
+                        "import",
+                        ImportProgressPayload {
+                            games_imported: *games_imported_lock,
+                        },
+                    )
+                    .unwrap();
+                *games_imported_lock = 0;
+            }
+            import_finished_lock = cvar
+                .wait_timeout(import_finished_lock, std::time::Duration::from_secs(2))
+                .unwrap()
+                .0;
+        }
+    });
     let logged_games_transaction = conn.transaction()?;
     {
         let mut no_cover_stmt = logged_games_transaction
@@ -159,6 +254,8 @@ pub fn import_igdb_games(
                     }
                 },
             }
+            let mut games_imported_lock = games_imported.write().unwrap();
+            *games_imported_lock += 1;
         }
     }
     logged_games_transaction.commit()?;
@@ -167,7 +264,7 @@ pub fn import_igdb_games(
         let mut stmt = logs_transaction.prepare(
             "INSERT INTO logs (date, status, minutes_played, notes, game_id) VALUES (?, ?, ?, ?, ?)",
         )?;
-        for (log_data, game) in data {
+        for (log_data, game) in &data {
             stmt.execute(params![
                 &log_data.date,
                 &log_data.status,
@@ -178,5 +275,12 @@ pub fn import_igdb_games(
         }
     }
     logs_transaction.commit()?;
-    Ok(())
+    {
+        let (import_finished_lock, cvar) = &*import_finished;
+        let mut import_finished_lock = import_finished_lock.lock().unwrap();
+        *import_finished_lock = true;
+        cvar.notify_one();
+    }
+    handle.join().unwrap();
+    Ok(data.len())
 }
