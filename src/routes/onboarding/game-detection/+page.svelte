@@ -11,6 +11,7 @@
 	import { zodClient } from 'sveltekit-superforms/adapters';
 	import { Switch } from '$lib/components/ui/switch';
 	import { open } from '@tauri-apps/plugin-dialog';
+	import { goto } from '$app/navigation';
 
 	export let data: PageData;
 
@@ -23,6 +24,7 @@
 			settings.executable_paths = form.data.executablePaths.join(';');
 			settings.process_monitoring.enabled = form.data.processMonitoringEnabled;
 			await saveUserSettings(settings);
+			goto('/onboarding/finished');
 		}
 	});
 	const { form: gameDetectionFormData, enhance } = gameDetectionForm;
