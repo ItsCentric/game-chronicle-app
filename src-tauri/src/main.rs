@@ -8,7 +8,7 @@ use tauri_plugin_dialog::DialogExt;
 
 use std::path::Path;
 
-use tauri::{image::Image, Manager};
+use tauri::{image::Image, tray::MouseButton::Left, tray::TrayIconEvent::Click, Manager};
 
 mod data_import;
 mod database;
@@ -83,9 +83,31 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api, ..} => {
+                window.hide().unwrap();
+                api.prevent_close();
+            },
+            _ => {}
+        })
         .setup(|app| {
             let tray_icon = Image::from_bytes(include_bytes!("../icons/icon.png")).unwrap();
-            tauri::tray::TrayIconBuilder::new().title("Game Chronicle").tooltip("Game Chronicle").icon(tray_icon).build(app)?;
+            tauri::tray::TrayIconBuilder::new().title("Game Chronicle").tooltip("Game Chronicle").icon(tray_icon)
+            .on_tray_icon_event(|tray, event| {
+                match event {
+                    Click { id: _, position: _, rect: _, button: mouse_button, .. } => {
+                        if mouse_button == Left {
+                            let app = tray.app_handle();
+                            if let Some(webview_window) = app.get_webview_window("main") {
+                                let _ = webview_window.show();
+                                let _ = webview_window.set_focus();
+                            }
+                        }
+                    },
+                    _ => {}
+                }
+            })
+            .build(app)?;
             let conn = database::initialize_database(app.handle().clone()).unwrap();
             app.manage(std::sync::Mutex::new(conn));
             let user_settings = match helpers::get_user_settings(app.handle().clone()) {
