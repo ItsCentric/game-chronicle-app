@@ -76,3 +76,8 @@ export const twitchCredentialsSchema = z.object({
 });
 
 export type TwitchCredentialsFormSchema = typeof twitchCredentialsSchema;
+
+export const gameDetectionSchema = settingsSchema.pick({
+	processMonitoringEnabled: true,
+	executablePaths: true
+});

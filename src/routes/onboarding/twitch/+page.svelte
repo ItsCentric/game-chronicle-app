@@ -8,6 +8,7 @@
 	import { ArrowLeft } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { getUserSettings, saveUserSettings } from '$lib/rust-bindings/helpers';
+	import { goto } from '$app/navigation';
 
 	export let data: PageData;
 
@@ -20,6 +21,7 @@
 			settings.twitch_client_id = form.data.clientId;
 			settings.twitch_client_secret = form.data.clientSecret;
 			await saveUserSettings(settings);
+			goto('/onboarding/game-detection');
 		}
 	});
 	const { form: twitchFormData, enhance, validateForm } = twitchForm;
