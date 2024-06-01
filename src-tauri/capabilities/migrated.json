@@ -16,6 +16,8 @@
 		"dialog:default",
 		"process:default",
 		"updater:default",
-		"window:allow-hide"
+		"window:allow-hide",
+		"shell:default",
+		"shell:allow-open"
 	]
 }

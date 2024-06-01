@@ -10,6 +10,7 @@ use std::path::Path;
 
 use tauri::Manager;
 
+mod data_import;
 mod database;
 mod helpers;
 mod igdb;
@@ -58,6 +59,7 @@ pub struct UserSettings {
     process_monitoring: ProcessMonitoringSettings,
     twitch_client_id: Option<String>,
     twitch_client_secret: Option<String>,
+    new: bool,
 }
 
 #[derive(serde::Serialize, Debug, Deserialize)]
@@ -77,6 +79,7 @@ impl serde::Serialize for Error {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -95,6 +98,7 @@ fn main() {
                         },
                         twitch_client_id: None,
                         twitch_client_secret: None,
+                        new: true,
                     };
                     match helpers::create_dir_if_not_exists(app.path().config_dir()?.join("game-chronicle").as_path()) {
                         Ok(_) => {}
@@ -163,6 +167,8 @@ fn main() {
             igdb::get_random_top_games,
             igdb::search_game,
             database::get_logged_game,
+            data_import::get_steam_data,
+            data_import::import_igdb_games,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

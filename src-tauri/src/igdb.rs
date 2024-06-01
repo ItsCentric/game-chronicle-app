@@ -13,24 +13,35 @@ pub struct AccessTokenResponse {
     pub token_type: String,
 }
 
-#[derive(serde::Serialize, Debug, serde::Deserialize)]
+#[derive(serde::Serialize, Debug, serde::Deserialize, Clone)]
 pub struct IgdbGame {
     pub id: i32,
     #[serde(rename(deserialize = "name"))]
     pub title: String,
     pub cover: Option<Cover>,
+    pub websites: Option<Vec<Website>>,
 }
 
-#[derive(serde::Serialize, Debug, serde::Deserialize)]
+#[derive(serde::Serialize, Debug, serde::Deserialize, Clone)]
 pub struct Cover {
     pub id: i32,
     #[serde(rename(deserialize = "image_id"))]
     pub cover_id: String,
 }
 
+#[derive(serde::Serialize, Debug, serde::Deserialize, Clone)]
+pub struct Website {
+    pub url: String,
+}
+
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
 pub struct SimilarGames {
     pub similar_games: Option<Vec<IgdbGame>>,
+}
+
+#[derive(serde::Serialize, Debug, serde::Deserialize)]
+pub struct MultiQueryResponse<T> {
+    pub result: Vec<T>,
 }
 
 pub async fn send_igdb_request(
@@ -183,6 +194,28 @@ pub async fn search_game(
     );
     let response = send_igdb_request(
         &"games".to_string(),
+        &access_token,
+        body,
+        get_app_config_directory(&app_handle)?.join("settings.toml"),
+    )
+    .await;
+    serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
+}
+
+pub async fn multi_search_game_links(
+    access_token: String,
+    links: Vec<String>,
+    app_handle: tauri::AppHandle,
+) -> Result<Vec<MultiQueryResponse<IgdbGame>>, Error> {
+    let mut body = String::new();
+    for (i, link) in links.iter().enumerate() {
+        body.push_str(&format!(
+            "query games \"Part {}\" {{fields name, cover.image_id, websites.url; where category = 0 & version_parent = null & websites.url ~ *\"{}\"*;}};",
+            i, link
+        ));
+    }
+    let response = send_igdb_request(
+        &"multiquery".to_string(),
         &access_token,
         body,
         get_app_config_directory(&app_handle)?.join("settings.toml"),

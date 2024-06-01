@@ -26,7 +26,7 @@ const logSchema = z.object({
 	game: gameSchema
 });
 
-const logDataSchema = logSchema.omit({ id: true, created_at: true, updated_at: true });
+export const logDataSchema = logSchema.omit({ id: true, created_at: true, updated_at: true });
 
 const logUpdateSchema = logSchema.omit({ created_at: true, updated_at: true, game: true });
 

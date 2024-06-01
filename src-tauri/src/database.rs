@@ -60,7 +60,7 @@ pub struct Game {
     pub cover_id: String,
 }
 
-type SafeConnection = Mutex<Connection>;
+pub type SafeConnection = Mutex<Connection>;
 
 pub fn initialize_database(app_handle: tauri::AppHandle) -> Result<rusqlite::Connection, Error> {
     let data_dir = get_app_data_directory(&app_handle)?;
