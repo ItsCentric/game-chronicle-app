@@ -8,7 +8,7 @@ use tauri_plugin_dialog::DialogExt;
 
 use std::path::Path;
 
-use tauri::Manager;
+use tauri::{image::Image, Manager};
 
 mod data_import;
 mod database;
@@ -84,6 +84,8 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            let tray_icon = Image::from_bytes(include_bytes!("../icons/icon.png")).unwrap();
+            tauri::tray::TrayIconBuilder::new().title("Game Chronicle").tooltip("Game Chronicle").icon(tray_icon).build(app)?;
             let conn = database::initialize_database(app.handle().clone()).unwrap();
             app.manage(std::sync::Mutex::new(conn));
             let user_settings = match helpers::get_user_settings(app.handle().clone()) {
