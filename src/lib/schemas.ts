@@ -69,3 +69,10 @@ export const steamImportFormSchema = z.object({
 });
 
 export type SteamImportFormSchema = typeof steamImportFormSchema;
+
+export const twitchCredentialsSchema = z.object({
+	clientId: z.string().min(1),
+	clientSecret: z.string().min(1)
+});
+
+export type TwitchCredentialsFormSchema = typeof twitchCredentialsSchema;
