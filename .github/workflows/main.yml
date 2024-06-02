@@ -63,4 +63,5 @@ jobs:
           releaseName: 'App v__VERSION__'
           releaseBody: '${{steps.changelog.outputs.changelog}}'
           prerelease: true
+          tauriScript: 'cargo tauri'
           args: ${{ matrix.args }}
