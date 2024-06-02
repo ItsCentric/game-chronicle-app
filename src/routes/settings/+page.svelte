@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { settingsSchema } from '$lib/schemas';
+	import { settingsSchema, type SettingsFormSchema } from '$lib/schemas';
 	import { PencilIcon, Plus, Trash } from 'lucide-svelte';
 	import { superForm } from 'sveltekit-superforms';
 	import * as Form from '$lib/components/ui/form';
@@ -9,35 +9,49 @@
 	import { Button } from '$lib/components/ui/button';
 	import { zod } from 'sveltekit-superforms/adapters';
 	import Input from '$lib/components/ui/input/input.svelte';
-	import { useMutation, useQuery, useQueryClient } from '@sveltestack/svelte-query';
+	import { useMutation, useQueryClient } from '@sveltestack/svelte-query';
 	import { toast } from 'svelte-sonner';
-	import { saveUserSettings } from '$lib/rust-bindings/main';
-	import { getCurrentUsername } from '$lib/rust-bindings/database';
+	import { saveUserSettings } from '$lib/rust-bindings/helpers';
 	import { open } from '@tauri-apps/plugin-dialog';
 	import { relaunch } from '@tauri-apps/plugin-process';
 	import type { PageData } from './$types';
+	import type { z } from 'zod';
 
 	export let data: PageData;
+	const settingsKeysThatShouldReload: (keyof z.infer<SettingsFormSchema>)[] = [
+		'processMonitoringEnabled',
+		'processMonitoringDirectoryDepth',
+		'executablePaths'
+	];
 	let openReloadApplicationModal = false;
 
 	const queryClient = useQueryClient();
 	const userPreferencesMutation = useMutation('userSettings', saveUserSettings, {
-		onSuccess: (queryData) => {
+		onSuccess: () => {
 			queryClient.invalidateQueries('userPreferences');
-			openReloadApplicationModal = true;
-			if (queryData.username !== $usernameQuery.data) {
-				queryClient.invalidateQueries('username');
-			}
-		}
-	});
-	const usernameQuery = useQuery('username', getCurrentUsername, {
-		onSuccess: (queryData) => {
-			if ($settingsFormData.username === '') {
-				$settingsFormData.username = queryData;
+			for (const key of settingsKeysThatShouldReload) {
+				if (Array.isArray(data.form.data[key]) && Array.isArray($settingsFormData[key])) {
+					const initialArray = data.form.data[key] as unknown[];
+					const newArray = $settingsFormData[key] as unknown[];
+					if (initialArray.length !== newArray.length) {
+						openReloadApplicationModal = true;
+						break;
+					}
+					for (let i = 0; i < initialArray.length; i++) {
+						if (initialArray[i] !== newArray[i]) {
+							openReloadApplicationModal = true;
+							break;
+						}
+					}
+				} else if (data.form.data[key] !== $settingsFormData[key]) {
+					openReloadApplicationModal = true;
+					break;
+				}
 			}
 		}
 	});
 	const settingsForm = superForm(data.form, {
+		resetForm: false,
 		validators: zod(settingsSchema),
 		SPA: true,
 		onUpdate: async ({ form }) => {
@@ -63,7 +77,8 @@
 	const {
 		form: settingsFormData,
 		enhance: settingsFormEnhance,
-		validate: validateSettingsFormField
+		validate: validateSettingsFormField,
+		allErrors: settingsFormErrors
 	} = settingsForm;
 
 	async function newDirectoryDialog() {
@@ -230,7 +245,7 @@
 			{/if}
 		</section>
 		<div class="flex justify-end gap-2">
-			<Button type="submit">Save</Button>
+			<Button type="submit" disabled={$settingsFormErrors.length > 0}>Save</Button>
 			<Button
 				variant="destructive"
 				type="reset"

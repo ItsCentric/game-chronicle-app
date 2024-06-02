@@ -13,17 +13,28 @@
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import { Button } from '$lib/components/ui/button';
-	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { logDataFromForm } from '$lib';
 	import { useMutation, useQueryClient } from '@sveltestack/svelte-query';
 	import { addExecutableDetails, addLog, updateLog } from '$lib/rust-bindings/database';
 	import type { PageData } from './$types';
+	import { toTitleCase } from '$lib';
 
 	export let data: PageData;
 	const searchParams = $page.url.searchParams;
 	const isEditing = searchParams.has('id');
 	const insertLogMutation = useMutation(addLog, {
-		onSuccess: () => queryClient.invalidateQueries('logs')
+		onSuccess: async () => {
+			queryClient.invalidateQueries('logs');
+			const executableName = searchParams.get('executableName');
+			const minutesPlayed = searchParams.get('minutesPlayed');
+			if (executableName && minutesPlayed) {
+				await addExecutableDetails({
+					name: executableName,
+					game_id: data.igdbGame.id,
+					minutes_played: parseInt(minutesPlayed)
+				});
+			}
+		}
 	});
 	const updateLogMutation = useMutation(updateLog, {
 		onSuccess: () => queryClient.invalidateQueries('logs')
@@ -42,15 +53,6 @@
 						error: 'Failed to create log'
 					});
 					goto('/logs');
-					const executableName = searchParams.get('executableName');
-					const minutesPlayed = searchParams.get('minutesPlayed');
-					if (executableName && minutesPlayed) {
-						await addExecutableDetails({
-							name: executableName,
-							igdb_id: data.igdbGame.id,
-							minutes_played: parseInt(minutesPlayed)
-						});
-					}
 				} else {
 					toast.promise(
 						$updateLogMutation.mutateAsync({
@@ -86,14 +88,14 @@
 	<div class="mb-4">
 		<h1 class="text-3xl font-heading font-bold">{isEditing ? 'Edit' : 'New'} Log</h1>
 		<p class="text-gray-500 text-lg font-heading">
-			What was it like playing {data.igdbGame.name}?
+			What was it like playing {data.igdbGame.title}?
 		</p>
 	</div>
 	<form method="post" class="grid-cols-[25%,_1fr] grid gap-4" id="logForm" use:logEnhance>
 		<div>
 			<img
 				src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' +
-					data.igdbGame.cover?.image_id +
+					data.igdbGame.cover?.cover_id +
 					'.jpg'}
 				alt="cover"
 				class="aspect-[3/4] rounded-3xl mb-4 w-full"
@@ -102,7 +104,7 @@
 				<Form.Control let:attrs>
 					<Combobox
 						{...attrs}
-						options={statusOptions.map((status) => ({ value: status, label: status }))}
+						options={statusOptions.map((status) => ({ value: status, label: toTitleCase(status) }))}
 						placeholder="Pick a status"
 						emptyText="No status found!"
 						bind:value={$logFormData.status}
@@ -112,7 +114,7 @@
 		</div>
 		<div class="flex flex-col gap-2">
 			<div>
-				<p class="text-2xl font-heading font-semibold">{data.igdbGame.name}</p>
+				<p class="text-2xl font-heading font-semibold">{data.igdbGame.title}</p>
 				<Form.Fieldset form={logForm} name="rating">
 					<RadioGroup.Root
 						value={`${$logFormData.rating}`}
@@ -164,13 +166,6 @@
 						placeholder="Log date"
 						max={today(getLocalTimeZone())}
 					/>
-				</Form.Control>
-				<Form.FieldErrors />
-			</Form.Field>
-			<Form.Field form={logForm} name="finished">
-				<Form.Control let:attrs>
-					<Form.Label class="mr-2">Finished?</Form.Label>
-					<Checkbox {...attrs} bind:checked={$logFormData.finished} />
 				</Form.Control>
 				<Form.FieldErrors />
 			</Form.Field>

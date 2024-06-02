@@ -40,9 +40,14 @@
 		}
 	},
 	"productName": "Game Chronicle",
-	"version": "0.7.0",
+	"version": "0.8.0",
 	"identifier": "com.gamechronicle.www",
-	"plugins": {},
+	"plugins": {
+		"updater": {
+			"endpoints": ["https://github.com/ItsCentric/game-chronicle/releases"],
+			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM3OTUyQjJEMjA5Q0VFMzAKUldRdzdwd2dMU3VWeCswV21RQ1Vkd256TzhCN0l4STJ1M0d3Y1YwYzVYYnR1NVFaekxmS1RocGsK"
+		}
+	},
 	"app": {
 		"windows": [
 			{
@@ -51,7 +56,20 @@
 				"title": "Game Chronicle",
 				"width": 800,
 				"minHeight": 600,
-				"minWidth": 800
+				"minWidth": 800,
+				"label": "main"
+			},
+			{
+				"title": "Game Chronicle Updater",
+				"label": "updater",
+				"url": "/updater",
+				"height": 400,
+				"width": 600,
+				"resizable": false,
+				"decorations": false,
+				"hiddenTitle": true,
+				"center": true,
+				"visible": false
 			}
 		],
 		"security": {

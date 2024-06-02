@@ -9,13 +9,13 @@ export const sortFormSchema = z.object({
 });
 
 export const statusOptions = [
-	'Wishlist',
-	'Backlog',
-	'Playing',
-	'Completed',
-	'Played',
-	'Abandoned',
-	'Retired'
+	'wishlist',
+	'backlog',
+	'playing',
+	'completed',
+	'played',
+	'abandoned',
+	'retired'
 ] as const;
 export type StatusOption = (typeof statusOptions)[number];
 
@@ -37,7 +37,6 @@ export const logSchema = z.object({
 		.default(new Date()),
 	status: z.enum(statusOptions),
 	notes: z.string().max(1000, { message: 'Notes must be less than 1000 characters' }).optional(),
-	finished: z.boolean().default(false),
 	timePlayedHours: z
 		.number({ invalid_type_error: 'Invalid value for hour' })
 		.min(0)
@@ -63,3 +62,22 @@ export const settingsSchema = z.object({
 	twitchClientSecret: z.string().min(1)
 });
 export type SettingsFormSchema = typeof settingsSchema;
+
+export const steamImportFormSchema = z.object({
+	steamKey: z.string().length(32, { message: 'Steam key must be 32 characters' }),
+	steamId: z.string().min(1)
+});
+
+export type SteamImportFormSchema = typeof steamImportFormSchema;
+
+export const twitchCredentialsSchema = z.object({
+	clientId: z.string().min(1),
+	clientSecret: z.string().min(1)
+});
+
+export type TwitchCredentialsFormSchema = typeof twitchCredentialsSchema;
+
+export const gameDetectionSchema = settingsSchema.pick({
+	processMonitoringEnabled: true,
+	executablePaths: true
+});

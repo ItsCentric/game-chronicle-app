@@ -4,7 +4,7 @@
 	import Statistic from '$lib/components/Statistic.svelte';
 	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
 	import { goto } from '$app/navigation';
-	import { statusOptions, type StatusOption } from '$lib/schemas';
+	import { statusOptions } from '$lib/schemas';
 	import { useQuery } from '@sveltestack/svelte-query';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 	import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindings/database';
@@ -12,18 +12,38 @@
 	import type { PageData } from './$types';
 
 	export let data: PageData;
-	const dashboardStatisticsQuery = useQuery('dashboardStatistics', getDashboardStatistics, {
-		initialData: data.dashboardStatistics
-	});
+	const dashboardStatisticsQuery = useQuery(
+		'dashboardStatistics',
+		async () => {
+			const now = new Date();
+			const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+			const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+			const thisMonthStatistics = await getDashboardStatistics(endOfLastMonth, startOfNextMonth);
+			const startOfLastMonth = new Date(
+				endOfLastMonth.getFullYear(),
+				endOfLastMonth.getMonth() - 1,
+				1
+			);
+			const lastMonthStatistics = await getDashboardStatistics(
+				new Date(startOfLastMonth.getFullYear(), startOfLastMonth.getMonth(), 0),
+				new Date(startOfNextMonth.getFullYear(), startOfNextMonth.getMonth() - 1, 1)
+			);
+
+			return [lastMonthStatistics, thisMonthStatistics];
+		},
+		{
+			initialData: data.dashboardStatistics
+		}
+	);
 	const recentLogsQuery = useQuery(
 		'recentLogs',
 		async () => {
 			const accessTokenResponse = await authenticateWithTwitch();
 			const recentLogs = await getRecentLogs(
 				6,
-				statusOptions.filter((status) => status != 'Wishlist')
+				statusOptions.filter((status) => status != 'wishlist' && status != 'backlog')
 			);
-			const recentGameIds = recentLogs.map((log) => log.igdb_id);
+			const recentGameIds = recentLogs.map((log) => log.game.id);
 			const games = await getGamesById(accessTokenResponse.access_token, recentGameIds);
 			const sortedGames = [];
 			for (let i = 0; i < recentGameIds.length; i++) {
@@ -39,8 +59,12 @@
 	const similarGamesQuery = useQuery(
 		'similarGames',
 		async () => {
-			const logs = await getLogs('date', 'desc', statusOptions as unknown as StatusOption[]);
-			const gameIds = logs.map((log) => log.igdb_id);
+			const logs = await getLogs(
+				'date',
+				'desc',
+				statusOptions.filter((status) => status != 'wishlist' && status != 'backlog')
+			);
+			const gameIds = logs.map((log) => log.game.id);
 			const accessTokenResponse = await authenticateWithTwitch();
 			const similarGames = await getSimilarGames(accessTokenResponse.access_token, gameIds);
 			return similarGames;
@@ -97,7 +121,7 @@
 				>Couldn't get your statistics</ErrorMessage
 			>
 		{:else}
-			{@const [thisMonthStatistics, lastMonthStatistics] = $dashboardStatisticsQuery.data}
+			{@const [lastMonthStatistics, thisMonthStatistics] = $dashboardStatisticsQuery.data}
 			{@const hoursPlayed = Math.floor(thisMonthStatistics.total_minutes_played / 60)}
 			<Statistic
 				lastMonthStat={lastMonthStatistics.total_games_played}
@@ -143,7 +167,7 @@
 				</div>
 			{:else}
 				{#each $recentLogsQuery.data as game}
-					<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />
+					<GameCard data={game} on:click={() => goto(`/logs/edit?game=${JSON.stringify(game)}`)} />
 				{/each}
 			{/if}
 		</div>
@@ -177,7 +201,7 @@
 				</div>
 			{:else}
 				{#each $similarGamesQuery.data.slice(0, 6) as game}
-					<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />
+					<GameCard data={game} on:click={() => goto(`/logs/edit?game=${JSON.stringify(game)}`)} />
 				{/each}
 			{/if}
 		</div>

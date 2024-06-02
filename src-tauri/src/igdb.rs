@@ -1,9 +1,8 @@
 use std::io::Read;
 
 use reqwest::Client;
-use tauri::Manager;
 
-use crate::{Error, UserSettings};
+use crate::{helpers::get_app_config_directory, Error, UserSettings};
 
 use rand::Rng;
 
@@ -14,22 +13,35 @@ pub struct AccessTokenResponse {
     pub token_type: String,
 }
 
-#[derive(serde::Serialize, Debug, serde::Deserialize)]
+#[derive(serde::Serialize, Debug, serde::Deserialize, Clone)]
 pub struct IgdbGame {
     pub id: i32,
-    pub name: String,
+    #[serde(rename(deserialize = "name"))]
+    pub title: String,
     pub cover: Option<Cover>,
+    pub websites: Option<Vec<Website>>,
 }
 
-#[derive(serde::Serialize, Debug, serde::Deserialize)]
+#[derive(serde::Serialize, Debug, serde::Deserialize, Clone)]
 pub struct Cover {
     pub id: i32,
-    pub image_id: String,
+    #[serde(rename(deserialize = "image_id"))]
+    pub cover_id: String,
+}
+
+#[derive(serde::Serialize, Debug, serde::Deserialize, Clone)]
+pub struct Website {
+    pub url: String,
 }
 
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
 pub struct SimilarGames {
-    pub similar_games: Vec<IgdbGame>,
+    pub similar_games: Option<Vec<IgdbGame>>,
+}
+
+#[derive(serde::Serialize, Debug, serde::Deserialize)]
+pub struct MultiQueryResponse<T> {
+    pub result: Vec<T>,
 }
 
 pub async fn send_igdb_request(
@@ -64,7 +76,8 @@ pub async fn authenticate_with_twitch(
     app_handle: tauri::AppHandle,
 ) -> Result<AccessTokenResponse, Error> {
     let client = Client::new();
-    let settings_path = app_handle.path().config_dir()?.join("settings.toml");
+    let config_dir = get_app_config_directory(&app_handle)?;
+    let settings_path = config_dir.join("settings.toml");
     let mut contents = String::new();
     let mut file = std::fs::File::open(settings_path)?;
     file.read_to_string(&mut contents).unwrap();
@@ -109,7 +122,7 @@ pub async fn get_games_by_id(
         &"games".to_string(),
         &access_token,
         body,
-        app_handle.path().config_dir()?.join("settings.toml"),
+        get_app_config_directory(&app_handle)?.join("settings.toml"),
     )
     .await;
     serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
@@ -136,10 +149,15 @@ pub async fn get_similar_games(
         &"games".to_string(),
         &access_token,
         body,
-        app_handle.path().config_dir()?.join("settings.toml"),
+        get_app_config_directory(&app_handle)?.join("settings.toml"),
     )
     .await;
-    serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
+    let deserialized_response: Vec<SimilarGames> =
+        serde_json::from_str(response?.text().await?.as_str())?;
+    Ok(deserialized_response
+        .into_iter()
+        .filter(|s| s.similar_games.is_some())
+        .collect())
 }
 
 #[tauri::command]
@@ -158,7 +176,7 @@ pub async fn get_random_top_games(
         &"games".to_string(),
         &access_token,
         body,
-        app_handle.path().config_dir()?.join("settings.toml"),
+        get_app_config_directory(&app_handle)?.join("settings.toml"),
     )
     .await;
     serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
@@ -178,7 +196,29 @@ pub async fn search_game(
         &"games".to_string(),
         &access_token,
         body,
-        app_handle.path().config_dir()?.join("settings.toml"),
+        get_app_config_directory(&app_handle)?.join("settings.toml"),
+    )
+    .await;
+    serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
+}
+
+pub async fn multi_search_game_links(
+    access_token: String,
+    links: Vec<String>,
+    app_handle: tauri::AppHandle,
+) -> Result<Vec<MultiQueryResponse<IgdbGame>>, Error> {
+    let mut body = String::new();
+    for (i, link) in links.iter().enumerate() {
+        body.push_str(&format!(
+            "query games \"Part {}\" {{fields name, cover.image_id, websites.url; where category = 0 & version_parent = null & websites.url ~ *\"{}\"*;}};",
+            i, link
+        ));
+    }
+    let response = send_igdb_request(
+        &"multiquery".to_string(),
+        &access_token,
+        body,
+        get_app_config_directory(&app_handle)?.join("settings.toml"),
     )
     .await;
     serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)

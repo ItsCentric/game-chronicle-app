@@ -2,9 +2,8 @@ use sysinfo::{Pid, System};
 use tauri::Manager;
 
 use crate::database::get_executable_details;
-use crate::Error;
+use crate::{helpers, Error};
 
-use std::any::Any;
 use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Debug)]
@@ -12,13 +11,13 @@ pub struct Process {
     pub name: String,
     pub pid: u32,
     pub path: String,
-    pub create_time: u64,
+    pub run_time: u64,
 }
 
 #[derive(Debug, serde::Serialize)]
 struct GameStoppedPayload {
-    name: String,
-    igdb_id: i32,
+    executable_name: Option<String>,
+    game_id: Option<i32>,
     minutes_played: i32,
 }
 
@@ -28,17 +27,15 @@ impl Process {
         match process {
             Some(p) => {
                 let name = p.name().to_string();
-                let path = p
-                    .exe()
-                    .expect("Path to exe to exist")
-                    .to_string_lossy()
-                    .to_string();
-                let create_time = p.start_time();
+                let path = match p.exe() {
+                    Some(path) => path.to_string_lossy().to_string(),
+                    None => "".to_string(),
+                };
                 Ok(Process {
                     name,
                     pid: pid.try_into().unwrap(),
                     path,
-                    create_time,
+                    run_time: p.run_time(),
                 })
             }
             None => Err(Error::ProcessNotFound),
@@ -69,34 +66,33 @@ impl ProcessMonitor {
         }
         for (path, process) in &self.previous_running_processes {
             if !running_processes.contains_key(path) {
-                println!("Process {} has been stopped", process.name);
-                let minutes_played = process.create_time / 60;
-                let conn = rusqlite::Connection::open("logs.db")?;
+                let minutes_played = process.run_time / 60;
+                let data_dir = helpers::get_app_data_directory(app)?;
+                let conn = rusqlite::Connection::open(data_dir.join("data.db"))?;
                 match get_executable_details(&conn, &process.name) {
                     Ok(details) => {
                         app.emit(
                             "game-stopped",
                             &GameStoppedPayload {
-                                name: details.name,
-                                igdb_id: details.igdb_id,
-                                minutes_played: details.minutes_played + minutes_played as i32,
+                                executable_name: None,
+                                game_id: Some(details.game_id),
+                                minutes_played: minutes_played as i32,
                             },
                         )?;
                     }
-                    Err(e) => {
-                        if e.type_id() == rusqlite::Error::QueryReturnedNoRows.type_id() {
+                    Err(e) => match e {
+                        Error::Rusqlite(rusqlite::Error::QueryReturnedNoRows) => {
                             app.emit(
                                 "game-stopped",
                                 &GameStoppedPayload {
-                                    name: process.name.clone(),
-                                    igdb_id: -1,
+                                    executable_name: Some(process.name.clone()),
+                                    game_id: None,
                                     minutes_played: minutes_played as i32,
                                 },
                             )?;
-                        } else {
-                            return Err(e);
                         }
-                    }
+                        _ => return Err(e.into()),
+                    },
                 }
             }
         }

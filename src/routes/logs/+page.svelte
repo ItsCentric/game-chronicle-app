@@ -18,16 +18,14 @@
 	import { useMutation, useQuery, useQueryClient } from '@sveltestack/svelte-query';
 	import { toast } from 'svelte-sonner';
 	import { deleteLog, getLogs, type Log } from '$lib/rust-bindings/database';
-	import { authenticateWithTwitch, getGamesById, type IgdbGame } from '$lib/rust-bindings/igdb';
 	import type { PageData } from './$types';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
-
-	type GameLog = Log & { game: IgdbGame; status: StatusOption };
+	import { toTitleCase } from '$lib';
 
 	export let data: PageData;
 
-	let filteredLogs: GameLog[] = [];
+	let filteredLogs: Log[] = [];
 	let statusFilter: StatusOption[] = [];
 	let currentLogPage = 1;
 	let sortBy = 'date';
@@ -43,27 +41,18 @@
 		'logs',
 		async () => {
 			const logs = await getLogs(sortBy, sortOrder, statusFilter);
-			const accessTokenResponse = await authenticateWithTwitch();
-			const gameIds = logs.map((log) => log.igdb_id);
-			const games = await getGamesById(accessTokenResponse.access_token, gameIds);
-			return logs.map((log) => {
-				const game = games.find((game) => game.id === log.igdb_id);
-				if (!game) {
-					throw new Error('Game not found');
-				}
-				return { ...log, status: log.status as StatusOption, game };
-			});
+			return logs;
 		},
 		{ initialData: data.logs }
 	);
 	const logStatusColorMap: Record<StatusOption, string> = {
-		Backlog: 'bg-gray-500',
-		Wishlist: 'bg-blue-500',
-		Playing: 'bg-green-500',
-		Played: 'bg-green-500',
-		Completed: 'bg-green-500',
-		Abandoned: 'bg-red-500',
-		Retired: 'bg-yellow-500'
+		backlog: 'bg-gray-500',
+		wishlist: 'bg-blue-500',
+		playing: 'bg-green-500',
+		played: 'bg-green-500',
+		completed: 'bg-green-500',
+		abandoned: 'bg-red-500',
+		retired: 'bg-yellow-500'
 	};
 
 	function logStatusColor(status: StatusOption) {
@@ -82,9 +71,9 @@
 		switch (sortBy) {
 			case 'title':
 				if (sortOrder === 'desc') {
-					return b.game.name.localeCompare(a.game.name);
+					return b.game.title.localeCompare(a.game.title);
 				}
-				return a.game.name.localeCompare(b.game.name);
+				return a.game.title.localeCompare(b.game.title);
 			case 'date':
 				if (sortOrder === 'desc') {
 					return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -99,9 +88,6 @@
 				return 0;
 		}
 	});
-	$: console.log('filtered logs', filteredLogs);
-	$: console.log('logs', data.logs);
-	$: console.log('query logs', $logsQuery.data);
 	$: start = (currentLogPage - 1) * 18;
 	$: end = currentLogPage * 18;
 </script>
@@ -112,7 +98,7 @@
 			variant="ghost"
 			size="icon"
 			class="absolute -left-4 -translate-x-full"
-			on:click={() => window.history.back()}><ArrowLeft size={32} /></Button
+			on:click={() => goto('/')}><ArrowLeft size={32} /></Button
 		>
 		<h1 class="font-heading text-3xl font-bold">Your Logs</h1>
 	</div>
@@ -189,8 +175,9 @@
 		{:else}
 			<div class="grid gap-2 grid-cols-6">
 				{#each filteredLogs.slice(start, end) as gameLog}
+					{@const { cover_id, ...game } = gameLog.game}
 					<GameCard
-						data={gameLog.game}
+						data={cover_id ? { ...game, cover: { cover_id, id: 0 } } : { ...game }}
 						on:click={() => goto(`/logs/edit?id=${gameLog.id}&gameId=${gameLog.game.id}`)}
 					>
 						<AlertDialog.Root>
@@ -230,7 +217,7 @@
 						<span
 							class={`absolute left-2 shadow-black shadow text-black bottom-2 rounded-2xl px-2 py-1 text-sm pointer-events-none ${logStatusColor(
 								gameLog.status
-							)}`}>{gameLog.status}</span
+							)}`}>{toTitleCase(gameLog.status)}</span
 						>
 					</GameCard>
 				{/each}

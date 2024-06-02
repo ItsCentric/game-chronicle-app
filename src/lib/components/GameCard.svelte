@@ -13,9 +13,9 @@
 	role="button"
 	tabindex="0"
 >
-	{#if data.cover?.image_id}
+	{#if data.cover?.cover_id}
 		<img
-			src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' + data.cover.image_id + '.jpg'}
+			src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' + data.cover.cover_id + '.jpg'}
 			alt="cover"
 			class="h-full rounded-3xl"
 		/>
@@ -35,6 +35,6 @@
 	<p
 		class="absolute font-heading z-20 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-center font-semibold"
 	>
-		{data.name}
+		{data.title}
 	</p>
 </div>

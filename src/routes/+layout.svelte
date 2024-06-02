@@ -9,21 +9,21 @@
 	import { tweened } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
 
-	const queryClient = new QueryClient();
+	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 	const loadProgress = tweened(0, { duration: 2500, easing: cubicOut });
 	let showProgress = false;
 
 	listen('game-stopped', (event) => {
 		const data = event.payload;
-		if (data.executableName !== '') {
+		if (data.executable_name?.length > 0) {
 			toast.info("Looks like you're playing a new title!", {
 				description: 'Tell us what it is so we know for future reference.'
 			});
 			goto(
-				`/game-search?executableName=${data.executableName}&minutesPlayed=${data.minutesPlayed}`
+				`/game-search?executableName=${data.executable_name}&minutesPlayed=${data.minutes_played}`
 			);
 		} else {
-			goto(`/logs/edit?gameId=${data.gameId}&minutesPlayed=${data.minutesPlayed}`);
+			goto(`/logs/edit?gameId=${data.game_id}&minutesPlayed=${data.minutes_played}`);
 		}
 	});
 

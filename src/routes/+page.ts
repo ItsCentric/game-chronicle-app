@@ -1,12 +1,10 @@
-import { goto } from '$app/navigation';
-import {
-	getCurrentUsername,
-	getDashboardStatistics,
-	getLogs,
-	getRecentLogs
-} from '$lib/rust-bindings/database';
-import { authenticateWithTwitch, getGamesById, getSimilarGames } from '$lib/rust-bindings/igdb';
-import { statusOptions, type StatusOption } from '$lib/schemas';
+import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindings/database';
+import { getUserSettings } from '$lib/rust-bindings/helpers';
+import { authenticateWithTwitch, getSimilarGames } from '$lib/rust-bindings/igdb';
+import { statusOptions } from '$lib/schemas';
+import { redirect } from '@sveltejs/kit';
+import { check } from '@tauri-apps/plugin-updater';
+import { getCurrent } from '@tauri-apps/api/webview';
 
 export const load = async () => {
 	if (typeof window === 'undefined') {
@@ -20,34 +18,42 @@ export const load = async () => {
 			similarGames: []
 		};
 	}
+	let update: Awaited<ReturnType<typeof check>> = null;
 	try {
-		const accessTokenResponse = await authenticateWithTwitch();
-		const recentLogs = await getRecentLogs(
-			6,
-			statusOptions.filter((status) => status != 'Wishlist')
-		);
-		const recentGameIds = recentLogs.map((log) => log.igdb_id);
-		const games = await getGamesById(accessTokenResponse.access_token, recentGameIds);
-		const sortedGames = [];
-		for (let i = 0; i < recentGameIds.length; i++) {
-			const game = games.find((game) => game.id === recentGameIds[i]);
-			if (game) {
-				sortedGames.push(game);
-			}
-		}
-		const logs = await getLogs('date', 'desc', statusOptions as unknown as StatusOption[]);
-		const gameIds = logs.map((log) => log.igdb_id);
-		const similarGames = await getSimilarGames(accessTokenResponse.access_token, gameIds);
-
-		return {
-			username: await getCurrentUsername(),
-			dashboardStatistics: await getDashboardStatistics(),
-			recentGames: sortedGames,
-			similarGames
-		};
+		update = await check();
 	} catch (error) {
-		if (error === 'Error: Twitch client ID not found') {
-			goto('/settings');
-		}
+		console.error(error);
 	}
+	if (update?.available) {
+		await getCurrent().window.hide();
+		redirect(301, '/updater');
+	}
+	const settings = await getUserSettings();
+	if (settings.new) {
+		throw redirect(301, '/onboarding');
+	}
+	const allButWishlistedOrBacklogged = statusOptions.filter(
+		(status) => status != 'wishlist' && status != 'backlog'
+	);
+	const recentLogs = await getRecentLogs(6, allButWishlistedOrBacklogged);
+	const logs = await getLogs('date', 'desc', allButWishlistedOrBacklogged);
+	const accessTokenResponse = await authenticateWithTwitch();
+	const gameIds = logs.map((log) => log.game.id);
+	const similarGames = await getSimilarGames(accessTokenResponse.access_token, gameIds);
+	const now = new Date();
+	const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+	const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+	const thisMonthStatistics = await getDashboardStatistics(endOfLastMonth, startOfNextMonth);
+	const startOfLastMonth = new Date(endOfLastMonth.getFullYear(), endOfLastMonth.getMonth() - 1, 1);
+	const lastMonthStatistics = await getDashboardStatistics(
+		new Date(startOfLastMonth.getFullYear(), startOfLastMonth.getMonth(), 0),
+		new Date(startOfNextMonth.getFullYear(), startOfNextMonth.getMonth() - 1, 1)
+	);
+
+	return {
+		username: settings.username,
+		dashboardStatistics: [lastMonthStatistics, thisMonthStatistics],
+		recentGames: recentLogs,
+		similarGames
+	};
 };

@@ -8,33 +8,36 @@ const dashboardStatisticsSchema = z.object({
 	total_games_completed: z.number()
 });
 
-const dashboardStatisticsResponseSchema = z.tuple([
-	dashboardStatisticsSchema,
-	dashboardStatisticsSchema
-]);
+const gameSchema = z.object({
+	id: z.number(),
+	title: z.string(),
+	cover_id: z.string().optional()
+});
 
 const logSchema = z.object({
 	id: z.number(),
 	created_at: z.string(),
 	updated_at: z.string(),
-	title: z.string(),
 	date: z.string(),
 	rating: z.number(),
 	notes: z.string(),
-	status: z.string(),
-	completed: z.boolean(),
+	status: z.enum([...statusOptions]),
 	minutes_played: z.number(),
-	igdb_id: z.number()
+	game: gameSchema
 });
+
+export const logDataSchema = logSchema.omit({ id: true, created_at: true, updated_at: true });
+
+const logUpdateSchema = logSchema.omit({ created_at: true, updated_at: true, game: true });
 
 const executableDetailsSchema = z.object({
 	name: z.string(),
-	igdb_id: z.number(),
+	game_id: z.number(),
 	minutes_played: z.number()
 });
 
 export type Log = z.infer<typeof logSchema>;
-export type LogData = Omit<Log, 'id' | 'created_at' | 'updated_at'>;
+export type LogData = z.infer<typeof logDataSchema>;
 export type ExecutableDetails = z.infer<typeof executableDetailsSchema>;
 
 export async function getCurrentUsername() {
@@ -42,9 +45,12 @@ export async function getCurrentUsername() {
 	return username as string;
 }
 
-export async function getDashboardStatistics() {
-	const statistics = await invoke('get_dashboard_statistics');
-	return dashboardStatisticsResponseSchema.parse(statistics);
+export async function getDashboardStatistics(startDate: Date, endDate: Date) {
+	const statistics = await invoke('get_dashboard_statistics', {
+		startDate: startDate.toISOString(),
+		endDate: endDate.toISOString()
+	});
+	return dashboardStatisticsSchema.parse(statistics);
 }
 
 export async function getRecentLogs(amount: number, filter: StatusOption[]) {
@@ -77,8 +83,8 @@ export async function getLogById(id: number) {
 	return logSchema.parse(log);
 }
 
-export async function updateLog(log: Omit<Log, 'created_at' | 'updated_at'>) {
-	const updatedLogId = await invoke('update_log', { log });
+export async function updateLog(log: z.infer<typeof logUpdateSchema>) {
+	const updatedLogId = await invoke('update_log', { logData: log });
 	return updatedLogId as number;
 }
 
@@ -90,4 +96,9 @@ export async function addExecutableDetails(executableDetails: ExecutableDetails)
 export async function addLog(log: LogData) {
 	const addedLogId = await invoke('add_log', { logData: log });
 	return addedLogId as number;
+}
+
+export async function getLoggedGame(id: number) {
+	const game = await invoke('get_logged_game', { id });
+	return gameSchema.parse(game);
 }

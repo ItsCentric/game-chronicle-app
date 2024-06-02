@@ -55,7 +55,7 @@
 			variant="ghost"
 			class="mr-4"
 			on:click={() => {
-				window.history.back();
+				goto('/logs');
 				$gameSearchQuery.remove();
 			}}><ArrowLeft size={32} /></Button
 		>
@@ -92,7 +92,7 @@
 					data={game}
 					on:click={() =>
 						goto(
-							`/logs/edit?gameId=${game.id}` +
+							`/logs/edit?game=${JSON.stringify(game)}` +
 								(isNewGame
 									? `&executableName=${executableName}&minutesPlayed=${minutesPlayed}`
 									: '')

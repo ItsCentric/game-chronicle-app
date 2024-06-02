@@ -9,12 +9,12 @@ const accessTokenResponseSchema = z.object({
 
 const coverSchema = z.object({
 	id: z.number(),
-	image_id: z.string()
+	cover_id: z.string()
 });
 
-const igdbGameSchema = z.object({
+export const igdbGameSchema = z.object({
 	id: z.number(),
-	name: z.string(),
+	title: z.string(),
 	cover: coverSchema.optional().nullable()
 });
 
