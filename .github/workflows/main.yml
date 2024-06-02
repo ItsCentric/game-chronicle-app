@@ -55,6 +55,9 @@ jobs:
         run: conventional-changelog -p angular -i CHANGELOG.md -s -r 0
         id: changelog
 
+      - name: Install cargo tauri cli
+        run: cargo install tauri-cli@^2.0.0-beta
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -63,5 +66,5 @@ jobs:
           releaseName: 'App v__VERSION__'
           releaseBody: '${{steps.changelog.outputs.changelog}}'
           prerelease: true
-          tauriScript: 'cargo tauri'
+          tauriScript: cargo tauri
           args: ${{ matrix.args }}
