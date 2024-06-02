@@ -1,4 +1,4 @@
-name: 'publish'
+name: 'release'
 
 on:
   push:
@@ -41,22 +41,32 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      
+      - name: setup bun
+        uses: oven-sh/setup-bun@v1
 
       - name: install frontend dependencies
         run: bun install
 
+      - name: Install changelog generator
+        run: bun install -g conventional-changelog-cli
+
       - name: Generate changelog
+        run: conventional-changelog -p angular -i CHANGELOG.md -s -r 0
         id: changelog
-        uses: heinrichreimer/action-github-changelog-generator@v2.4
-        with:
-          output: changelog.txt
+
+      - name: Install cargo tauri cli
+        run: cargo install tauri-cli@^2.0.0-beta
 
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_UPDATE_SIGNING_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_UPDATE_SIGNING_PASSWORD }}
         with:
-          tagName: app-v__VERSION__
-          releaseName: 'App v__VERSION__'
+          tagName: v__VERSION__
+          releaseName: 'v__VERSION__'
           releaseBody: '${{steps.changelog.outputs.changelog}}'
           prerelease: true
+          tauriScript: cargo tauri
           args: ${{ matrix.args }}
