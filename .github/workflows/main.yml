@@ -48,11 +48,12 @@ jobs:
       - name: install frontend dependencies
         run: bun install
 
+      - name: Install changelog generator
+        run: bun install -g conventional-changelog-cli
+
       - name: Generate changelog
+        run: conventional-changelog -p angular -i CHANGELOG.md -s -r 0
         id: changelog
-        uses: heinrichreimer/action-github-changelog-generator@v2.4
-        with:
-          output: changelog.txt
 
       - uses: tauri-apps/tauri-action@v0
         env:
