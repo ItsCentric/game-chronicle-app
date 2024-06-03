@@ -64,7 +64,8 @@
 						directory_depth: form.data.processMonitoringDirectoryDepth
 					},
 					twitch_client_id: form.data.twitchClientId,
-					twitch_client_secret: form.data.twitchClientSecret
+					twitch_client_secret: form.data.twitchClientSecret,
+					new: false
 				};
 				toast.promise($userPreferencesMutation.mutateAsync(newSettings), {
 					loading: 'Saving new settings...',
