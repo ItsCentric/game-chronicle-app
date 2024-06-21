@@ -5,10 +5,16 @@ use std::{path::PathBuf, thread};
 
 use serde::Deserialize;
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_notification::{NotificationExt, PermissionState};
 
 use std::path::Path;
 
-use tauri::{image::Image, tray::MouseButton::Left, tray::TrayIconEvent::Click, Manager};
+use tauri::{
+    image::Image,
+    menu::MenuBuilder,
+    tray::{MouseButton::Left, TrayIconEvent::Click},
+    Manager,
+};
 
 mod data_import;
 mod database;
@@ -79,12 +85,22 @@ impl serde::Serialize for Error {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, ..} => {
+                let app_handle = window.app_handle();
+                let mut notification_permission_state = app_handle.notification().permission_state().unwrap();
+                if notification_permission_state != PermissionState::Granted {
+                    notification_permission_state = app_handle.notification().request_permission().unwrap();
+                    if notification_permission_state != PermissionState::Granted {
+                        return;
+                    }
+                }
+                app_handle.notification().builder().title("Game Chronicle").body("Game Chronicle is still running in the background.").show().unwrap();
                 window.hide().unwrap();
                 api.prevent_close();
             },
@@ -92,7 +108,8 @@ fn main() {
         })
         .setup(|app| {
             let tray_icon = Image::from_bytes(include_bytes!("../icons/icon.png")).unwrap();
-            tauri::tray::TrayIconBuilder::new().title("Game Chronicle").tooltip("Game Chronicle").icon(tray_icon)
+            let menu = MenuBuilder::new(app).quit().build().unwrap();
+            tauri::tray::TrayIconBuilder::new().title("Game Chronicle").tooltip("Game Chronicle").icon(tray_icon).menu(&menu)
             .on_tray_icon_event(|tray, event| {
                 match event {
                     Click { id: _, position: _, rect: _, button: mouse_button, .. } => {
