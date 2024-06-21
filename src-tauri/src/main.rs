@@ -9,7 +9,12 @@ use tauri_plugin_notification::{NotificationExt, PermissionState};
 
 use std::path::Path;
 
-use tauri::{image::Image, tray::MouseButton::Left, tray::TrayIconEvent::Click, Manager};
+use tauri::{
+    image::Image,
+    menu::MenuBuilder,
+    tray::{MouseButton::Left, TrayIconEvent::Click},
+    Manager,
+};
 
 mod data_import;
 mod database;
@@ -103,7 +108,8 @@ fn main() {
         })
         .setup(|app| {
             let tray_icon = Image::from_bytes(include_bytes!("../icons/icon.png")).unwrap();
-            tauri::tray::TrayIconBuilder::new().title("Game Chronicle").tooltip("Game Chronicle").icon(tray_icon)
+            let menu = MenuBuilder::new(app).quit().build().unwrap();
+            tauri::tray::TrayIconBuilder::new().title("Game Chronicle").tooltip("Game Chronicle").icon(tray_icon).menu(&menu)
             .on_tray_icon_event(|tray, event| {
                 match event {
                     Click { id: _, position: _, rect: _, button: mouse_button, .. } => {
