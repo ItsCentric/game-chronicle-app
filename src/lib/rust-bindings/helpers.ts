@@ -10,6 +10,7 @@ const userSettingsSchema = z.object({
 	}),
 	twitch_client_id: z.string().nullable(),
 	twitch_client_secret: z.string().nullable(),
+	autostart: z.boolean(),
 	new: z.boolean()
 });
 
