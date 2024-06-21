@@ -4,6 +4,7 @@
 use std::{path::PathBuf, thread};
 
 use serde::Deserialize;
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::{NotificationExt, PermissionState};
 
@@ -85,6 +86,7 @@ impl serde::Serialize for Error {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
@@ -125,6 +127,10 @@ fn main() {
                 }
             })
             .build(app)?;
+            let autostart_manager = app.autolaunch();
+            if !autostart_manager.is_enabled().unwrap() {
+                autostart_manager.enable().unwrap();
+            }
             let conn = database::initialize_database(app.handle().clone()).unwrap();
             app.manage(std::sync::Mutex::new(conn));
             let user_settings = match helpers::get_user_settings(app.handle().clone()) {
