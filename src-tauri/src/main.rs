@@ -66,6 +66,7 @@ pub struct UserSettings {
     process_monitoring: ProcessMonitoringSettings,
     twitch_client_id: Option<String>,
     twitch_client_secret: Option<String>,
+    autostart: bool,
     new: bool,
 }
 
@@ -127,12 +128,6 @@ fn main() {
                 }
             })
             .build(app)?;
-            let autostart_manager = app.autolaunch();
-            if !autostart_manager.is_enabled().unwrap() {
-                autostart_manager.enable().unwrap();
-            }
-            let conn = database::initialize_database(app.handle().clone()).unwrap();
-            app.manage(std::sync::Mutex::new(conn));
             let user_settings = match helpers::get_user_settings(app.handle().clone()) {
                 Ok(user_settings) => user_settings,
                 Err(_) => {
@@ -141,10 +136,11 @@ fn main() {
                         executable_paths: None,
                         process_monitoring: ProcessMonitoringSettings {
                             enabled: false,
-                            directory_depth: 3,
+                            directory_depth: 2,
                         },
                         twitch_client_id: None,
                         twitch_client_secret: None,
+                        autostart: false,
                         new: true,
                     };
                     match helpers::create_dir_if_not_exists(app.path().config_dir()?.join("game-chronicle").as_path()) {
@@ -152,7 +148,7 @@ fn main() {
                         Err(e) => match e.kind() {
                             std::io::ErrorKind::PermissionDenied => {
                                 app.dialog().message("Could not create needed files. Please run the application as an administrator.").title("Permission denied").kind(tauri_plugin_dialog::MessageDialogKind::Error).blocking_show();
-                                app.handle().exit(1);
+                                app.handle().exit(0);
                             }
                             e => {
                                 panic!("{}", e)
@@ -163,6 +159,14 @@ fn main() {
                     saved_settings
                 }
             };
+            let autostart_manager = app.autolaunch();
+            if user_settings.autostart && !autostart_manager.is_enabled().unwrap() {
+                autostart_manager.enable().unwrap();
+            } else if !user_settings.autostart && autostart_manager.is_enabled().unwrap() {
+                autostart_manager.disable().unwrap();
+            }
+            let conn = database::initialize_database(app.handle().clone()).unwrap();
+            app.manage(std::sync::Mutex::new(conn));
             if !user_settings.process_monitoring.enabled || user_settings.executable_paths.is_none() {
                 return Ok(());
             }
