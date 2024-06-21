@@ -21,7 +21,8 @@
 	const settingsKeysThatShouldReload: (keyof z.infer<SettingsFormSchema>)[] = [
 		'processMonitoringEnabled',
 		'processMonitoringDirectoryDepth',
-		'executablePaths'
+		'executablePaths',
+		'autostart'
 	];
 	let openReloadApplicationModal = false;
 
@@ -65,6 +66,7 @@
 					},
 					twitch_client_id: form.data.twitchClientId,
 					twitch_client_secret: form.data.twitchClientSecret,
+					autostart: form.data.autostart,
 					new: false
 				};
 				toast.promise($userPreferencesMutation.mutateAsync(newSettings), {
@@ -139,6 +141,14 @@
 					<div class="flex justify-between items-center">
 						<Form.Label>Client Secret</Form.Label>
 						<Input {...attrs} bind:value={$settingsFormData.twitchClientSecret} class="max-w-xs" />
+					</div>
+				</Form.Control>
+			</Form.Field>
+			<Form.Field form={settingsForm} name="autostart">
+				<Form.Control let:attrs>
+					<div class="flex justify-between items-center">
+						<Form.Label>Open on computer startup</Form.Label>
+						<Switch includeInput {...attrs} bind:checked={$settingsFormData.autostart} />
 					</div>
 				</Form.Control>
 			</Form.Field>

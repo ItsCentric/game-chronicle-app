@@ -17,6 +17,7 @@
 		"process:default",
 		"updater:default",
 		"window:allow-hide",
+		"window:allow-show",
 		"shell:default",
 		"shell:allow-open"
 	]

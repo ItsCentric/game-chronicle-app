@@ -377,6 +377,54 @@
         {
           "type": "string",
           "enum": [
+            "autostart:default"
+          ]
+        },
+        {
+          "description": "autostart:allow-disable -> Enables the disable command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "autostart:allow-disable"
+          ]
+        },
+        {
+          "description": "autostart:allow-enable -> Enables the enable command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "autostart:allow-enable"
+          ]
+        },
+        {
+          "description": "autostart:allow-is-enabled -> Enables the is_enabled command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "autostart:allow-is-enabled"
+          ]
+        },
+        {
+          "description": "autostart:deny-disable -> Denies the disable command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "autostart:deny-disable"
+          ]
+        },
+        {
+          "description": "autostart:deny-enable -> Denies the enable command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "autostart:deny-enable"
+          ]
+        },
+        {
+          "description": "autostart:deny-is-enabled -> Denies the is_enabled command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "autostart:deny-is-enabled"
+          ]
+        },
+        {
+          "type": "string",
+          "enum": [
             "dialog:default"
           ]
         },
@@ -903,6 +951,55 @@
           "type": "string",
           "enum": [
             "menu:deny-text"
+          ]
+        },
+        {
+          "description": "notification:default -> Allows requesting permission, checking permission state and sending notifications",
+          "type": "string",
+          "enum": [
+            "notification:default"
+          ]
+        },
+        {
+          "description": "notification:allow-is-permission-granted -> Enables the is_permission_granted command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "notification:allow-is-permission-granted"
+          ]
+        },
+        {
+          "description": "notification:allow-notify -> Enables the notify command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "notification:allow-notify"
+          ]
+        },
+        {
+          "description": "notification:allow-request-permission -> Enables the request_permission command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "notification:allow-request-permission"
+          ]
+        },
+        {
+          "description": "notification:deny-is-permission-granted -> Denies the is_permission_granted command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "notification:deny-is-permission-granted"
+          ]
+        },
+        {
+          "description": "notification:deny-notify -> Denies the notify command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "notification:deny-notify"
+          ]
+        },
+        {
+          "description": "notification:deny-request-permission -> Denies the request_permission command without any pre-configured scope.",
+          "type": "string",
+          "enum": [
+            "notification:deny-request-permission"
           ]
         },
         {

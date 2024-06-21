@@ -5,6 +5,7 @@ import { statusOptions } from '$lib/schemas';
 import { redirect } from '@sveltejs/kit';
 import { check } from '@tauri-apps/plugin-updater';
 import { getCurrent } from '@tauri-apps/api/webview';
+import { getAll } from '@tauri-apps/api/window';
 
 export const load = async () => {
 	if (typeof window === 'undefined') {
@@ -26,7 +27,9 @@ export const load = async () => {
 	}
 	if (update?.available) {
 		await getCurrent().window.hide();
-		redirect(301, '/updater');
+		const windows = getAll();
+		await windows.find((window) => window.label === 'updater')?.show();
+		return;
 	}
 	const settings = await getUserSettings();
 	if (settings.new) {

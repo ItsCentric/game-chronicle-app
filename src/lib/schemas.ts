@@ -59,7 +59,8 @@ export const settingsSchema = z.object({
 	processMonitoringEnabled: z.boolean(),
 	processMonitoringDirectoryDepth: z.number().min(0).max(99).default(3),
 	twitchClientId: z.string().min(1),
-	twitchClientSecret: z.string().min(1)
+	twitchClientSecret: z.string().min(1),
+	autostart: z.boolean(),
 });
 export type SettingsFormSchema = typeof settingsSchema;
 
