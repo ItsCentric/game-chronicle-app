@@ -5,6 +5,7 @@ use std::{path::PathBuf, thread};
 
 use serde::Deserialize;
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_notification::{NotificationExt, PermissionState};
 
 use std::path::Path;
 
@@ -79,12 +80,22 @@ impl serde::Serialize for Error {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, ..} => {
+                let app_handle = window.app_handle();
+                let mut notification_permission_state = app_handle.notification().permission_state().unwrap();
+                if notification_permission_state != PermissionState::Granted {
+                    notification_permission_state = app_handle.notification().request_permission().unwrap();
+                    if notification_permission_state != PermissionState::Granted {
+                        return;
+                    }
+                }
+                app_handle.notification().builder().title("Game Chronicle").body("Game Chronicle is still running in the background.").show().unwrap();
                 window.hide().unwrap();
                 api.prevent_close();
             },
