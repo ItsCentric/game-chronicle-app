@@ -34,5 +34,5 @@
 			<Button on:click={async () => await relaunch()}>Restart</Button>
 		{/if}
 	</div>
-	<p class="absolute right-2 bottom-2 text-sm">{data.update?.version}</p>
+	<p class="absolute right-2 bottom-2 text-sm">{data.update?.currentVersion}</p>
 </main>
