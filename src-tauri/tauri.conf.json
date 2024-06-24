@@ -7,8 +7,8 @@
 	},
 	"bundle": {
 		"active": true,
-		"category": "DeveloperTool",
-		"copyright": "",
+		"category": "Entertainment",
+		"copyright": "© 2024 Isaiah Stockton. All rights reserved.",
 		"targets": "all",
 		"externalBin": [],
 		"icon": [
@@ -23,7 +23,7 @@
 			"digestAlgorithm": "sha256",
 			"timestampUrl": ""
 		},
-		"longDescription": "",
+		"longDescription": "Game Chronicle is a simple gaming journal that allows users to record their play sessions with various information, such as session ratings, duration, and notes.",
 		"macOS": {
 			"entitlements": null,
 			"exceptionDomain": "",
@@ -32,7 +32,7 @@
 			"signingIdentity": null
 		},
 		"resources": [],
-		"shortDescription": "",
+		"shortDescription": "A simple gaming journal.",
 		"linux": {
 			"deb": {
 				"depends": []
@@ -41,7 +41,7 @@
 	},
 	"productName": "Game Chronicle",
 	"version": "0.9.0",
-	"identifier": "com.gamechronicle.www",
+	"identifier": "app.gamechronicle.www",
 	"plugins": {
 		"updater": {
 			"endpoints": [
