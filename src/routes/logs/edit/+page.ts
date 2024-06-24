@@ -1,4 +1,4 @@
-import { getLogById, getLoggedGame } from '$lib/rust-bindings/database';
+import { getLogById } from '$lib/rust-bindings/database';
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 import type { z } from 'zod';

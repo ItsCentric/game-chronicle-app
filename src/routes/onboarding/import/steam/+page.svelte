@@ -10,7 +10,6 @@
 	import { steamImportFormSchema } from '$lib/schemas';
 	import { ArrowLeft, Check, LoaderCircle, X } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { goto } from '$app/navigation';
 
 	type RetrieveStarted = {
 		status: 'started';
