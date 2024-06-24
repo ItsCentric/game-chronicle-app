@@ -1,5 +1,6 @@
 use sysinfo::{Pid, System};
 use tauri::Manager;
+use tauri_plugin_notification::{NotificationExt, PermissionState};
 
 use crate::database::get_executable_details;
 use crate::{helpers, Error};
@@ -93,6 +94,29 @@ impl ProcessMonitor {
                         }
                         _ => return Err(e.into()),
                     },
+                };
+                match app.get_webview_window("main") {
+                    Some(window) => {
+                        window.show()?;
+                    }
+                    None => {
+                        let mut notification_permission_state =
+                            app.notification().permission_state().unwrap();
+                        if notification_permission_state != PermissionState::Granted {
+                            notification_permission_state =
+                                app.notification().request_permission().unwrap();
+                            if notification_permission_state != PermissionState::Granted {
+                                return Ok(());
+                            }
+                        }
+                        app
+                            .notification()
+                            .builder()
+                            .title("Game stopped")
+                            .body("A game was detected to have stopped but the main window could not be opened automatically.")
+                            .show()
+                            .unwrap();
+                    }
                 }
             }
         }
