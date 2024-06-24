@@ -107,6 +107,7 @@ pub async fn get_steam_data(
                 .wait_timeout(retrieval_finished_lock, std::time::Duration::from_secs(2))
                 .unwrap()
                 .0;
+            let _ = *retrieval_finished_lock;
         }
     });
     let access_token_response = authenticate_with_twitch(app_handle.clone()).await?;
@@ -223,6 +224,7 @@ pub fn import_igdb_games(
                 .wait_timeout(import_finished_lock, std::time::Duration::from_secs(2))
                 .unwrap()
                 .0;
+            let _ = *import_finished_lock;
         }
     });
     let logged_games_transaction = conn.transaction()?;

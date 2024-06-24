@@ -1,38 +1,20 @@
-# create-svelte
+![Game detection showcase](https://github.com/ItsCentric/game-chronicle/blob/main/src/lib/assets/game-detection-showcase.gif?raw=true)
+Game Chronicle is a simple gaming journal that allows users to record their play sessions with various information, such as session ratings, duration, and notes.
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
+## Installation
 
-## Creating a project
+To install Game Chronicle, download the latest release for your platform from the releases tab
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Features
 
-```bash
-# create a new project in the current directory
-npm create svelte@latest
+- **Simple Journaling**: Easily record and review your gaming sessions with details such as ratings, duration, and notes.
+- **Low Memory Consumption**: The application is designed to be lightweight and efficient.
+- **Automatic Game Detection**: Automatically detects the games you are playing and tracks start and stop times.
 
-# create a new project in my-app
-npm create svelte@latest my-app
-```
+## Contributing
 
-## Developing
+At this time, Game Chronicle is not accepting contributions. Stay tuned for future updates.
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## License
 
-```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+This project is currently under a proprietary license. All rights reserved.
