@@ -48,13 +48,6 @@ jobs:
       - name: install frontend dependencies
         run: bun install
 
-      - name: Install changelog generator
-        run: bun install -g conventional-changelog-cli
-
-      - name: Generate changelog
-        run: conventional-changelog -p angular -i CHANGELOG.md -s -r 0
-        id: changelog
-
       - name: Install cargo tauri cli
         run: cargo install tauri-cli@^2.0.0-beta
 
@@ -66,7 +59,5 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'v__VERSION__'
-          releaseBody: '${{steps.changelog.outputs.changelog}}'
-          prerelease: true
           tauriScript: cargo tauri
           args: ${{ matrix.args }}
