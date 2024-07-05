@@ -62,13 +62,18 @@ pub struct Game {
 
 pub type SafeConnection = Mutex<Connection>;
 
-pub fn initialize_database(app_handle: tauri::AppHandle) -> Result<rusqlite::Connection, Error> {
+pub fn initialize_database(
+    app_handle: tauri::AppHandle,
+) -> Result<(rusqlite::Connection, rusqlite::Connection), Error> {
     let data_dir = get_app_data_directory(&app_handle)?;
     create_dir_if_not_exists(data_dir.as_path())?;
-    let conn = Connection::open(data_dir.join("data.db"))?;
+    let logs_conn = Connection::open(data_dir.join("logs.db"))?;
     let sql_file_contents = include_str!("../sql/initialize_database.sql");
-    conn.execute_batch(sql_file_contents)?;
-    Ok(conn)
+    logs_conn.execute_batch(sql_file_contents)?;
+    let conn = Connection::open(data_dir.join("igdb.db"))?;
+    let igdb_sql_file_contents = include_str!("../sql/initialize_igdb_database.sql");
+    conn.execute_batch(igdb_sql_file_contents)?;
+    Ok((logs_conn, conn))
 }
 
 fn log_from_row(row: &rusqlite::Row) -> Result<Log, rusqlite::Error> {

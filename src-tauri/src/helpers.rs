@@ -8,6 +8,11 @@ use tauri::Manager;
 
 use crate::{Error, UserSettings};
 
+#[derive(serde::Deserialize, Debug)]
+pub struct CsvUrlResponse {
+    url: String,
+}
+
 #[tauri::command]
 pub fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, Error> {
     let config_path = app_handle.path().config_dir().unwrap();
@@ -49,4 +54,22 @@ pub fn get_app_config_directory(app_handle: &tauri::AppHandle) -> Result<PathBuf
 pub fn get_app_data_directory(app_handle: &tauri::AppHandle) -> Result<PathBuf, Error> {
     let dir = app_handle.path().data_dir()?;
     Ok(dir.join("game-chronicle"))
+}
+
+pub fn get_csv_url_blocking(endpoint: &str) -> Result<String, Error> {
+    let client = reqwest::blocking::Client::new();
+    let response = client
+        .get(format!(
+            "https://game-chronicle-api-e9e3d1c83b7e.herokuapp.com/csv/{}",
+            endpoint
+        ))
+        .send()?
+        .json::<CsvUrlResponse>()?;
+    Ok(response.url)
+}
+
+pub fn get_csv_data_blocking(url: &str) -> Result<String, Error> {
+    let client = reqwest::blocking::Client::new();
+    let response = client.get(url).send()?.text()?;
+    Ok(response)
 }

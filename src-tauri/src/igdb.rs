@@ -1,5 +1,6 @@
 use std::io::Read;
 
+use csv::Reader;
 use reqwest::Client;
 
 use crate::{helpers::get_app_config_directory, Error, UserSettings};
@@ -42,6 +43,63 @@ pub struct SimilarGames {
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
 pub struct MultiQueryResponse<T> {
     pub result: Vec<T>,
+}
+
+#[derive(serde::Serialize, Debug, serde::Deserialize)]
+pub struct NewIgdbGame {
+    pub id: i32,
+    pub name: String,
+    #[serde(rename(deserialize = "cover"))]
+    pub cover_id: Option<i32>,
+    #[serde(
+        rename(deserialize = "websites"),
+        deserialize_with = "deserialize_list"
+    )]
+    pub website_ids: Option<Vec<i32>>,
+}
+
+#[derive(serde::Serialize, Debug, serde::Deserialize)]
+pub struct NewCover {
+    pub id: i32,
+    pub image_id: String,
+}
+
+#[derive(serde::Serialize, Debug, serde::Deserialize)]
+pub struct NewWebsite {
+    pub id: i32,
+    pub url: String,
+}
+
+fn deserialize_list<'de, D>(deserializer: D) -> Result<Option<Vec<i32>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: String = serde::Deserialize::deserialize(deserializer)?;
+    let s = s.trim_start_matches('{').trim_end_matches('}');
+    if s.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(
+        s.split(',')
+            .map(|item| match item.trim().parse::<i32>() {
+                Ok(id) => id,
+                Err(_) => 0,
+            })
+            .collect(),
+    ))
+}
+
+pub fn parse_csv<T>(csv_path: &std::path::PathBuf) -> Result<Vec<T>, Error>
+where
+    T: serde::de::DeserializeOwned,
+{
+    let mut rdr = Reader::from_path(csv_path)?;
+    let mut items = vec![];
+    for result in rdr.deserialize() {
+        let item: T = result?;
+        items.push(item);
+    }
+    Ok(items)
 }
 
 pub async fn send_igdb_request(

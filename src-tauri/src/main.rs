@@ -1,8 +1,10 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{path::PathBuf, thread};
+use std::{fs::File, path::PathBuf, thread};
 
+use helpers::{get_app_data_directory, get_csv_data_blocking, get_csv_url_blocking};
+use igdb::parse_csv;
 use serde::Deserialize;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_dialog::DialogExt;
@@ -43,6 +45,8 @@ pub enum Error {
     TomlDer(#[from] toml::de::Error),
     #[error(transparent)]
     TomlSer(#[from] toml::ser::Error),
+    #[error(transparent)]
+    Csv(#[from] csv::Error),
     #[error("Error: {0}")]
     Custom(String),
 }
@@ -165,8 +169,82 @@ fn main() {
             } else if !user_settings.autostart && autostart_manager.is_enabled().unwrap() {
                 autostart_manager.disable().unwrap();
             }
-            let conn = database::initialize_database(app.handle().clone()).unwrap();
-            app.manage(std::sync::Mutex::new(conn));
+            let app_data_dir = get_app_data_directory(app.handle())?;
+            if app_data_dir.join("igdb.db").exists() {
+                std::fs::remove_file(get_app_data_directory(app.handle())?.join("igdb.db"))?;
+            };
+            let (logs_conn, mut igdb_conn) = database::initialize_database(app.handle().clone()).unwrap();
+            let temp_dir = app.handle().path().temp_dir()?.join("game-chronicle");
+            std::fs::create_dir_all(&temp_dir)?;
+            let endpoints = ["covers", "websites", "games"];
+            for endpoint in endpoints.iter() {
+                let csv_url = get_csv_url_blocking(endpoint)?;
+                let csv_data = get_csv_data_blocking(&csv_url)?;
+                let mut csv_file = File::create(temp_dir.join(format!("{}.csv", endpoint)))?;
+                std::io::copy(&mut csv_data.as_bytes(), &mut csv_file)?;
+            }
+            let covers: Vec<igdb::NewCover> = parse_csv(&temp_dir.join("covers.csv"))?;
+            let cover_transaction = igdb_conn.transaction()?;
+            {
+                let mut cover_statement = cover_transaction.prepare("INSERT INTO covers (id, image_id) VALUES (?1, ?2)")?;
+                for cover in covers {
+                    cover_statement.execute(
+                        (cover.id, cover.image_id)
+                    )?;
+                }
+            }
+            cover_transaction.commit()?;
+            let websites: Vec<igdb::NewWebsite> = parse_csv(&temp_dir.join("websites.csv"))?;
+            let website_transaction = igdb_conn.transaction()?;
+            {
+                let mut website_statement = website_transaction.prepare("INSERT INTO websites (id, url) VALUES (?1, ?2)")?;
+                for website in websites {
+                    website_statement.execute(
+                        (website.id, website.url)
+                    )?;
+                }
+            }
+            website_transaction.commit()?;
+            let games: Vec<igdb::NewIgdbGame> = parse_csv(&temp_dir.join("games.csv"))?;
+            let game_transaction = igdb_conn.transaction()?;
+            {
+                let mut game_statement = game_transaction.prepare("INSERT INTO games (id, name, cover_id) VALUES (?1, ?2, ?3)")?;
+                for game in &games {
+                    match game_statement.execute(
+                        (game.id, game.name.clone(), game.cover_id)
+                    ) {
+                        Ok(_) => {}
+                        Err(_) => {
+                        }
+                    };
+                }
+            }
+            game_transaction.commit()?;
+            let game_websites_transaction = igdb_conn.transaction()?;
+            {
+                for game in games {
+                    let mut game_websites_statement = game_websites_transaction.prepare("INSERT INTO game_websites (game_id, website_id) VALUES (?1, ?2)")?;
+                    match game.website_ids {
+                        Some(website_ids) => {
+                            for website_id in website_ids {
+                                match game_websites_statement.execute(
+                                    (game.id, website_id)
+                                ) {
+                                    Ok(_) => {}
+                                    Err(_) => {
+                                    }
+                                };
+                            }
+                        }
+                        None => {
+                            continue;
+                        }
+                    }
+                }
+            }
+            game_websites_transaction.commit()?;
+            std::fs::remove_dir_all(temp_dir)?;
+            app.manage(std::sync::Mutex::new(logs_conn));
             if !user_settings.process_monitoring.enabled || user_settings.executable_paths.is_none() {
                 return Ok(());
             }
