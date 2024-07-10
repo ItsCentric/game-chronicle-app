@@ -46,11 +46,6 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
     }
 }
 
-pub fn get_app_config_directory(app_handle: &tauri::AppHandle) -> Result<PathBuf, Error> {
-    let dir = app_handle.path().config_dir()?;
-    Ok(dir.join("game-chronicle"))
-}
-
 pub fn get_app_data_directory(app_handle: &tauri::AppHandle) -> Result<PathBuf, Error> {
     let dir = app_handle.path().data_dir()?;
     Ok(dir.join("game-chronicle"))
