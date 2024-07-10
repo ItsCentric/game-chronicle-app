@@ -19,6 +19,11 @@ pub struct Game {
     pub category: i32,
     pub version_parent: Option<i32>,
     pub total_rating: Option<f32>,
+    #[serde(
+        rename(deserialize = "platforms"),
+        deserialize_with = "deserialize_list"
+    )]
+    pub platform_ids: Option<Vec<i32>>,
 }
 
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
@@ -113,7 +118,7 @@ fn game_info_from_row(row: &rusqlite::Row) -> Result<GameInfo, rusqlite::Error> 
 }
 
 fn game_info_columns() -> &'static str {
-    "g.id, g.name, c.image_id, GROUP_CONCAT(w.url, ','), GROUP_CONCAT(sg.similar_game_id, ','), g.category, g.version_parent, total_rating FROM games g LEFT JOIN covers c ON g.cover_id = c.id LEFT JOIN game_websites gw ON g.id = gw.game_id LEFT JOIN websites w ON gw.website_id = w.id LEFT JOIN similar_games sg ON sg.game_id = g.id"
+    "g.id, g.name, c.image_id, GROUP_CONCAT(w.url, ','), GROUP_CONCAT(sg.similar_game_id, ','), g.category, g.version_parent, total_rating FROM games g LEFT JOIN covers c ON g.cover_id = c.id LEFT JOIN game_websites gw ON g.id = gw.game_id LEFT JOIN websites w ON gw.website_id = w.id LEFT JOIN similar_games sg ON sg.game_id = g.id LEFT JOIN game_platforms gp ON g.id = gp.game_id LEFT JOIN platforms p ON p.id = gp.platform_id"
 }
 
 #[tauri::command]
@@ -126,7 +131,7 @@ pub fn get_games_by_id(
     }
     let conn = state.igdb_conn.lock().unwrap();
     let query = format!(
-        "SELECT {} WHERE g.id IN ({}) AND g.version_parent IS NULL GROUP BY g.id;",
+        "SELECT {} WHERE g.id IN ({}) AND g.category IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;",
         game_info_columns(), game_ids
             .iter()
             .map(|id| id.to_string())
@@ -147,7 +152,7 @@ pub async fn get_random_top_games(
 ) -> Result<Vec<GameInfo>, Error> {
     let conn = state.igdb_conn.lock().unwrap();
     let mut stmt = conn.prepare(
-        format!("SELECT {} WHERE version_parent IS NULL AND total_rating >= 85 GROUP BY g.id ORDER BY RANDOM() LIMIT ?;", game_info_columns()).as_str(),
+        format!("SELECT {} WHERE g.category IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL AND total_rating >= 85 GROUP BY g.id ORDER BY RANDOM() LIMIT ?;", game_info_columns()).as_str(),
     )?;
     let games = stmt
         .query_map([amount], game_info_from_row)?
@@ -183,7 +188,7 @@ pub fn get_games_from_links(
         .collect::<Vec<String>>();
     let mut stmt = conn.prepare(
         format!(
-            "SELECT {} WHERE w.url IN ({}) GROUP BY g.id;",
+            "SELECT {} WHERE w.url IN ({}) AND g.category IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;",
             game_info_columns(),
             formatted_links.join(",").as_str()
         )

@@ -223,6 +223,7 @@ fn main() {
                 let mut game_statement = game_transaction.prepare("INSERT INTO games (id, name, cover_id, category, version_parent, total_rating) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")?;
                 let mut game_websites_statement = game_transaction.prepare("INSERT INTO game_websites (game_id, website_id) VALUES (?1, ?2)")?;
                 let mut similar_games_statement = game_transaction.prepare("INSERT INTO similar_games (game_id, similar_game_id) VALUES (?1, ?2)")?;
+                let mut game_platforms_statement = game_transaction.prepare("INSERT INTO game_platforms (game_id, platform_id) VALUES (?1, ?2)")?;
                 for game in &games {
                     match game_statement.execute(
                         (game.id, game.name.clone(), game.cover_id, game.category, game.version_parent, game.total_rating)
@@ -254,6 +255,22 @@ fn main() {
                                     (game.id, similar_game_id)
                                 ) {
                                     Ok(_) => {}
+                                    Err(_) => {
+                                    }
+                                };
+                            }
+                        }
+                        None => {
+                            continue;
+                        }
+                    }
+                    match &game.platform_ids {
+                        Some(platform_ids) => {
+                            for platform_id in platform_ids {
+                                match game_platforms_statement.execute(
+                                    (game.id, platform_id)
+                                ) {
+                                    Ok(_) => {},
                                     Err(_) => {
                                     }
                                 };
