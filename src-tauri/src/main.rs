@@ -68,8 +68,6 @@ pub struct UserSettings {
     username: String,
     executable_paths: Option<String>,
     process_monitoring: ProcessMonitoringSettings,
-    twitch_client_id: Option<String>,
-    twitch_client_secret: Option<String>,
     autostart: bool,
     new: bool,
 }
@@ -147,8 +145,6 @@ fn main() {
                             enabled: false,
                             directory_depth: 2,
                         },
-                        twitch_client_id: None,
-                        twitch_client_secret: None,
                         autostart: false,
                         new: true,
                     };

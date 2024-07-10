@@ -64,8 +64,6 @@
 						enabled: form.data.processMonitoringEnabled,
 						directory_depth: form.data.processMonitoringDirectoryDepth
 					},
-					twitch_client_id: form.data.twitchClientId,
-					twitch_client_secret: form.data.twitchClientSecret,
 					autostart: form.data.autostart,
 					new: false
 				};
@@ -125,22 +123,6 @@
 					<div class="flex justify-between items-center">
 						<Form.Label>Username</Form.Label>
 						<Input {...attrs} bind:value={$settingsFormData.username} class="max-w-xs" />
-					</div>
-				</Form.Control>
-			</Form.Field>
-			<Form.Field form={settingsForm} name="twitchClientId">
-				<Form.Control let:attrs>
-					<div class="flex justify-between items-center">
-						<Form.Label>Client ID</Form.Label>
-						<Input {...attrs} bind:value={$settingsFormData.twitchClientId} class="max-w-xs" />
-					</div>
-				</Form.Control>
-			</Form.Field>
-			<Form.Field form={settingsForm} name="twitchClientSecret">
-				<Form.Control let:attrs>
-					<div class="flex justify-between items-center">
-						<Form.Label>Client Secret</Form.Label>
-						<Input {...attrs} bind:value={$settingsFormData.twitchClientSecret} class="max-w-xs" />
 					</div>
 				</Form.Control>
 			</Form.Field>
