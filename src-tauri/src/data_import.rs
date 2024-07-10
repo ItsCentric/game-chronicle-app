@@ -114,9 +114,12 @@ pub async fn get_steam_data(
     let games = get_games_from_links(app_handle.state::<DatabaseConnections>(), steam_links)?;
     for steam_game in owned_steam_games_response.games {
         let igdb_game = match games.iter().find(|g| {
-            g.websites
-                .iter()
-                .any(|w| w.contains(&steam_game.appid.to_string()))
+            g.websites.iter().any(|w| {
+                w.contains(&format!(
+                    "https://store.steampowered.com/app/{}",
+                    steam_game.appid
+                ))
+            })
         }) {
             Some(game) => game,
             None => continue,
@@ -199,11 +202,11 @@ pub fn import_igdb_games(
         )?;
         for log_data in &data {
             stmt.execute(params![
-                &log_data.game_id,
                 &log_data.date,
                 &log_data.status,
                 &log_data.minutes_played,
                 &log_data.notes,
+                &log_data.game_id,
             ])?;
             let mut games_imported_lock = games_imported.write().unwrap();
             *games_imported_lock += 1;

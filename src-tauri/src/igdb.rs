@@ -126,7 +126,7 @@ pub fn get_games_by_id(
     }
     let conn = state.igdb_conn.lock().unwrap();
     let query = format!(
-        "SELECT {} WHERE g.id IN ({}) AND g.category = 0 AND g.version_parent IS NULL GROUP BY g.id;",
+        "SELECT {} WHERE g.id IN ({}) AND g.version_parent IS NULL GROUP BY g.id;",
         game_info_columns(), game_ids
             .iter()
             .map(|id| id.to_string())
@@ -147,7 +147,7 @@ pub async fn get_random_top_games(
 ) -> Result<Vec<GameInfo>, Error> {
     let conn = state.igdb_conn.lock().unwrap();
     let mut stmt = conn.prepare(
-        format!("SELECT {} WHERE category = 0 AND version_parent IS NULL AND total_rating >= 85 GROUP BY g.id ORDER BY RANDOM() LIMIT ?;", game_info_columns()).as_str(),
+        format!("SELECT {} WHERE version_parent IS NULL AND total_rating >= 85 GROUP BY g.id ORDER BY RANDOM() LIMIT ?;", game_info_columns()).as_str(),
     )?;
     let games = stmt
         .query_map([amount], game_info_from_row)?
@@ -177,10 +177,20 @@ pub fn get_games_from_links(
     links: Vec<String>,
 ) -> Result<Vec<GameInfo>, Error> {
     let conn = state.igdb_conn.lock().unwrap();
-    let mut stmt = conn.prepare("SELECT g.id, g.name, c.image_id, GROUP_CONCAT(w.url, ',') FROM games g LEFT JOIN game_websites gw on g.id = gw.game_id LEFT JOIN websites w ON w.id = gw.website_id WHERE w.url IN (1?);")?;
-    let joined_links = links.join(",");
+    let formatted_links = links
+        .iter()
+        .map(|l| format!("'{}'", l))
+        .collect::<Vec<String>>();
+    let mut stmt = conn.prepare(
+        format!(
+            "SELECT {} WHERE w.url IN ({}) GROUP BY g.id;",
+            game_info_columns(),
+            formatted_links.join(",").as_str()
+        )
+        .as_str(),
+    )?;
     let games = stmt
-        .query_map([joined_links], game_info_from_row)?
+        .query_map([], game_info_from_row)?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(games)
 }
