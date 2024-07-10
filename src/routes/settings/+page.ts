@@ -13,8 +13,6 @@ export const load = async () => {
 		executablePaths: userSettings.executable_paths ? userSettings.executable_paths.split(';') : [],
 		processMonitoringEnabled: userSettings.process_monitoring.enabled,
 		processMonitoringDirectoryDepth: userSettings.process_monitoring.directory_depth,
-		twitchClientId: userSettings.twitch_client_id ?? '',
-		twitchClientSecret: userSettings.twitch_client_secret ?? '',
 		autostart: userSettings.autostart
 	};
 	const form = await superValidate(formData, zod(settingsSchema));

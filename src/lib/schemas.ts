@@ -58,9 +58,7 @@ export const settingsSchema = z.object({
 	executablePaths: z.array(z.string()),
 	processMonitoringEnabled: z.boolean(),
 	processMonitoringDirectoryDepth: z.number().min(0).max(99).default(3),
-	twitchClientId: z.string().min(1),
-	twitchClientSecret: z.string().min(1),
-	autostart: z.boolean(),
+	autostart: z.boolean()
 });
 export type SettingsFormSchema = typeof settingsSchema;
 
@@ -70,13 +68,6 @@ export const steamImportFormSchema = z.object({
 });
 
 export type SteamImportFormSchema = typeof steamImportFormSchema;
-
-export const twitchCredentialsSchema = z.object({
-	clientId: z.string().min(1),
-	clientSecret: z.string().min(1)
-});
-
-export type TwitchCredentialsFormSchema = typeof twitchCredentialsSchema;
 
 export const gameDetectionSchema = settingsSchema.pick({
 	processMonitoringEnabled: true,

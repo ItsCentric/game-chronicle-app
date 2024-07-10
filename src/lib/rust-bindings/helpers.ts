@@ -8,8 +8,6 @@ const userSettingsSchema = z.object({
 		enabled: z.boolean(),
 		directory_depth: z.number()
 	}),
-	twitch_client_id: z.string().nullable(),
-	twitch_client_secret: z.string().nullable(),
 	autostart: z.boolean(),
 	new: z.boolean()
 });
