@@ -8,12 +8,6 @@ const dashboardStatisticsSchema = z.object({
 	total_games_completed: z.number()
 });
 
-const gameSchema = z.object({
-	id: z.number(),
-	title: z.string(),
-	cover_id: z.string().optional()
-});
-
 const logSchema = z.object({
 	id: z.number(),
 	created_at: z.string(),
@@ -23,7 +17,7 @@ const logSchema = z.object({
 	notes: z.string(),
 	status: z.enum([...statusOptions]),
 	minutes_played: z.number(),
-	game: gameSchema
+	game_id: z.number()
 });
 
 export const logDataSchema = logSchema.omit({ id: true, created_at: true, updated_at: true });
@@ -96,9 +90,4 @@ export async function addExecutableDetails(executableDetails: ExecutableDetails)
 export async function addLog(log: LogData) {
 	const addedLogId = await invoke('add_log', { logData: log });
 	return addedLogId as number;
-}
-
-export async function getLoggedGame(id: number) {
-	const game = await invoke('get_logged_game', { id });
-	return gameSchema.parse(game);
 }

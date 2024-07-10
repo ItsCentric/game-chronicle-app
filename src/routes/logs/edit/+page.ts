@@ -5,11 +5,11 @@ import type { z } from 'zod';
 import { logSchema, type LogFormSchema, type StatusOption } from '$lib/schemas';
 import { superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
-import type { IgdbGame } from '$lib/rust-bindings/igdb';
+import { getGamesById, type GameInfo } from '$lib/rust-bindings/igdb';
 
 export const load: PageLoad = async ({ url }) => {
 	if (typeof window === 'undefined') {
-		return { igdbGame: { id: 0, title: '' } as IgdbGame, form: superValidate(zod(logSchema)) };
+		return { igdbGame: { id: 0, title: '' } as GameInfo, form: superValidate(zod(logSchema)) };
 	}
 	const id = url.searchParams.get('id');
 	const minutesPlayed = url.searchParams.has('minutesPlayed')
@@ -26,17 +26,17 @@ export const load: PageLoad = async ({ url }) => {
 			timePlayedHours: Math.floor(log.minutes_played / 60)
 		};
 		const form = await superValidate(formData, zod(logSchema));
-		const { cover_id, ...game } = log.game;
+		const game = await getGamesById([log.game_id]);
 		return {
-			igdbGame: cover_id ? { ...game, cover: { id: 0, cover_id } } : { ...game },
+			igdbGame: game[0],
 			form
 		};
 	} else {
-		if (!url.searchParams.has('game')) {
-			error(404, 'Game is required');
+		const gameId = url.searchParams.get('gameId');
+		if (!gameId) {
+			throw error(404, 'Game is required');
 		}
-		const gameString = url.searchParams.get('game') as string;
-		const game = JSON.parse(gameString) as IgdbGame;
+		const game = await getGamesById([parseInt(gameId)]);
 		const form = await superValidate(zod(logSchema));
 		if (minutesPlayed != undefined) {
 			form.data.timePlayedHours = Math.floor(minutesPlayed / 60);
@@ -47,7 +47,7 @@ export const load: PageLoad = async ({ url }) => {
 			form.data.timePlayedMinutes = 0;
 		}
 		return {
-			igdbGame: game,
+			igdbGame: game[0],
 			form
 		};
 	}

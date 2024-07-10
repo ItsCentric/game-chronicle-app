@@ -8,7 +8,7 @@
 	import { useQuery } from '@sveltestack/svelte-query';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 	import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindings/database';
-	import { authenticateWithTwitch, getGamesById, getSimilarGames } from '$lib/rust-bindings/igdb';
+	import { getGamesById } from '$lib/rust-bindings/igdb';
 	import type { PageData } from './$types';
 
 	export let data: PageData;
@@ -38,13 +38,12 @@
 	const recentLogsQuery = useQuery(
 		'recentLogs',
 		async () => {
-			const accessTokenResponse = await authenticateWithTwitch();
 			const recentLogs = await getRecentLogs(
 				6,
 				statusOptions.filter((status) => status != 'wishlist' && status != 'backlog')
 			);
-			const recentGameIds = recentLogs.map((log) => log.game.id);
-			const games = await getGamesById(accessTokenResponse.access_token, recentGameIds);
+			const recentGameIds = recentLogs.map((log) => log.game_id);
+			const games = await getGamesById(recentGameIds);
 			const sortedGames = [];
 			for (let i = 0; i < recentGameIds.length; i++) {
 				const game = games.find((game) => game.id === recentGameIds[i]);
@@ -64,9 +63,13 @@
 				'desc',
 				statusOptions.filter((status) => status != 'wishlist' && status != 'backlog')
 			);
-			const gameIds = logs.map((log) => log.game.id);
-			const accessTokenResponse = await authenticateWithTwitch();
-			const similarGames = await getSimilarGames(accessTokenResponse.access_token, gameIds);
+			const gameIds = logs.map((log) => log.game_id);
+			const games = await getGamesById(gameIds);
+			const similarGameIds = games
+				.filter((game) => (game.similar_games?.length ?? 0) > 0)
+				.map((game) => game.similar_games as number[])
+				.flat();
+			const similarGames = await getGamesById(similarGameIds);
 			return similarGames;
 		},
 		{ initialData: data.similarGames }

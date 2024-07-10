@@ -1,52 +1,10 @@
-use std::io::Read;
-
 use csv::Reader;
-use reqwest::Client;
+use tauri::State;
 
-use crate::{helpers::get_app_config_directory, Error, UserSettings};
-
-use rand::Rng;
+use crate::{DatabaseConnections, Error};
 
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
-pub struct AccessTokenResponse {
-    pub access_token: String,
-    pub expires_in: i32,
-    pub token_type: String,
-}
-
-#[derive(serde::Serialize, Debug, serde::Deserialize, Clone)]
-pub struct IgdbGame {
-    pub id: i32,
-    #[serde(rename(deserialize = "name"))]
-    pub title: String,
-    pub cover: Option<Cover>,
-    pub websites: Option<Vec<Website>>,
-}
-
-#[derive(serde::Serialize, Debug, serde::Deserialize, Clone)]
-pub struct Cover {
-    pub id: i32,
-    #[serde(rename(deserialize = "image_id"))]
-    pub cover_id: String,
-}
-
-#[derive(serde::Serialize, Debug, serde::Deserialize, Clone)]
-pub struct Website {
-    pub url: String,
-}
-
-#[derive(serde::Serialize, Debug, serde::Deserialize)]
-pub struct SimilarGames {
-    pub similar_games: Option<Vec<IgdbGame>>,
-}
-
-#[derive(serde::Serialize, Debug, serde::Deserialize)]
-pub struct MultiQueryResponse<T> {
-    pub result: Vec<T>,
-}
-
-#[derive(serde::Serialize, Debug, serde::Deserialize)]
-pub struct NewIgdbGame {
+pub struct Game {
     pub id: i32,
     pub name: String,
     #[serde(rename(deserialize = "cover"))]
@@ -56,18 +14,42 @@ pub struct NewIgdbGame {
         deserialize_with = "deserialize_list"
     )]
     pub website_ids: Option<Vec<i32>>,
+    #[serde(deserialize_with = "deserialize_list")]
+    pub similar_games: Option<Vec<i32>>,
+    pub category: i32,
+    pub version_parent: Option<i32>,
+    pub total_rating: Option<f32>,
 }
 
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
-pub struct NewCover {
+pub struct Cover {
     pub id: i32,
     pub image_id: String,
 }
 
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
-pub struct NewWebsite {
+pub struct Website {
     pub id: i32,
     pub url: String,
+}
+
+#[derive(serde::Serialize, Debug, serde::Deserialize)]
+pub struct Platform {
+    pub id: i32,
+    pub name: String,
+    pub category: Option<i32>,
+}
+
+#[derive(serde::Serialize, Debug, serde::Deserialize, Clone)]
+pub struct GameInfo {
+    pub id: i32,
+    pub title: String,
+    pub cover_image_id: Option<String>,
+    pub websites: Option<Vec<String>>,
+    pub similar_games: Option<Vec<i32>>,
+    pub category: i32,
+    pub version_parent: Option<i32>,
+    pub total_rating: Option<f32>,
 }
 
 fn deserialize_list<'de, D>(deserializer: D) -> Result<Option<Vec<i32>>, D::Error>
@@ -102,182 +84,103 @@ where
     Ok(items)
 }
 
-pub async fn send_igdb_request(
-    endpoint: &String,
-    access_token: &String,
-    body: String,
-    settings_path: std::path::PathBuf,
-) -> Result<reqwest::Response, Error> {
-    let client = Client::new();
-    let mut contents = String::new();
-    let mut file = std::fs::File::open(settings_path)?;
-    file.read_to_string(&mut contents).unwrap();
-    let settings = toml::from_str::<UserSettings>(&contents)?;
-    let twitch_client_id;
-    match settings.twitch_client_id {
-        Some(id) => twitch_client_id = id,
-        None => return Err(Error::from("Twitch client ID not found")),
-    }
-    let response = client
-        .post(&format!("https://api.igdb.com/v4/{}", endpoint))
-        .header("Client-ID", twitch_client_id)
-        .header("Authorization", &format!("Bearer {}", access_token))
-        .header("Content-Type", "application/json")
-        .body(body)
-        .send()
-        .await?;
-    Ok(response)
+fn game_info_from_row(row: &rusqlite::Row) -> Result<GameInfo, rusqlite::Error> {
+    let websites_string: Option<String> = row.get(3)?;
+    let similar_games_string: Option<String> = row.get(4)?;
+    let websites = match websites_string {
+        Some(string) => Some(string.split(',').map(|s| s.to_string()).collect()),
+        None => None,
+    };
+    let similar_games = match similar_games_string {
+        Some(string) => Some(
+            string
+                .split(',')
+                .map(|s| s.parse::<i32>().unwrap())
+                .collect(),
+        ),
+        None => None,
+    };
+    Ok(GameInfo {
+        id: row.get(0)?,
+        title: row.get(1)?,
+        cover_image_id: row.get(2)?,
+        websites,
+        similar_games,
+        category: row.get(5)?,
+        version_parent: row.get(6)?,
+        total_rating: row.get(7)?,
+    })
+}
+
+fn game_info_columns() -> &'static str {
+    "g.id, g.name, c.image_id, GROUP_CONCAT(w.url, ','), GROUP_CONCAT(sg.similar_game_id, ','), g.category, g.version_parent, total_rating FROM games g LEFT JOIN covers c ON g.cover_id = c.id LEFT JOIN game_websites gw ON g.id = gw.game_id LEFT JOIN websites w ON gw.website_id = w.id LEFT JOIN similar_games sg ON sg.game_id = g.id"
 }
 
 #[tauri::command]
-pub async fn authenticate_with_twitch(
-    app_handle: tauri::AppHandle,
-) -> Result<AccessTokenResponse, Error> {
-    let client = Client::new();
-    let config_dir = get_app_config_directory(&app_handle)?;
-    let settings_path = config_dir.join("settings.toml");
-    let mut contents = String::new();
-    let mut file = std::fs::File::open(settings_path)?;
-    file.read_to_string(&mut contents).unwrap();
-    let settings = toml::from_str::<UserSettings>(&contents)?;
-    let twitch_client_id;
-    let twitch_client_secret;
-    match settings.twitch_client_id {
-        Some(id) => twitch_client_id = id,
-        None => return Err(Error::from("Twitch client ID not found")),
-    }
-    match settings.twitch_client_secret {
-        Some(secret) => twitch_client_secret = secret,
-        None => return Err(Error::from("Twitch client secret not found")),
-    }
-    let response = client
-        .post(&format!("https://id.twitch.tv/oauth2/token?client_id={}&client_secret={}&grant_type=client_credentials", twitch_client_id, twitch_client_secret))
-        .header("Content-Type", "application/json")
-        .send()
-        .await?;
-    let json_response: AccessTokenResponse = serde_json::from_str(response.text().await?.as_str())?;
-    Ok(json_response)
-}
-
-#[tauri::command]
-pub async fn get_games_by_id(
-    access_token: String,
+pub fn get_games_by_id(
+    state: State<'_, DatabaseConnections>,
     game_ids: Vec<i32>,
-    app_handle: tauri::AppHandle,
-) -> Result<Vec<IgdbGame>, Error> {
+) -> Result<Vec<GameInfo>, Error> {
     if game_ids.is_empty() {
         return Ok(vec![]);
     }
-    let body = format!(
-        "fields name, cover.image_id; where id = ({});",
-        game_ids
+    let conn = state.igdb_conn.lock().unwrap();
+    let query = format!(
+        "SELECT {} WHERE g.id IN ({}) AND g.category = 0 AND g.version_parent IS NULL GROUP BY g.id;",
+        game_info_columns(), game_ids
             .iter()
             .map(|id| id.to_string())
             .collect::<Vec<String>>()
             .join(",")
     );
-    let response = send_igdb_request(
-        &"games".to_string(),
-        &access_token,
-        body,
-        get_app_config_directory(&app_handle)?.join("settings.toml"),
-    )
-    .await;
-    serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
-}
-
-#[tauri::command]
-pub async fn get_similar_games(
-    access_token: String,
-    game_ids: Vec<i32>,
-    app_handle: tauri::AppHandle,
-) -> Result<Vec<SimilarGames>, Error> {
-    if game_ids.is_empty() {
-        return Ok(vec![]);
-    }
-    let body = format!(
-        "fields similar_games.name, similar_games.cover.image_id; where id = ({}) & category = 0 & platforms.category = (1, 6); exclude id;",
-        game_ids
-            .iter()
-            .map(|id| id.to_string())
-            .collect::<Vec<String>>()
-            .join(",")
-    );
-    let response = send_igdb_request(
-        &"games".to_string(),
-        &access_token,
-        body,
-        get_app_config_directory(&app_handle)?.join("settings.toml"),
-    )
-    .await;
-    let deserialized_response: Vec<SimilarGames> =
-        serde_json::from_str(response?.text().await?.as_str())?;
-    Ok(deserialized_response
-        .into_iter()
-        .filter(|s| s.similar_games.is_some())
-        .collect())
+    let mut stmt = conn.prepare(&query)?;
+    let games = stmt
+        .query_map([], game_info_from_row)?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(games)
 }
 
 #[tauri::command]
 pub async fn get_random_top_games(
-    access_token: String,
+    state: State<'_, DatabaseConnections>,
     amount: i32,
-    app_handle: tauri::AppHandle,
-) -> Result<Vec<IgdbGame>, Error> {
-    let random_offset = rand::thread_rng().gen_range(0..900);
-    let body = format!(
-        "fields name, cover.image_id; limit {}; where category = 0 & total_rating >= 85 & platforms.category = (1, 6); offset {};",
-        amount,
-        random_offset
-    );
-    let response = send_igdb_request(
-        &"games".to_string(),
-        &access_token,
-        body,
-        get_app_config_directory(&app_handle)?.join("settings.toml"),
-    )
-    .await;
-    serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
+) -> Result<Vec<GameInfo>, Error> {
+    let conn = state.igdb_conn.lock().unwrap();
+    let mut stmt = conn.prepare(
+        format!("SELECT {} WHERE category = 0 AND version_parent IS NULL AND total_rating >= 85 GROUP BY g.id ORDER BY RANDOM() LIMIT ?;", game_info_columns()).as_str(),
+    )?;
+    let games = stmt
+        .query_map([amount], game_info_from_row)?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(games)
 }
 
 #[tauri::command]
-pub async fn search_game(
-    access_token: String,
+pub fn search_game(
+    state: State<'_, DatabaseConnections>,
     search_query: String,
-    app_handle: tauri::AppHandle,
-) -> Result<Vec<IgdbGame>, Error> {
-    let body = format!(
-        "fields name, cover.image_id; search \"{}\"; where category = 0 & version_parent = null;",
-        search_query
-    );
-    let response = send_igdb_request(
-        &"games".to_string(),
-        &access_token,
-        body,
-        get_app_config_directory(&app_handle)?.join("settings.toml"),
-    )
-    .await;
-    serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
+) -> Result<Vec<GameInfo>, Error> {
+    let results: Vec<i32>;
+    {
+        let conn = state.igdb_conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT rowid FROM games_fts WHERE name MATCH ?;")?;
+        results = stmt
+            .query_map([search_query.replace("'", " ")], |row| row.get(0))?
+            .collect::<Result<_, _>>()?;
+    }
+    let games = get_games_by_id(state, results)?;
+    Ok(games)
 }
 
-pub async fn multi_search_game_links(
-    access_token: String,
+pub fn get_games_from_links(
+    state: State<'_, DatabaseConnections>,
     links: Vec<String>,
-    app_handle: tauri::AppHandle,
-) -> Result<Vec<MultiQueryResponse<IgdbGame>>, Error> {
-    let mut body = String::new();
-    for (i, link) in links.iter().enumerate() {
-        body.push_str(&format!(
-            "query games \"Part {}\" {{fields name, cover.image_id, websites.url; where category = 0 & version_parent = null & websites.url ~ *\"{}\"*;}};",
-            i, link
-        ));
-    }
-    let response = send_igdb_request(
-        &"multiquery".to_string(),
-        &access_token,
-        body,
-        get_app_config_directory(&app_handle)?.join("settings.toml"),
-    )
-    .await;
-    serde_json::from_str(response?.text().await?.as_str()).map_err(Error::from)
+) -> Result<Vec<GameInfo>, Error> {
+    let conn = state.igdb_conn.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT g.id, g.name, c.image_id, GROUP_CONCAT(w.url, ',') FROM games g LEFT JOIN game_websites gw on g.id = gw.game_id LEFT JOIN websites w ON w.id = gw.website_id WHERE w.url IN (1?);")?;
+    let joined_links = links.join(",");
+    let games = stmt
+        .query_map([joined_links], game_info_from_row)?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(games)
 }

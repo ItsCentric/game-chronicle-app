@@ -89,6 +89,11 @@ impl serde::Serialize for Error {
     }
 }
 
+struct DatabaseConnections {
+    logs_conn: std::sync::Mutex<rusqlite::Connection>,
+    igdb_conn: std::sync::Mutex<rusqlite::Connection>,
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
@@ -176,14 +181,14 @@ fn main() {
             let (logs_conn, mut igdb_conn) = database::initialize_database(app.handle().clone()).unwrap();
             let temp_dir = app.handle().path().temp_dir()?.join("game-chronicle");
             std::fs::create_dir_all(&temp_dir)?;
-            let endpoints = ["covers", "websites", "games"];
+            let endpoints = ["covers", "websites", "platforms", "games"];
             for endpoint in endpoints.iter() {
                 let csv_url = get_csv_url_blocking(endpoint)?;
                 let csv_data = get_csv_data_blocking(&csv_url)?;
                 let mut csv_file = File::create(temp_dir.join(format!("{}.csv", endpoint)))?;
                 std::io::copy(&mut csv_data.as_bytes(), &mut csv_file)?;
             }
-            let covers: Vec<igdb::NewCover> = parse_csv(&temp_dir.join("covers.csv"))?;
+            let covers: Vec<igdb::Cover> = parse_csv(&temp_dir.join("covers.csv"))?;
             let cover_transaction = igdb_conn.transaction()?;
             {
                 let mut cover_statement = cover_transaction.prepare("INSERT INTO covers (id, image_id) VALUES (?1, ?2)")?;
@@ -194,7 +199,7 @@ fn main() {
                 }
             }
             cover_transaction.commit()?;
-            let websites: Vec<igdb::NewWebsite> = parse_csv(&temp_dir.join("websites.csv"))?;
+            let websites: Vec<igdb::Website> = parse_csv(&temp_dir.join("websites.csv"))?;
             let website_transaction = igdb_conn.transaction()?;
             {
                 let mut website_statement = website_transaction.prepare("INSERT INTO websites (id, url) VALUES (?1, ?2)")?;
@@ -205,26 +210,32 @@ fn main() {
                 }
             }
             website_transaction.commit()?;
-            let games: Vec<igdb::NewIgdbGame> = parse_csv(&temp_dir.join("games.csv"))?;
+            let platforms: Vec<igdb::Platform> = parse_csv(&temp_dir.join("platforms.csv"))?;
+            let platform_transaction = igdb_conn.transaction()?;
+            {
+                let mut platform_statement = platform_transaction.prepare("INSERT INTO platforms (id, name, category) VALUES (?1, ?2, ?3)")?;
+                for platform in platforms {
+                    platform_statement.execute(
+                        (platform.id, platform.name, platform.category)
+                    )?;
+                }
+            }
+            platform_transaction.commit()?;
+            let games: Vec<igdb::Game> = parse_csv(&temp_dir.join("games.csv"))?;
             let game_transaction = igdb_conn.transaction()?;
             {
-                let mut game_statement = game_transaction.prepare("INSERT INTO games (id, name, cover_id) VALUES (?1, ?2, ?3)")?;
+                let mut game_statement = game_transaction.prepare("INSERT INTO games (id, name, cover_id, category, version_parent, total_rating) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")?;
+                let mut game_websites_statement = game_transaction.prepare("INSERT INTO game_websites (game_id, website_id) VALUES (?1, ?2)")?;
+                let mut similar_games_statement = game_transaction.prepare("INSERT INTO similar_games (game_id, similar_game_id) VALUES (?1, ?2)")?;
                 for game in &games {
                     match game_statement.execute(
-                        (game.id, game.name.clone(), game.cover_id)
+                        (game.id, game.name.clone(), game.cover_id, game.category, game.version_parent, game.total_rating)
                     ) {
                         Ok(_) => {}
                         Err(_) => {
                         }
                     };
-                }
-            }
-            game_transaction.commit()?;
-            let game_websites_transaction = igdb_conn.transaction()?;
-            {
-                for game in games {
-                    let mut game_websites_statement = game_websites_transaction.prepare("INSERT INTO game_websites (game_id, website_id) VALUES (?1, ?2)")?;
-                    match game.website_ids {
+                    match &game.website_ids {
                         Some(website_ids) => {
                             for website_id in website_ids {
                                 match game_websites_statement.execute(
@@ -240,11 +251,31 @@ fn main() {
                             continue;
                         }
                     }
+                    match &game.similar_games {
+                        Some(similar_games) => {
+                            for similar_game_id in similar_games {
+                                match similar_games_statement.execute(
+                                    (game.id, similar_game_id)
+                                ) {
+                                    Ok(_) => {}
+                                    Err(_) => {
+                                    }
+                                };
+                            }
+                        }
+                        None => {
+                            continue;
+                        }
+                    }
                 }
             }
-            game_websites_transaction.commit()?;
+            game_transaction.commit()?;
+            igdb_conn.execute("INSERT INTO games_fts (rowid, name) SELECT id, name FROM games;", [])?;
             std::fs::remove_dir_all(temp_dir)?;
-            app.manage(std::sync::Mutex::new(logs_conn));
+            app.manage(DatabaseConnections {
+                logs_conn: std::sync::Mutex::new(logs_conn),
+                igdb_conn: std::sync::Mutex::new(igdb_conn),
+            });
             if !user_settings.process_monitoring.enabled || user_settings.executable_paths.is_none() {
                 return Ok(());
             }
@@ -282,8 +313,6 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             database::get_dashboard_statistics,
             igdb::get_games_by_id,
-            igdb::get_similar_games,
-            igdb::authenticate_with_twitch,
             database::get_recent_logs,
             database::get_logs,
             helpers::get_user_settings,
@@ -295,7 +324,6 @@ fn main() {
             database::add_executable_details,
             igdb::get_random_top_games,
             igdb::search_game,
-            database::get_logged_game,
             data_import::get_steam_data,
             data_import::import_igdb_games,
         ])

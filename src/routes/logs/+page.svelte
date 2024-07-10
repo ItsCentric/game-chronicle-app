@@ -17,15 +17,16 @@
 	import { goto } from '$app/navigation';
 	import { useMutation, useQuery, useQueryClient } from '@sveltestack/svelte-query';
 	import { toast } from 'svelte-sonner';
-	import { deleteLog, getLogs, type Log } from '$lib/rust-bindings/database';
+	import { deleteLog, getLogs } from '$lib/rust-bindings/database';
 	import type { PageData } from './$types';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 	import { toTitleCase } from '$lib';
+	import { getGamesById } from '$lib/rust-bindings/igdb';
 
 	export let data: PageData;
 
-	let filteredLogs: Log[] = [];
+	let filteredLogs: PageData['logsAndGames'] = [];
 	let statusFilter: StatusOption[] = [];
 	let currentLogPage = 1;
 	let sortBy = 'date';
@@ -34,16 +35,24 @@
 	const deleteLogMutation = useMutation(deleteLog, {
 		onSuccess: (deletedLogId) => {
 			queryClient.invalidateQueries('logs');
-			data.logs = data.logs.filter((log) => log.id !== deletedLogId);
+			data.logsAndGames = data.logsAndGames.filter((log) => log.id !== deletedLogId);
 		}
 	});
 	const logsQuery = useQuery(
 		'logs',
 		async () => {
 			const logs = await getLogs(sortBy, sortOrder, statusFilter);
-			return logs;
+			const games = await getGamesById(logs.map((log) => log.game_id));
+			let logsAndGames = logs.map((log) => {
+				let associatedGame = games.find((game) => game.id === log.game_id);
+				if (!associatedGame) {
+					throw new Error(`Game with id ${log.game_id} not found`);
+				}
+				return { ...log, game: associatedGame };
+			});
+			return logsAndGames;
 		},
-		{ initialData: data.logs }
+		{ initialData: data.logsAndGames }
 	);
 	const logStatusColorMap: Record<StatusOption, string> = {
 		backlog: 'bg-gray-500',
@@ -60,14 +69,14 @@
 	}
 	$: if (statusFilter) {
 		if (statusFilter.length === 0) {
-			filteredLogs = data.logs;
+			filteredLogs = data.logsAndGames;
 		} else {
-			filteredLogs = data.logs.filter((log) => {
+			filteredLogs = data.logsAndGames.filter((log) => {
 				return statusFilter.includes(log.status);
 			});
 		}
 	}
-	$: filteredLogs = ($logsQuery.data ?? data.logs).sort((a, b) => {
+	$: filteredLogs = ($logsQuery.data ?? data.logsAndGames).sort((a, b) => {
 		switch (sortBy) {
 			case 'title':
 				if (sortOrder === 'desc') {
@@ -175,9 +184,8 @@
 		{:else}
 			<div class="grid gap-2 grid-cols-6">
 				{#each filteredLogs.slice(start, end) as gameLog}
-					{@const { cover_id, ...game } = gameLog.game}
 					<GameCard
-						data={cover_id ? { ...game, cover: { cover_id, id: 0 } } : { ...game }}
+						data={gameLog.game}
 						on:click={() => goto(`/logs/edit?id=${gameLog.id}&gameId=${gameLog.game.id}`)}
 					>
 						<AlertDialog.Root>

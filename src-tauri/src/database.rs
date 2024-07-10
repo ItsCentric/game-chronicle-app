@@ -1,9 +1,8 @@
-use rusqlite::{Connection, OptionalExtension};
-use std::sync::Mutex;
+use rusqlite::Connection;
 
 use crate::{
     helpers::{create_dir_if_not_exists, get_app_data_directory},
-    Error,
+    DatabaseConnections, Error,
 };
 use tauri::State;
 
@@ -30,17 +29,17 @@ pub struct Log {
     pub notes: String,
     pub status: String,
     pub minutes_played: i32,
-    pub game: Game,
+    pub game_id: i32,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct LogData {
+    pub game_id: i32,
     pub date: String,
     pub rating: i32,
     pub notes: String,
     pub status: String,
     pub minutes_played: i32,
-    pub game: Game,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -52,15 +51,6 @@ pub struct LogUpdateData {
     pub status: String,
     pub minutes_played: i32,
 }
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct Game {
-    pub id: i32,
-    pub title: String,
-    pub cover_id: String,
-}
-
-pub type SafeConnection = Mutex<Connection>;
 
 pub fn initialize_database(
     app_handle: tauri::AppHandle,
@@ -79,6 +69,7 @@ pub fn initialize_database(
 fn log_from_row(row: &rusqlite::Row) -> Result<Log, rusqlite::Error> {
     Ok(Log {
         id: row.get(0)?,
+        game_id: row.get(1)?,
         created_at: row.get(2)?,
         updated_at: row.get(3)?,
         date: row.get(4)?,
@@ -86,11 +77,6 @@ fn log_from_row(row: &rusqlite::Row) -> Result<Log, rusqlite::Error> {
         notes: row.get(6)?,
         status: row.get(7)?,
         minutes_played: row.get(8)?,
-        game: Game {
-            id: row.get(9)?,
-            title: row.get(10)?,
-            cover_id: row.get(11)?,
-        },
     })
 }
 
@@ -112,11 +98,11 @@ pub fn get_executable_details(
 
 #[tauri::command]
 pub fn get_dashboard_statistics(
-    state: State<SafeConnection>,
+    state: State<DatabaseConnections>,
     start_date: String,
     end_date: String,
 ) -> Result<DashboardStatistics, Error> {
-    let conn = state.lock().unwrap();
+    let conn = state.logs_conn.lock().unwrap();
     let mut minutes_and_games_played_stmt = conn.prepare("SELECT COALESCE(SUM(minutes_played), 0), COUNT(*) FROM logs WHERE (date BETWEEN ?1 AND ?2) AND status != 'wishlist'")?;
     let this_minutes_and_games_played: (i32, i32) = minutes_and_games_played_stmt
         .query_row([start_date.clone(), end_date.clone()], |row| {
@@ -138,13 +124,13 @@ pub fn get_dashboard_statistics(
 
 #[tauri::command]
 pub fn get_recent_logs(
-    state: State<SafeConnection>,
+    state: State<DatabaseConnections>,
     amount: i32,
     filter: Vec<String>,
 ) -> Result<Vec<Log>, Error> {
-    let conn = state.lock().unwrap();
+    let conn = state.logs_conn.lock().unwrap();
     if filter.len() == 0 {
-        let mut stmt = conn.prepare("SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id ORDER BY date DESC LIMIT ?")?;
+        let mut stmt = conn.prepare("SELECT * FROM logs ORDER BY date DESC LIMIT ?")?;
         let logs = stmt
             .query_map([amount], |row| Ok(log_from_row(row)?))?
             .collect::<Result<Vec<_>, _>>()?;
@@ -155,8 +141,13 @@ pub fn get_recent_logs(
         .map(|s| format!("'{}'", s))
         .collect::<Vec<String>>()
         .join(",");
-    let mut stmt =
-        conn.prepare(format!("SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id WHERE status IN ({}) ORDER BY date DESC LIMIT ?", joined_filter).as_str())?;
+    let mut stmt = conn.prepare(
+        format!(
+            "SELECT * FROM logs WHERE status IN ({}) ORDER BY date DESC LIMIT ?",
+            joined_filter
+        )
+        .as_str(),
+    )?;
     let logs = stmt
         .query_map([amount], |row| Ok(log_from_row(row)?))?
         .collect::<Result<Vec<_>, _>>()?;
@@ -165,12 +156,12 @@ pub fn get_recent_logs(
 
 #[tauri::command]
 pub fn get_logs(
-    state: State<SafeConnection>,
+    state: State<DatabaseConnections>,
     sort_by: String,
     sort_order: String,
     filter: Vec<String>,
 ) -> Result<Vec<Log>, Error> {
-    let conn = state.lock().unwrap();
+    let conn = state.logs_conn.lock().unwrap();
     let joined_filter = filter
         .iter()
         .map(|s| format!("'{}'", s))
@@ -178,7 +169,7 @@ pub fn get_logs(
         .join(",");
     let mut stmt = conn.prepare(
         format!(
-            "SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id WHERE status IN ({}) ORDER BY ? {}",
+            "SELECT * FROM logs WHERE status IN ({}) ORDER BY ? {}",
             joined_filter, sort_order
         )
         .as_str(),
@@ -190,47 +181,27 @@ pub fn get_logs(
 }
 
 #[tauri::command]
-pub fn delete_log(state: State<SafeConnection>, id: i32) -> Result<i32, Error> {
-    let conn = state.lock().unwrap();
+pub fn delete_log(state: State<DatabaseConnections>, id: i32) -> Result<i32, Error> {
+    let conn = state.logs_conn.lock().unwrap();
     conn.execute("DELETE FROM logs WHERE id = ?", [id])?;
     Ok(id)
 }
 
 #[tauri::command]
-pub fn get_log_by_id(state: State<SafeConnection>, id: i32) -> Result<Log, Error> {
-    let conn = state.lock().unwrap();
-    let mut stmt = conn.prepare(
-        "SELECT * FROM logs JOIN logged_games ON logged_games.id = logs.game_id WHERE logs.id = ?",
-    )?;
+pub fn get_log_by_id(state: State<DatabaseConnections>, id: i32) -> Result<Log, Error> {
+    let conn = state.logs_conn.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT * FROM logs WHERE logs.id = ?")?;
     let log = stmt.query_row([id], |row| Ok(log_from_row(row)?))?;
     Ok(log)
 }
 
 #[tauri::command]
-pub fn add_log(state: State<SafeConnection>, log_data: LogData) -> Result<i32, Error> {
-    let conn = state.lock().unwrap();
-    let mut stmt = conn.prepare("SELECT id FROM logged_games WHERE id = ?")?;
-    let game = stmt
-        .query_row([log_data.game.id.to_string()], |row| Ok(row.get(0)?))
-        .optional()?;
-    let game_id = match game {
-        Some(id) => id,
-        None => {
-            conn.execute(
-                "INSERT INTO logged_games (id, title, cover_id) VALUES (?1, ?2, ?3)",
-                [
-                    log_data.game.id.to_string(),
-                    log_data.game.title,
-                    log_data.game.cover_id,
-                ],
-            )?;
-            conn.last_insert_rowid() as i32
-        }
-    };
+pub fn add_log(state: State<DatabaseConnections>, log_data: LogData) -> Result<i32, Error> {
+    let conn = state.logs_conn.lock().unwrap();
     conn.execute(
         "INSERT INTO logs (game_id, date, rating, notes, status, minutes_played) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         [
-            game_id.to_string(),
+            log_data.game_id.to_string(),
             log_data.date,
             log_data.rating.to_string(),
             log_data.notes,
@@ -243,8 +214,11 @@ pub fn add_log(state: State<SafeConnection>, log_data: LogData) -> Result<i32, E
 }
 
 #[tauri::command]
-pub fn update_log(state: State<SafeConnection>, log_data: LogUpdateData) -> Result<i32, Error> {
-    let conn = state.lock().unwrap();
+pub fn update_log(
+    state: State<DatabaseConnections>,
+    log_data: LogUpdateData,
+) -> Result<i32, Error> {
+    let conn = state.logs_conn.lock().unwrap();
     conn.execute(
         "UPDATE logs SET date = ?1, rating = ?2, notes = ?3, status = ?4, minutes_played = ?5 WHERE id = ?6",
         [
@@ -261,10 +235,10 @@ pub fn update_log(state: State<SafeConnection>, log_data: LogUpdateData) -> Resu
 
 #[tauri::command]
 pub fn add_executable_details(
-    state: State<SafeConnection>,
+    state: State<DatabaseConnections>,
     executable_details: ExecutableDetails,
 ) -> Result<i32, Error> {
-    let conn = state.lock().unwrap();
+    let conn = state.logs_conn.lock().unwrap();
     conn.execute(
         "INSERT INTO executable_details (executable_name, game_id) VALUES (?1, ?2)",
         [
@@ -274,18 +248,4 @@ pub fn add_executable_details(
     )?;
     let id = conn.last_insert_rowid() as i32;
     Ok(id)
-}
-
-#[tauri::command]
-pub fn get_logged_game(state: State<SafeConnection>, id: i32) -> Result<Game, Error> {
-    let conn = state.lock().unwrap();
-    let mut stmt = conn.prepare("SELECT * FROM logged_games WHERE id = ?")?;
-    let game = stmt.query_row([id], |row| {
-        Ok(Game {
-            id: row.get(0)?,
-            title: row.get(1)?,
-            cover_id: row.get(2)?,
-        })
-    })?;
-    Ok(game)
 }
