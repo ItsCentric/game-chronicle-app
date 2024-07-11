@@ -302,7 +302,7 @@ fn main() {
                         .max_depth(user_settings.process_monitoring.directory_depth as usize);
                     for entry in walker {
                         let entry = entry.unwrap();
-                        if entry.file_type().is_file() && !entry.path().to_string_lossy().contains("CrashHandler") {
+                        if entry.file_type().is_file() {
                             let path = entry.path().to_string_lossy().to_string();
                             paths_to_monitor.push(path.into());
                         }
