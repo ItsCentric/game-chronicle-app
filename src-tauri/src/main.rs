@@ -3,7 +3,10 @@
 
 use std::{fs::File, path::PathBuf, thread};
 
-use helpers::{get_app_data_directory, get_csv_data_blocking, get_csv_url_blocking};
+use helpers::{
+    get_app_data_directory, get_csv_data_blocking, get_csv_url_blocking, get_dump_versions,
+    save_dump_versions, DumpVersions,
+};
 use igdb::parse_csv;
 use serde::Deserialize;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
@@ -171,120 +174,140 @@ fn main() {
                 autostart_manager.disable().unwrap();
             }
             let app_data_dir = get_app_data_directory(app.handle())?;
-            if app_data_dir.join("igdb.db").exists() {
-                std::fs::remove_file(get_app_data_directory(app.handle())?.join("igdb.db"))?;
-            };
-            let (logs_conn, mut igdb_conn) = database::initialize_database(app.handle().clone()).unwrap();
             let temp_dir = app.handle().path().temp_dir()?.join("game-chronicle");
-            std::fs::create_dir_all(&temp_dir)?;
             let endpoints = ["covers", "websites", "platforms", "games"];
+            let mut dump_versions = match get_dump_versions(app.handle()) {
+                Ok(dump_versions) => dump_versions,
+                Err(_) => DumpVersions::new(),
+            };
+            std::fs::create_dir_all(&temp_dir)?;
             for endpoint in endpoints.iter() {
-                let csv_url = get_csv_url_blocking(endpoint)?;
-                let csv_data = get_csv_data_blocking(&csv_url)?;
+                let csv_response = get_csv_url_blocking(endpoint)?;
+                if let Some(version) = dump_versions.get(endpoint.to_owned()) {
+                    if version.as_str().unwrap_or_default().to_string() == csv_response.version {
+                        dump_versions.insert(endpoint.to_string(), toml::Value::String(csv_response.version));
+                        continue;
+                    }
+                }
+                if app_data_dir.join("igdb.db").exists() {
+                    std::fs::remove_file(get_app_data_directory(app.handle())?.join("igdb.db"))?;
+                };
+                let csv_data = get_csv_data_blocking(&csv_response.url)?;
                 let mut csv_file = File::create(temp_dir.join(format!("{}.csv", endpoint)))?;
                 std::io::copy(&mut csv_data.as_bytes(), &mut csv_file)?;
+                dump_versions.insert(endpoint.to_string(), toml::Value::String(csv_response.version));
             }
-            let covers: Vec<igdb::Cover> = parse_csv(&temp_dir.join("covers.csv"))?;
-            let cover_transaction = igdb_conn.transaction()?;
-            {
-                let mut cover_statement = cover_transaction.prepare("INSERT INTO covers (id, image_id) VALUES (?1, ?2)")?;
-                for cover in covers {
-                    cover_statement.execute(
-                        (cover.id, cover.image_id)
-                    )?;
-                }
-            }
-            cover_transaction.commit()?;
-            let websites: Vec<igdb::Website> = parse_csv(&temp_dir.join("websites.csv"))?;
-            let website_transaction = igdb_conn.transaction()?;
-            {
-                let mut website_statement = website_transaction.prepare("INSERT INTO websites (id, url) VALUES (?1, ?2)")?;
-                for website in websites {
-                    website_statement.execute(
-                        (website.id, website.url)
-                    )?;
-                }
-            }
-            website_transaction.commit()?;
-            let platforms: Vec<igdb::Platform> = parse_csv(&temp_dir.join("platforms.csv"))?;
-            let platform_transaction = igdb_conn.transaction()?;
-            {
-                let mut platform_statement = platform_transaction.prepare("INSERT INTO platforms (id, name, category) VALUES (?1, ?2, ?3)")?;
-                for platform in platforms {
-                    platform_statement.execute(
-                        (platform.id, platform.name, platform.category)
-                    )?;
-                }
-            }
-            platform_transaction.commit()?;
-            let games: Vec<igdb::Game> = parse_csv(&temp_dir.join("games.csv"))?;
-            let game_transaction = igdb_conn.transaction()?;
-            {
-                let mut game_statement = game_transaction.prepare("INSERT INTO games (id, name, cover_id, category, version_parent, total_rating) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")?;
-                let mut game_websites_statement = game_transaction.prepare("INSERT INTO game_websites (game_id, website_id) VALUES (?1, ?2)")?;
-                let mut similar_games_statement = game_transaction.prepare("INSERT INTO similar_games (game_id, similar_game_id) VALUES (?1, ?2)")?;
-                let mut game_platforms_statement = game_transaction.prepare("INSERT INTO game_platforms (game_id, platform_id) VALUES (?1, ?2)")?;
-                for game in &games {
-                    match game_statement.execute(
-                        (game.id, game.name.clone(), game.cover_id, game.category, game.version_parent, game.total_rating)
-                    ) {
-                        Ok(_) => {}
-                        Err(_) => {
-                        }
-                    };
-                    match &game.website_ids {
-                        Some(website_ids) => {
-                            for website_id in website_ids {
-                                match game_websites_statement.execute(
-                                    (game.id, website_id)
-                                ) {
-                                    Ok(_) => {}
-                                    Err(_) => {
-                                    }
-                                };
-                            }
-                        }
-                        None => {
-                            continue;
-                        }
-                    }
-                    match &game.similar_games {
-                        Some(similar_games) => {
-                            for similar_game_id in similar_games {
-                                match similar_games_statement.execute(
-                                    (game.id, similar_game_id)
-                                ) {
-                                    Ok(_) => {}
-                                    Err(_) => {
-                                    }
-                                };
-                            }
-                        }
-                        None => {
-                            continue;
-                        }
-                    }
-                    match &game.platform_ids {
-                        Some(platform_ids) => {
-                            for platform_id in platform_ids {
-                                match game_platforms_statement.execute(
-                                    (game.id, platform_id)
-                                ) {
-                                    Ok(_) => {},
-                                    Err(_) => {
-                                    }
-                                };
-                            }
-                        }
-                        None => {
-                            continue;
-                        }
+            let (logs_conn, mut igdb_conn) = database::initialize_database(app.handle().clone()).unwrap();
+            if temp_dir.join("covers.csv").exists() {
+                let covers: Vec<igdb::Cover> = parse_csv(&temp_dir.join("covers.csv"))?;
+                let cover_transaction = igdb_conn.transaction()?;
+                {
+                    let mut cover_statement = cover_transaction.prepare("INSERT INTO covers (id, image_id) VALUES (?1, ?2)")?;
+                    for cover in covers {
+                        cover_statement.execute(
+                            (cover.id, cover.image_id)
+                        )?;
                     }
                 }
+                cover_transaction.commit()?;
             }
-            game_transaction.commit()?;
-            igdb_conn.execute("INSERT INTO games_fts (rowid, name) SELECT id, name FROM games;", [])?;
+            if temp_dir.join("websites.csv").exists() {
+                let websites: Vec<igdb::Website> = parse_csv(&temp_dir.join("websites.csv"))?;
+                let website_transaction = igdb_conn.transaction()?;
+                {
+                    let mut website_statement = website_transaction.prepare("INSERT INTO websites (id, url) VALUES (?1, ?2)")?;
+                    for website in websites {
+                        website_statement.execute(
+                            (website.id, website.url)
+                        )?;
+                    }
+                }
+                website_transaction.commit()?;
+            }
+            if temp_dir.join("platforms.csv").exists() {
+                let platforms: Vec<igdb::Platform> = parse_csv(&temp_dir.join("platforms.csv"))?;
+                let platform_transaction = igdb_conn.transaction()?;
+                {
+                    let mut platform_statement = platform_transaction.prepare("INSERT INTO platforms (id, name, category) VALUES (?1, ?2, ?3)")?;
+                    for platform in platforms {
+                        platform_statement.execute(
+                            (platform.id, platform.name, platform.category)
+                        )?;
+                    }
+                }
+                platform_transaction.commit()?;
+            }
+            if temp_dir.join("games.csv").exists() {
+                let games: Vec<igdb::Game> = parse_csv(&temp_dir.join("games.csv"))?;
+                let game_transaction = igdb_conn.transaction()?;
+                {
+                    let mut game_statement = game_transaction.prepare("INSERT INTO games (id, name, cover_id, category, version_parent, total_rating) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")?;
+                    let mut game_websites_statement = game_transaction.prepare("INSERT INTO game_websites (game_id, website_id) VALUES (?1, ?2)")?;
+                    let mut similar_games_statement = game_transaction.prepare("INSERT INTO similar_games (game_id, similar_game_id) VALUES (?1, ?2)")?;
+                    let mut game_platforms_statement = game_transaction.prepare("INSERT INTO game_platforms (game_id, platform_id) VALUES (?1, ?2)")?;
+                    for game in &games {
+                        match game_statement.execute(
+                            (game.id, game.name.clone(), game.cover_id, game.category, game.version_parent, game.total_rating)
+                        ) {
+                            Ok(_) => {}
+                            Err(_) => {
+                            }
+                        };
+                        match &game.website_ids {
+                            Some(website_ids) => {
+                                for website_id in website_ids {
+                                    match game_websites_statement.execute(
+                                        (game.id, website_id)
+                                    ) {
+                                        Ok(_) => {}
+                                        Err(_) => {
+                                        }
+                                    };
+                                }
+                            }
+                            None => {
+                                continue;
+                            }
+                        }
+                        match &game.similar_games {
+                            Some(similar_games) => {
+                                for similar_game_id in similar_games {
+                                    match similar_games_statement.execute(
+                                        (game.id, similar_game_id)
+                                    ) {
+                                        Ok(_) => {}
+                                        Err(_) => {
+                                        }
+                                    };
+                                }
+                            }
+                            None => {
+                                continue;
+                            }
+                        }
+                        match &game.platform_ids {
+                            Some(platform_ids) => {
+                                for platform_id in platform_ids {
+                                    match game_platforms_statement.execute(
+                                        (game.id, platform_id)
+                                    ) {
+                                        Ok(_) => {},
+                                        Err(_) => {
+                                        }
+                                    };
+                                }
+                            }
+                            None => {
+                                continue;
+                            }
+                        }
+                    }
+                }
+                game_transaction.commit()?;
+                igdb_conn.execute("INSERT INTO games_fts (rowid, name) SELECT id, name FROM games;", [])?;
+            }
             std::fs::remove_dir_all(temp_dir)?;
+            save_dump_versions(dump_versions, app.handle())?;
             app.manage(DatabaseConnections {
                 logs_conn: std::sync::Mutex::new(logs_conn),
                 igdb_conn: std::sync::Mutex::new(igdb_conn),
