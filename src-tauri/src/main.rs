@@ -75,7 +75,7 @@ pub struct UserSettings {
 #[derive(serde::Serialize, Debug, Deserialize)]
 struct ProcessMonitoringSettings {
     enabled: bool,
-    directory_depth: i32,
+    directory_depth: usize,
 }
 
 impl serde::Serialize for Error {
