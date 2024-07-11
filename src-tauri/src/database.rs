@@ -1,4 +1,4 @@
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 
 use crate::{
     helpers::{create_dir_if_not_exists, get_app_data_directory},
@@ -103,11 +103,13 @@ pub fn get_dashboard_statistics(
     end_date: String,
 ) -> Result<DashboardStatistics, Error> {
     let conn = state.logs_conn.lock().unwrap();
-    let mut minutes_and_games_played_stmt = conn.prepare("SELECT COALESCE(SUM(minutes_played), 0), COUNT(*) FROM logs WHERE (date BETWEEN ?1 AND ?2) AND status != 'wishlist'")?;
-    let this_minutes_and_games_played: (i32, i32) = minutes_and_games_played_stmt
-        .query_row([start_date.clone(), end_date.clone()], |row| {
+    let minutes_and_games_played_stmt = conn.prepare("SELECT COALESCE(SUM(total_minutes_played), 0), COUNT(*) FROM ( SELECT COALESCE(SUM(minutes_played), 0) AS total_minutes_played FROM logs WHERE (date BETWEEN ?1 AND ?2) AND status != 'wishlist' GROUP BY game_id ) AS subquery;").optional()?;
+    let this_minutes_and_games_played: (i32, i32) = match minutes_and_games_played_stmt {
+        Some(mut stmt) => stmt.query_row([start_date.clone(), end_date.clone()], |row| {
             Ok((row.get(0)?, row.get(1)?))
-        })?;
+        })?,
+        None => (0, 0),
+    };
     let mut completed_games_stmt = conn.prepare(
         "SELECT COUNT(*) FROM logs WHERE (date BETWEEN ?1 AND ?2) AND status = 'completed'",
     )?;
