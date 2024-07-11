@@ -69,7 +69,7 @@ impl ProcessMonitor {
             if !running_processes.contains_key(path) {
                 let minutes_played = process.run_time / 60;
                 let data_dir = helpers::get_app_data_directory(app)?;
-                let conn = rusqlite::Connection::open(data_dir.join("data.db"))?;
+                let conn = rusqlite::Connection::open(data_dir.join("logs.db"))?;
                 match get_executable_details(&conn, &process.name) {
                     Ok(details) => {
                         app.emit(
