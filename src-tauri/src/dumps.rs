@@ -3,11 +3,12 @@ use std::{
     fs::{self, File},
     io::Read,
     path::PathBuf,
+    thread,
 };
 
 use csv::Reader;
-use rusqlite::{params, OptionalExtension, Transaction};
-use tauri::State;
+use rusqlite::{params, Connection, OptionalExtension, Transaction};
+use tauri::{Manager, State};
 
 use crate::{
     helpers::get_app_data_directory,
@@ -128,37 +129,42 @@ fn import_csv<T: serde::de::DeserializeOwned>(
 }
 
 #[tauri::command]
-pub fn import_dumps(
-    state: State<DatabaseConnections>,
-    from_directory: PathBuf,
-) -> Result<(), Error> {
-    let mut conn = state.igdb_conn.lock().unwrap();
-    let mut transaction = conn.transaction()?;
-    import_csv(
-        from_directory.join("covers.csv"),
-        parse_csv::<Cover>,
-        insert_covers,
-        &mut transaction,
-    )?;
-    import_csv(
-        from_directory.join("websites.csv"),
-        parse_csv::<Website>,
-        insert_websites,
-        &mut transaction,
-    )?;
-    import_csv(
-        from_directory.join("platforms.csv"),
-        parse_csv::<Platform>,
-        insert_platforms,
-        &mut transaction,
-    )?;
-    import_csv(
-        from_directory.join("games.csv"),
-        parse_csv::<Game>,
-        insert_games,
-        &mut transaction,
-    )?;
-    transaction.commit()?;
+pub fn import_dumps(app_handle: tauri::AppHandle, from_directory: PathBuf) -> Result<(), Error> {
+    thread::spawn(move || {
+        let app_data_dir = get_app_data_directory(&app_handle).unwrap();
+        let mut conn = Connection::open(app_data_dir.join("igdb.db")).unwrap();
+        let mut transaction = conn.transaction().unwrap();
+        import_csv(
+            from_directory.join("covers.csv"),
+            parse_csv::<Cover>,
+            insert_covers,
+            &mut transaction,
+        )
+        .unwrap();
+        import_csv(
+            from_directory.join("websites.csv"),
+            parse_csv::<Website>,
+            insert_websites,
+            &mut transaction,
+        )
+        .unwrap();
+        import_csv(
+            from_directory.join("platforms.csv"),
+            parse_csv::<Platform>,
+            insert_platforms,
+            &mut transaction,
+        )
+        .unwrap();
+        import_csv(
+            from_directory.join("games.csv"),
+            parse_csv::<Game>,
+            insert_games,
+            &mut transaction,
+        )
+        .unwrap();
+        transaction.commit().unwrap();
+        app_handle.emit("import_finished", "").unwrap();
+    });
     Ok(())
 }
 

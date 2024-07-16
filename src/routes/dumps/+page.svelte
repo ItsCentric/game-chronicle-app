@@ -13,6 +13,7 @@
 	import { goto } from '$app/navigation';
 	import { BaseDirectory, exists, mkdir, remove } from '@tauri-apps/plugin-fs';
 	import { tempDir } from '@tauri-apps/api/path';
+	import { once } from '@tauri-apps/api/event';
 
 	let importFailed = false;
 	let importing = false;
@@ -42,9 +43,11 @@
 			const directory = (await tempDir()).concat('/game-chronicle');
 			await downloadDumps(allDumpsInfo, directory);
 			await importDumps(directory);
-			await saveLocalDumpVersions(dumpVersions);
-			await remove('game-chronicle', { baseDir: BaseDirectory.Temp, recursive: true });
-			goto('/');
+			await once('import_finished', async () => {
+				await saveLocalDumpVersions(dumpVersions);
+				await remove(directory, { baseDir: BaseDirectory.Temp, recursive: true });
+				goto('/');
+			});
 		} catch (e) {
 			console.error(e);
 			importFailed = true;
