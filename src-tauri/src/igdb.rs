@@ -1,4 +1,3 @@
-use csv::Reader;
 use tauri::State;
 
 use crate::{DatabaseConnections, Error};
@@ -74,19 +73,6 @@ where
             })
             .collect(),
     ))
-}
-
-pub fn parse_csv<T>(csv_path: &std::path::PathBuf) -> Result<Vec<T>, Error>
-where
-    T: serde::de::DeserializeOwned,
-{
-    let mut rdr = Reader::from_path(csv_path)?;
-    let mut items = vec![];
-    for result in rdr.deserialize() {
-        let item: T = result?;
-        items.push(item);
-    }
-    Ok(items)
 }
 
 fn game_info_from_row(row: &rusqlite::Row) -> Result<GameInfo, rusqlite::Error> {
