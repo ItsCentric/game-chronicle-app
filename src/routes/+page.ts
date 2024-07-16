@@ -6,6 +6,7 @@ import { redirect } from '@sveltejs/kit';
 import { check } from '@tauri-apps/plugin-updater';
 import { getCurrent } from '@tauri-apps/api/webview';
 import { getAll } from '@tauri-apps/api/window';
+import { checkedForDumpUpdate as checkedForDumpUpdateStore } from '$lib/stores';
 
 export const load = async () => {
 	if (typeof window === 'undefined') {
@@ -31,6 +32,14 @@ export const load = async () => {
 		await windows.find((window) => window.label === 'updater')?.show();
 		return;
 	}
+	let checkedForDumpUpdate = false;
+	const unsubscribe = checkedForDumpUpdateStore.subscribe((value) => {
+		checkedForDumpUpdate = value;
+	});
+	if (!checkedForDumpUpdate) {
+		throw redirect(301, '/dumps');
+	}
+	unsubscribe();
 	const settings = await getUserSettings();
 	if (settings.new) {
 		throw redirect(301, '/onboarding');

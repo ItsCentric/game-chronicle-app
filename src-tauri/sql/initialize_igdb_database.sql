@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS games (
     category INTEGER,
     version_parent INTEGER,
     total_rating REAL,
-    FOREIGN KEY (cover_id) REFERENCES covers(id)
+    FOREIGN KEY (cover_id) REFERENCES covers(id) ON DELETE SET NULL
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS games_fts USING fts5(

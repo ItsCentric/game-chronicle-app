@@ -15,8 +15,6 @@ pub struct CsvUrlResponse {
     pub version: String,
 }
 
-pub type DumpVersions = HashMap<String, toml::Value>;
-
 #[tauri::command]
 pub fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, Error> {
     let config_path = app_handle.path().config_dir().unwrap();
@@ -92,40 +90,4 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
 pub fn get_app_data_directory(app_handle: &tauri::AppHandle) -> Result<PathBuf, Error> {
     let dir = app_handle.path().data_dir()?;
     Ok(dir.join("game-chronicle"))
-}
-
-pub fn get_csv_url_blocking(endpoint: &str) -> Result<CsvUrlResponse, Error> {
-    let client = reqwest::blocking::Client::new();
-    let response = client
-        .get(format!("https://api.gamechronicle.app/csv/{}", endpoint))
-        .send()?
-        .json::<CsvUrlResponse>()?;
-    Ok(response)
-}
-
-pub fn get_csv_data_blocking(url: &str) -> Result<String, Error> {
-    let client = reqwest::blocking::Client::new();
-    let response = client.get(url).send()?.text()?;
-    Ok(response)
-}
-
-pub fn get_dump_versions(app_handle: &tauri::AppHandle) -> Result<DumpVersions, Error> {
-    let app_data_dir = get_app_data_directory(app_handle)?;
-    let mut file = fs::File::open(app_data_dir.join("dump_versions.toml"))?;
-    let mut file_contents = String::new();
-    file.read_to_string(&mut file_contents)?;
-    let dump_versions: HashMap<String, toml::Value> = toml::from_str(&file_contents)?;
-
-    Ok(dump_versions)
-}
-
-pub fn save_dump_versions(
-    dump_versions: DumpVersions,
-    app_handle: &tauri::AppHandle,
-) -> Result<(), Error> {
-    let app_data_dir = get_app_data_directory(app_handle)?;
-    let dump_versions_str = toml::to_string(&dump_versions)?;
-    fs::write(app_data_dir.join("dump_versions.toml"), dump_versions_str)?;
-
-    Ok(())
 }
