@@ -1,5 +1,5 @@
 use sysinfo::{Pid, System};
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri_plugin_notification::{NotificationExt, PermissionState};
 
 use crate::database::get_executable_details;

@@ -7,7 +7,7 @@ use crate::{database::LogData, igdb::get_games_from_links, DatabaseConnections};
 use chrono::{DateTime, Local};
 use reqwest::Client;
 use rusqlite::params;
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 
 use crate::Error;
 
