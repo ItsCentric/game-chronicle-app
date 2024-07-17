@@ -8,7 +8,7 @@ use std::{
 
 use csv::Reader;
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 
 use crate::{
     helpers::get_app_data_directory,
