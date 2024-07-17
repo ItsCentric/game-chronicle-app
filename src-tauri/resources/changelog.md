@@ -1,51 +1,27 @@
-### New feature
+Hey! It's been a few weeks since the last update, and no time has gone to waste since then! Game Chronicle is now (insert unrealistic percentage here) faster! Seriously though, it is way faster to get to the pages you want. Let's take a look, shall we?
 
-What an **amazing** changelog! So many features added here!
+### Twitch Credentials No More!
 
-### New feature
+The need to provide your own Twitch credentials has been removed! No more figuring that tedious process anymore. Same is soon to come for Steam as well.
 
-What an **amazing** changelog! So many features added here!
+### Changelog, duh!
 
-### New feature
+As you've probably already noticed since you're reading this, a changelog will now let you know what's new with every update!
 
-What an **amazing** changelog! So many features added here!
+### Gotta go fast
 
-### New feature
+As mentioned before, the application should now load pages significantly faster than before.
 
-What an **amazing** changelog! So many features added here!
+### Window, window, go away
 
-### New feature
+The application will now start in the system tray when you start up your computer if you have autostart enabled instead of popping up every time.
 
-What an **amazing** changelog! So many features added here!
+### Bug fixes
 
-### New feature
+Ugh, I know... so boring... let's get them out of the way...
 
-What an **amazing** changelog! So many features added here!
-
-### New feature
-
-What an **amazing** changelog! So many features added here!
-
-### New feature
-
-What an **amazing** changelog! So many features added here!
-
-### New feature
-
-What an **amazing** changelog! So many features added here!
-
-### New feature
-
-What an **amazing** changelog! So many features added here!
-
-### New feature
-
-What an **amazing** changelog! So many features added here!
-
-### New feature
-
-What an **amazing** changelog! So many features added here!
-
-### New feature
-
-What an **amazing** changelog! So many features added here!
+- Log filters on the "My Logs" page are properly capitalized
+- Multiple logs for the same game no longer count as a new game in the "Games played" statistic
+- Stuff like anti-cheat will no longer be detected by game detection
+- Updater is no longer broken (hopefully), woohoo!
+- Settings now persist between updates
