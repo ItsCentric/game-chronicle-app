@@ -95,7 +95,7 @@
 		<div>
 			<img
 				src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' +
-					data.igdbGame.cover?.cover_id +
+					data.igdbGame.cover_image_id +
 					'.jpg'}
 				alt="cover"
 				class="aspect-[3/4] rounded-3xl mb-4 w-full"

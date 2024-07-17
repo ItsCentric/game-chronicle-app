@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Gamepad2 } from 'lucide-svelte';
-	import type { IgdbGame } from '$lib/rust-bindings/igdb';
+	import type { GameInfo } from '$lib/rust-bindings/igdb';
 
-	export let data: IgdbGame;
+	export let data: GameInfo;
 </script>
 
 <div
@@ -13,9 +13,9 @@
 	role="button"
 	tabindex="0"
 >
-	{#if data.cover?.cover_id}
+	{#if data.cover_image_id}
 		<img
-			src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' + data.cover.cover_id + '.jpg'}
+			src={'https://images.igdb.com/igdb/image/upload/t_cover_big/' + data.cover_image_id + '.jpg'}
 			alt="cover"
 			class="h-full rounded-3xl"
 		/>

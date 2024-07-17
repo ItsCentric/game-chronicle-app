@@ -3,14 +3,11 @@ use std::{
     thread,
 };
 
-use crate::{
-    database::{Game, LogData, SafeConnection},
-    igdb::{authenticate_with_twitch, multi_search_game_links, IgdbGame},
-};
+use crate::{database::LogData, igdb::get_games_from_links, DatabaseConnections};
 use chrono::{DateTime, Local};
 use reqwest::Client;
-use rusqlite::{params, OptionalExtension};
-use tauri::{Manager, State};
+use rusqlite::params;
+use tauri::{Emitter, Manager, State};
 
 use crate::Error;
 
@@ -34,8 +31,6 @@ struct SteamResponse<T> {
     response: T,
 }
 
-type LogAndIgdbData = Vec<(LogData, IgdbGame)>;
-
 #[derive(serde::Deserialize, Debug, serde::Serialize, Clone)]
 struct RetrievePayload {
     status: String,
@@ -53,7 +48,7 @@ pub async fn get_steam_data(
     app_handle: tauri::AppHandle,
     steam_id: String,
     steam_key: String,
-) -> Result<LogAndIgdbData, Error> {
+) -> Result<Vec<LogData>, Error> {
     let http_client = Client::new();
     let owned_steam_games_http_response = http_client
         .get("https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?")
@@ -110,75 +105,48 @@ pub async fn get_steam_data(
             let _ = *retrieval_finished_lock;
         }
     });
-    let access_token_response = authenticate_with_twitch(app_handle.clone()).await?;
-    let mut logs_and_games_data: LogAndIgdbData = Vec::new();
-    for steam_game_chunk in owned_steam_games_response.games.chunks(8) {
-        let steam_links = steam_game_chunk
-            .iter()
-            .map(|s_game| format!("https://store.steampowered.com/app/{}", s_game.appid))
-            .collect::<Vec<String>>();
-        let igdb_responses = multi_search_game_links(
-            access_token_response.access_token.clone(),
-            steam_links,
-            app_handle.clone(),
-        )
-        .await?;
-        for igdb_response in igdb_responses {
-            if igdb_response.result.is_empty() {
-                continue;
-            }
-            let igdb_game = &igdb_response.result[0];
-            let steam_game =
-                match steam_game_chunk
-                    .iter()
-                    .find(|&s_game| match igdb_game.websites {
-                        Some(ref websites) => websites
-                            .iter()
-                            .any(|website| website.url.contains(&s_game.appid.to_string())),
-                        None => false,
-                    }) {
-                    Some(game) => game,
-                    None => continue,
-                };
-            let status = match steam_game.playtime_forever {
-                0 => "backlog".to_string(),
-                _ => "played".to_string(),
+    let mut logs_data: Vec<LogData> = Vec::new();
+    let steam_links = owned_steam_games_response
+        .games
+        .iter()
+        .map(|s_game| format!("https://store.steampowered.com/app/{}", s_game.appid))
+        .collect::<Vec<String>>();
+    let games = get_games_from_links(app_handle.state::<DatabaseConnections>(), steam_links)?;
+    for steam_game in owned_steam_games_response.games {
+        let igdb_game = match games.iter().find(|g| {
+            g.websites.iter().any(|w| {
+                w.contains(&format!(
+                    "https://store.steampowered.com/app/{}",
+                    steam_game.appid
+                ))
+            })
+        }) {
+            Some(game) => game,
+            None => continue,
+        };
+        let status = match steam_game.playtime_forever {
+            0 => "backlog".to_string(),
+            _ => "played".to_string(),
+        };
+        let date: DateTime<Local> =
+            match DateTime::from_timestamp(steam_game.rtime_last_played as i64, 0) {
+                Some(date) => match date {
+                    date if date == DateTime::UNIX_EPOCH => Local::now(),
+                    _ => date.into(),
+                },
+                None => Local::now(),
             };
-            let date: DateTime<Local> =
-                match DateTime::from_timestamp(steam_game.rtime_last_played as i64, 0) {
-                    Some(date) => match date {
-                        date if date == DateTime::UNIX_EPOCH => Local::now(),
-                        _ => date.into(),
-                    },
-                    None => Local::now(),
-                };
-            let game = match &igdb_game.cover {
-                Some(cover) => Game {
-                    id: igdb_game.id,
-                    cover_id: cover.id.to_string(),
-                    title: igdb_game.title.clone(),
-                },
-                None => Game {
-                    id: igdb_game.id,
-                    cover_id: "".to_string(),
-                    title: igdb_game.title.clone(),
-                },
-            };
-            logs_and_games_data.push((
-                LogData {
-                    date: date.format("%Y-%m-%d %H:%M:%S").to_string(),
-                    rating: 0,
-                    notes: "".to_string(),
-                    status,
-                    minutes_played: steam_game.playtime_forever,
-                    game,
-                },
-                igdb_game.clone(),
-            ));
-            let mut games_retrieved_lock = games_retrieved.write().unwrap();
-            *games_retrieved_lock += 1;
-        }
+        logs_data.push(LogData {
+            game_id: igdb_game.id,
+            date: date.format("%Y-%m-%d %H:%M:%S").to_string(),
+            rating: 0,
+            notes: "".to_string(),
+            status,
+            minutes_played: steam_game.playtime_forever,
+        });
     }
+    let mut games_retrieved_lock = games_retrieved.write().unwrap();
+    *games_retrieved_lock += 1;
     {
         let (retrieval_finished_lock, cvar) = &*retrieval_finished;
         let mut retrieval_finished_lock = retrieval_finished_lock.lock().unwrap();
@@ -186,16 +154,16 @@ pub async fn get_steam_data(
         cvar.notify_one();
     }
     handle.join().unwrap();
-    Ok(logs_and_games_data)
+    Ok(logs_data)
 }
 
 #[tauri::command]
 pub fn import_igdb_games(
     app_handle: tauri::AppHandle,
-    state: State<'_, SafeConnection>,
-    data: Vec<(crate::database::LogData, IgdbGame)>,
+    state: State<DatabaseConnections>,
+    data: Vec<LogData>,
 ) -> Result<usize, Error> {
-    let mut conn = state.lock().unwrap();
+    let mut conn = state.logs_conn.lock().unwrap();
     let app_handle_clone = app_handle.clone();
     let import_finished = Arc::new((Mutex::new(false), Condvar::new()));
     let games_imported = Arc::new(RwLock::new(0));
@@ -227,52 +195,21 @@ pub fn import_igdb_games(
             let _ = *import_finished_lock;
         }
     });
-    let logged_games_transaction = conn.transaction()?;
-    {
-        let mut no_cover_stmt = logged_games_transaction
-            .prepare("INSERT INTO logged_games (id, title) VALUES (?, ?)")?;
-        let mut cover_stmt = logged_games_transaction
-            .prepare("INSERT INTO logged_games (id, title, cover_id) VALUES (?, ?, ?)")?;
-        for (_, game) in &data {
-            let game_id = logged_games_transaction
-                .query_row(
-                    "SELECT id FROM logged_games where id = ?",
-                    [game.id],
-                    |row| {
-                        let id: i32 = row.get(0)?;
-                        Ok(id)
-                    },
-                )
-                .optional()?;
-            match game_id {
-                Some(_) => continue,
-                None => match &game.cover {
-                    Some(cover) => {
-                        cover_stmt.execute(params![game.id, game.title, cover.cover_id])?;
-                    }
-                    None => {
-                        no_cover_stmt.execute(params![game.id, game.title])?;
-                    }
-                },
-            }
-            let mut games_imported_lock = games_imported.write().unwrap();
-            *games_imported_lock += 1;
-        }
-    }
-    logged_games_transaction.commit()?;
     let logs_transaction = conn.transaction()?;
     {
         let mut stmt = logs_transaction.prepare(
             "INSERT INTO logs (date, status, minutes_played, notes, game_id) VALUES (?, ?, ?, ?, ?)",
         )?;
-        for (log_data, game) in &data {
+        for log_data in &data {
             stmt.execute(params![
                 &log_data.date,
                 &log_data.status,
                 &log_data.minutes_played,
                 &log_data.notes,
-                &game.id
+                &log_data.game_id,
             ])?;
+            let mut games_imported_lock = games_imported.write().unwrap();
+            *games_imported_lock += 1;
         }
     }
     logs_transaction.commit()?;

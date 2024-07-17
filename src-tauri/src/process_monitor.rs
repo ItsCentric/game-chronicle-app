@@ -1,5 +1,5 @@
 use sysinfo::{Pid, System};
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri_plugin_notification::{NotificationExt, PermissionState};
 
 use crate::database::get_executable_details;
@@ -68,8 +68,11 @@ impl ProcessMonitor {
         for (path, process) in &self.previous_running_processes {
             if !running_processes.contains_key(path) {
                 let minutes_played = process.run_time / 60;
+                if minutes_played < 1 {
+                    continue;
+                }
                 let data_dir = helpers::get_app_data_directory(app)?;
-                let conn = rusqlite::Connection::open(data_dir.join("data.db"))?;
+                let conn = rusqlite::Connection::open(data_dir.join("logs.db"))?;
                 match get_executable_details(&conn, &process.name) {
                     Ok(details) => {
                         app.emit(

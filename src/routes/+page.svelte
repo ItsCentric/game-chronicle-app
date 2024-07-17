@@ -8,10 +8,24 @@
 	import { useQuery } from '@sveltestack/svelte-query';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 	import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindings/database';
-	import { authenticateWithTwitch, getGamesById, getSimilarGames } from '$lib/rust-bindings/igdb';
+	import { getGamesById } from '$lib/rust-bindings/igdb';
 	import type { PageData } from './$types';
+	import { BaseDirectory, readTextFile, exists, remove } from '@tauri-apps/plugin-fs';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import { onMount } from 'svelte';
+	import SvelteMarkdown from 'svelte-markdown';
+	import Separator from '$lib/components/ui/separator/separator.svelte';
 
 	export let data: PageData;
+	let changeLogContents: string | undefined;
+	onMount(async () => {
+		if (await exists('resources/changelog.md', { baseDir: BaseDirectory.Resource })) {
+			changeLogContents = await readTextFile('resources/changelog.md', {
+				baseDir: BaseDirectory.Resource
+			});
+			await remove('resources/changelog.md', { baseDir: BaseDirectory.Resource });
+		}
+	});
 	const dashboardStatisticsQuery = useQuery(
 		'dashboardStatistics',
 		async () => {
@@ -38,13 +52,12 @@
 	const recentLogsQuery = useQuery(
 		'recentLogs',
 		async () => {
-			const accessTokenResponse = await authenticateWithTwitch();
 			const recentLogs = await getRecentLogs(
 				6,
 				statusOptions.filter((status) => status != 'wishlist' && status != 'backlog')
 			);
-			const recentGameIds = recentLogs.map((log) => log.game.id);
-			const games = await getGamesById(accessTokenResponse.access_token, recentGameIds);
+			const recentGameIds = recentLogs.map((log) => log.game_id);
+			const games = await getGamesById(recentGameIds);
 			const sortedGames = [];
 			for (let i = 0; i < recentGameIds.length; i++) {
 				const game = games.find((game) => game.id === recentGameIds[i]);
@@ -64,9 +77,13 @@
 				'desc',
 				statusOptions.filter((status) => status != 'wishlist' && status != 'backlog')
 			);
-			const gameIds = logs.map((log) => log.game.id);
-			const accessTokenResponse = await authenticateWithTwitch();
-			const similarGames = await getSimilarGames(accessTokenResponse.access_token, gameIds);
+			const gameIds = logs.map((log) => log.game_id);
+			const games = await getGamesById(gameIds);
+			const similarGameIds = games
+				.filter((game) => (game.similar_games?.length ?? 0) > 0)
+				.map((game) => game.similar_games as number[])
+				.flat();
+			const similarGames = await getGamesById(similarGameIds);
 			return similarGames;
 		},
 		{ initialData: data.similarGames }
@@ -74,6 +91,20 @@
 </script>
 
 <main class="flex flex-col gap-12 h-full p-12 container">
+	{#if changeLogContents}
+		<Dialog.Root open>
+			<Dialog.Content class="overflow-auto max-h-[80vh] max-w-prose">
+				<Dialog.Header>
+					<Dialog.Title class="text-2xl font-heading font-bold">Changelog</Dialog.Title>
+					<Dialog.Description class="text-lg">Here's what's new in this update</Dialog.Description>
+				</Dialog.Header>
+				<Separator />
+				<span class="prose prose-invert prose-headings:font-heading">
+					<SvelteMarkdown source={changeLogContents} />
+				</span>
+			</Dialog.Content>
+		</Dialog.Root>
+	{/if}
 	<div>
 		<h1 class="font-heading font-bold text-3xl">
 			Hello, <span class="capitalize">{data.username}</span>
@@ -167,7 +198,7 @@
 				</div>
 			{:else}
 				{#each $recentLogsQuery.data as game}
-					<GameCard data={game} on:click={() => goto(`/logs/edit?game=${JSON.stringify(game)}`)} />
+					<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />
 				{/each}
 			{/if}
 		</div>
@@ -201,7 +232,7 @@
 				</div>
 			{:else}
 				{#each $similarGamesQuery.data.slice(0, 6) as game}
-					<GameCard data={game} on:click={() => goto(`/logs/edit?game=${JSON.stringify(game)}`)} />
+					<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />
 				{/each}
 			{/if}
 		</div>

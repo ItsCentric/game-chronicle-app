@@ -5,6 +5,7 @@ use std::{path::PathBuf, thread};
 
 use serde::Deserialize;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tauri_plugin_cli::CliExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::{NotificationExt, PermissionState};
 
@@ -19,6 +20,7 @@ use tauri::{
 
 mod data_import;
 mod database;
+mod dumps;
 mod helpers;
 mod igdb;
 mod process_monitor;
@@ -43,6 +45,8 @@ pub enum Error {
     TomlDer(#[from] toml::de::Error),
     #[error(transparent)]
     TomlSer(#[from] toml::ser::Error),
+    #[error(transparent)]
+    Csv(#[from] csv::Error),
     #[error("Error: {0}")]
     Custom(String),
 }
@@ -64,8 +68,6 @@ pub struct UserSettings {
     username: String,
     executable_paths: Option<String>,
     process_monitoring: ProcessMonitoringSettings,
-    twitch_client_id: Option<String>,
-    twitch_client_secret: Option<String>,
     autostart: bool,
     new: bool,
 }
@@ -73,7 +75,7 @@ pub struct UserSettings {
 #[derive(serde::Serialize, Debug, Deserialize)]
 struct ProcessMonitoringSettings {
     enabled: bool,
-    directory_depth: i32,
+    directory_depth: usize,
 }
 
 impl serde::Serialize for Error {
@@ -85,9 +87,16 @@ impl serde::Serialize for Error {
     }
 }
 
+struct DatabaseConnections {
+    logs_conn: std::sync::Mutex<rusqlite::Connection>,
+    igdb_conn: std::sync::Mutex<rusqlite::Connection>,
+}
+
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_cli::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
@@ -110,6 +119,22 @@ fn main() {
             _ => {}
         })
         .setup(|app| {
+            match app.cli().matches() {
+                Ok(matches) => match matches.args.get("hidden") {
+                    Some(is_hidden_set) => {
+                        if is_hidden_set.value.as_bool().unwrap() {
+                        match app.get_webview_window("main") {
+                            Some(webview_window) => {
+                                webview_window.close()?;
+                            }
+                            None => {}
+                        }
+                        }
+                    },
+                    None => {}
+                },
+                Err(_) => {}
+            };
             let tray_icon = Image::from_bytes(include_bytes!("../icons/icon.png")).unwrap();
             let menu = MenuBuilder::new(app).quit().build().unwrap();
             tauri::tray::TrayIconBuilder::new().title("Game Chronicle").tooltip("Game Chronicle").icon(tray_icon).menu(&menu)
@@ -138,8 +163,6 @@ fn main() {
                             enabled: false,
                             directory_depth: 2,
                         },
-                        twitch_client_id: None,
-                        twitch_client_secret: None,
                         autostart: false,
                         new: true,
                     };
@@ -165,8 +188,11 @@ fn main() {
             } else if !user_settings.autostart && autostart_manager.is_enabled().unwrap() {
                 autostart_manager.disable().unwrap();
             }
-            let conn = database::initialize_database(app.handle().clone()).unwrap();
-            app.manage(std::sync::Mutex::new(conn));
+            let (logs_conn, igdb_conn) = database::initialize_database(app.handle().clone()).unwrap();
+            app.manage(DatabaseConnections {
+                logs_conn: std::sync::Mutex::new(logs_conn),
+                igdb_conn: std::sync::Mutex::new(igdb_conn),
+            });
             if !user_settings.process_monitoring.enabled || user_settings.executable_paths.is_none() {
                 return Ok(());
             }
@@ -180,7 +206,7 @@ fn main() {
                         .max_depth(user_settings.process_monitoring.directory_depth as usize);
                     for entry in walker {
                         let entry = entry.unwrap();
-                        if entry.file_type().is_file() && !entry.path().to_string_lossy().contains("CrashHandler") {
+                        if entry.file_type().is_file() {
                             let path = entry.path().to_string_lossy().to_string();
                             paths_to_monitor.push(path.into());
                         }
@@ -204,8 +230,6 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             database::get_dashboard_statistics,
             igdb::get_games_by_id,
-            igdb::get_similar_games,
-            igdb::authenticate_with_twitch,
             database::get_recent_logs,
             database::get_logs,
             helpers::get_user_settings,
@@ -217,9 +241,13 @@ fn main() {
             database::add_executable_details,
             igdb::get_random_top_games,
             igdb::search_game,
-            database::get_logged_game,
             data_import::get_steam_data,
             data_import::import_igdb_games,
+            dumps::get_local_dump_versions,
+            dumps::save_local_dump_versions,
+            dumps::get_all_dump_info,
+            dumps::import_dumps,
+            dumps::download_dumps,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

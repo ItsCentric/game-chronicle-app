@@ -1,11 +1,12 @@
 import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindings/database';
 import { getUserSettings } from '$lib/rust-bindings/helpers';
-import { authenticateWithTwitch, getSimilarGames } from '$lib/rust-bindings/igdb';
+import { getGamesById } from '$lib/rust-bindings/igdb';
 import { statusOptions } from '$lib/schemas';
 import { redirect } from '@sveltejs/kit';
 import { check } from '@tauri-apps/plugin-updater';
 import { getCurrent } from '@tauri-apps/api/webview';
 import { getAll } from '@tauri-apps/api/window';
+import { checkedForDumpUpdate as checkedForDumpUpdateStore } from '$lib/stores';
 
 export const load = async () => {
 	if (typeof window === 'undefined') {
@@ -31,6 +32,14 @@ export const load = async () => {
 		await windows.find((window) => window.label === 'updater')?.show();
 		return;
 	}
+	let checkedForDumpUpdate = false;
+	const unsubscribe = checkedForDumpUpdateStore.subscribe((value) => {
+		checkedForDumpUpdate = value;
+	});
+	if (!checkedForDumpUpdate) {
+		throw redirect(301, '/dumps');
+	}
+	unsubscribe();
 	const settings = await getUserSettings();
 	if (settings.new) {
 		throw redirect(301, '/onboarding');
@@ -40,9 +49,13 @@ export const load = async () => {
 	);
 	const recentLogs = await getRecentLogs(6, allButWishlistedOrBacklogged);
 	const logs = await getLogs('date', 'desc', allButWishlistedOrBacklogged);
-	const accessTokenResponse = await authenticateWithTwitch();
-	const gameIds = logs.map((log) => log.game.id);
-	const similarGames = await getSimilarGames(accessTokenResponse.access_token, gameIds);
+	const gameIds = logs.map((log) => log.game_id);
+	const games = await getGamesById(gameIds);
+	const similarGameIds = games
+		.filter((game) => (game.similar_games?.length ?? 0) > 0)
+		.map((game) => game.similar_games as number[])
+		.flat();
+	const similarGames = await getGamesById(similarGameIds);
 	const now = new Date();
 	const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 	const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);

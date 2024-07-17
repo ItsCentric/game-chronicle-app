@@ -19,6 +19,12 @@
 		"window:allow-hide",
 		"window:allow-show",
 		"shell:default",
-		"shell:allow-open"
+		"shell:allow-open",
+		"fs:default",
+		"fs:allow-mkdir",
+		"fs:scope-temp-recursive",
+		"fs:allow-remove",
+		"fs:allow-exists",
+		"fs:scope-resource-recursive"
 	]
 }

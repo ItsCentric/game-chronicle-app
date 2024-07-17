@@ -13,7 +13,7 @@
 	import { useQuery } from '@sveltestack/svelte-query';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 	import type { PageData } from './$types';
-	import { authenticateWithTwitch, searchGame } from '$lib/rust-bindings/igdb';
+	import { searchGame } from '$lib/rust-bindings/igdb';
 
 	export let data: PageData;
 	let queriedGame = '';
@@ -21,8 +21,7 @@
 	const gameSearchQuery = useQuery(
 		['gameSearch', queriedGame],
 		async () => {
-			const authenticateRes = await authenticateWithTwitch();
-			const matchingGames = await searchGame(authenticateRes.access_token, queriedGame);
+			const matchingGames = await searchGame(queriedGame);
 			return matchingGames;
 		},
 		{ enabled: queriedGame.length > 0 }
@@ -42,7 +41,7 @@
 	});
 	const { form: gameSearchFormData, enhance: gameSearchEnhance } = gameSearchForm;
 
-	$: games = $gameSearchQuery.data?.length ?? 0 > 0 ? $gameSearchQuery.data : data.randomGames;
+	$: games = $gameSearchQuery.data ? $gameSearchQuery.data : data.randomGames;
 </script>
 
 <main class="min-h-full px-16 py-8">
@@ -92,7 +91,7 @@
 					data={game}
 					on:click={() =>
 						goto(
-							`/logs/edit?game=${JSON.stringify(game)}` +
+							`/logs/edit?gameId=${game.id}` +
 								(isNewGame
 									? `&executableName=${executableName}&minutesPlayed=${minutesPlayed}`
 									: '')
