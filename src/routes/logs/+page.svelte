@@ -128,7 +128,7 @@
 						}
 					}}
 				>
-					{status}
+					{toTitleCase(status)}
 				</Button>
 			{/each}
 		</div>
