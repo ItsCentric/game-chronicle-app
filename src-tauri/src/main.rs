@@ -5,6 +5,7 @@ use std::{path::PathBuf, thread};
 
 use serde::Deserialize;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tauri_plugin_cli::CliExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::{NotificationExt, PermissionState};
 
@@ -93,8 +94,9 @@ struct DatabaseConnections {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
@@ -117,6 +119,19 @@ fn main() {
             _ => {}
         })
         .setup(|app| {
+            match app.cli().matches() {
+                Ok(matches) => {
+                    if matches.args.contains_key("hidden") {
+                        match app.get_webview_window("main") {
+                            Some(webview_window) => {
+                                webview_window.close()?;
+                            }
+                            None => {}
+                        }
+                    }
+                },
+                Err(_) => {}
+            };
             let tray_icon = Image::from_bytes(include_bytes!("../icons/icon.png")).unwrap();
             let menu = MenuBuilder::new(app).quit().build().unwrap();
             tauri::tray::TrayIconBuilder::new().title("Game Chronicle").tooltip("Game Chronicle").icon(tray_icon).menu(&menu)

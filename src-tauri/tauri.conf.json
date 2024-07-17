@@ -48,6 +48,14 @@
 				"https://github.com/ItsCentric/game-chronicle/releases/latest/download/latest.json"
 			],
 			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM3OTUyQjJEMjA5Q0VFMzAKUldRdzdwd2dMU3VWeCswV21RQ1Vkd256TzhCN0l4STJ1M0d3Y1YwYzVYYnR1NVFaekxmS1RocGsK"
+		},
+		"cli": {
+			"args": [
+				{
+					"name": "hidden",
+					"short": "n"
+				}
+			]
 		}
 	},
 	"app": {
