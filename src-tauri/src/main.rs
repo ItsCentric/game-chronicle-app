@@ -120,15 +120,18 @@ fn main() {
         })
         .setup(|app| {
             match app.cli().matches() {
-                Ok(matches) => {
-                    if matches.args.contains_key("hidden") {
+                Ok(matches) => match matches.args.get("hidden") {
+                    Some(is_hidden_set) => {
+                        if is_hidden_set.value.as_bool().unwrap() {
                         match app.get_webview_window("main") {
                             Some(webview_window) => {
                                 webview_window.close()?;
                             }
                             None => {}
                         }
-                    }
+                        }
+                    },
+                    None => {}
                 },
                 Err(_) => {}
             };
