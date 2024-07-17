@@ -37,7 +37,8 @@
 			"deb": {
 				"depends": []
 			}
-		}
+		},
+		"resources": ["resources/*"]
 	},
 	"productName": "Game Chronicle",
 	"version": "0.10.0",

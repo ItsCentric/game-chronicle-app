@@ -10,8 +10,22 @@
 	import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindings/database';
 	import { getGamesById } from '$lib/rust-bindings/igdb';
 	import type { PageData } from './$types';
+	import { BaseDirectory, readTextFile, exists, remove } from '@tauri-apps/plugin-fs';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import { onMount } from 'svelte';
+	import SvelteMarkdown from 'svelte-markdown';
+	import Separator from '$lib/components/ui/separator/separator.svelte';
 
 	export let data: PageData;
+	let changeLogContents: string | undefined;
+	onMount(async () => {
+		if (await exists('resources/changelog.md', { baseDir: BaseDirectory.Resource })) {
+			changeLogContents = await readTextFile('resources/changelog.md', {
+				baseDir: BaseDirectory.Resource
+			});
+			await remove('resources/changelog.md', { baseDir: BaseDirectory.Resource });
+		}
+	});
 	const dashboardStatisticsQuery = useQuery(
 		'dashboardStatistics',
 		async () => {
@@ -77,6 +91,20 @@
 </script>
 
 <main class="flex flex-col gap-12 h-full p-12 container">
+	{#if changeLogContents}
+		<Dialog.Root open>
+			<Dialog.Content class="overflow-auto max-h-[80vh] max-w-prose">
+				<Dialog.Header>
+					<Dialog.Title class="text-2xl font-heading font-bold">Changelog</Dialog.Title>
+					<Dialog.Description class="text-lg">Here's what's new in this update</Dialog.Description>
+				</Dialog.Header>
+				<Separator />
+				<span class="prose prose-invert prose-headings:font-heading">
+					<SvelteMarkdown source={changeLogContents} />
+				</span>
+			</Dialog.Content>
+		</Dialog.Root>
+	{/if}
 	<div>
 		<h1 class="font-heading font-bold text-3xl">
 			Hello, <span class="capitalize">{data.username}</span>

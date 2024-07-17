@@ -24,6 +24,7 @@
 		"fs:allow-mkdir",
 		"fs:scope-temp-recursive",
 		"fs:allow-remove",
-		"fs:allow-exists"
+		"fs:allow-exists",
+		"fs:scope-resource-recursive"
 	]
 }
