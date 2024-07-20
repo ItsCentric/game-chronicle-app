@@ -27,13 +27,9 @@ pub fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, E
             .remove("username")
             .and_then(|v| v.as_str().map(String::from))
             .unwrap_or_else(whoami::username),
-        executable_paths: settings_map.remove("executable_paths").and_then(|v| {
-            v.as_array().map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect()
-            })
-        }),
+        executable_paths: settings_map
+            .remove("executable_paths")
+            .and_then(|v| v.as_str().map(String::from)),
         process_monitoring: {
             let process_monitoring_map = settings_map
                 .remove("process_monitoring")
