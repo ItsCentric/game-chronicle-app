@@ -3,6 +3,7 @@
 
 use std::{path::PathBuf, thread};
 
+use database::update_table_schema;
 use serde::Deserialize;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_cli::CliExt;
@@ -193,6 +194,12 @@ fn main() {
                 logs_conn: std::sync::Mutex::new(logs_conn),
                 igdb_conn: std::sync::Mutex::new(igdb_conn),
             });
+            let schema_changes = helpers::get_schema_changes(app.handle())?;
+            if let Some(igdb_changes) = schema_changes.igdb {
+                for (table_name, changes) in igdb_changes {
+                    update_table_schema(&app.state::<DatabaseConnections>().igdb_conn.lock().unwrap(), &table_name, changes)?;
+                }
+            }
             if !user_settings.process_monitoring.enabled || user_settings.executable_paths.is_none() {
                 return Ok(());
             }
