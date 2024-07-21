@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 use rusqlite::{Connection, OptionalExtension};
 
 use crate::{
-    helpers::{create_dir_if_not_exists, get_app_data_directory},
+    helpers::{create_dir_if_not_exists, get_app_data_directory, SchemaFieldUpdate},
     DatabaseConnections, Error,
 };
 use tauri::State;
@@ -250,4 +252,43 @@ pub fn add_executable_details(
     )?;
     let id = conn.last_insert_rowid() as i32;
     Ok(id)
+}
+
+pub fn update_table_schema(
+    conn: &Connection,
+    table_name: &str,
+    schema_updates: HashMap<String, SchemaFieldUpdate>,
+) -> Result<(), Error> {
+    for (field_name, schema_update) in schema_updates {
+        match schema_update.update_type {
+            1 => {
+                conn.execute(
+                    format!(
+                        "ALTER TABLE {} ADD COLUMN {} {}",
+                        table_name, schema_update.new_name, schema_update.new_type
+                    )
+                    .as_str(),
+                    [],
+                )?;
+            }
+            2 => {
+                conn.execute(
+                    format!(
+                        "ALTER TABLE {} RENAME COLUMN {} TO {}",
+                        table_name, field_name, schema_update.new_name
+                    )
+                    .as_str(),
+                    [],
+                )?;
+            }
+            3 => {
+                conn.execute(
+                    format!("ALTER TABLE {} DROP COLUMN {}", table_name, field_name).as_str(),
+                    [],
+                )?;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
 }
