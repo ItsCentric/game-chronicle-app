@@ -1,8 +1,9 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{path::PathBuf, thread};
+use std::{collections::HashMap, path::PathBuf, thread};
 
+use database::update_table_schema;
 use serde::Deserialize;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_cli::CliExt;
@@ -112,8 +113,12 @@ fn main() {
                         return;
                     }
                 }
-                app_handle.notification().builder().title("Game Chronicle").body("Game Chronicle is still running in the background.").show().unwrap();
                 window.hide().unwrap();
+                let windows = app_handle.webview_windows();
+                let visible_windows = windows.iter().filter(|(_, window)| window.is_visible().unwrap()).collect::<HashMap<_, _>>();
+                if visible_windows.len() == 0 {
+                    app_handle.notification().builder().title("Game Chronicle").body("Game Chronicle is still running in the background.").show().unwrap();
+                }
                 api.prevent_close();
             },
             _ => {}
@@ -193,6 +198,12 @@ fn main() {
                 logs_conn: std::sync::Mutex::new(logs_conn),
                 igdb_conn: std::sync::Mutex::new(igdb_conn),
             });
+            let schema_changes = helpers::get_schema_changes(app.handle())?;
+            if let Some(igdb_changes) = schema_changes.igdb {
+                for (table_name, changes) in igdb_changes {
+                    update_table_schema(&app.state::<DatabaseConnections>().igdb_conn.lock().unwrap(), &table_name, changes)?;
+                }
+            }
             if !user_settings.process_monitoring.enabled || user_settings.executable_paths.is_none() {
                 return Ok(());
             }

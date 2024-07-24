@@ -15,6 +15,21 @@ pub struct CsvUrlResponse {
     pub version: String,
 }
 
+#[derive(serde::Serialize, Debug, serde::Deserialize)]
+pub struct SchemaFieldUpdate {
+    pub new_name: String,
+    pub new_type: String,
+    pub update_type: i32,
+}
+
+type DatabaseUpdateTable = HashMap<String, HashMap<String, SchemaFieldUpdate>>;
+
+#[derive(serde::Serialize, Debug, serde::Deserialize)]
+pub struct SchemaUpdate {
+    pub igdb: Option<DatabaseUpdateTable>,
+    pub logs: Option<DatabaseUpdateTable>,
+}
+
 #[tauri::command]
 pub fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, Error> {
     let config_path = app_handle.path().config_dir().unwrap();
@@ -27,13 +42,9 @@ pub fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, E
             .remove("username")
             .and_then(|v| v.as_str().map(String::from))
             .unwrap_or_else(whoami::username),
-        executable_paths: settings_map.remove("executable_paths").and_then(|v| {
-            v.as_array().map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect()
-            })
-        }),
+        executable_paths: settings_map
+            .remove("executable_paths")
+            .and_then(|v| v.as_str().map(String::from)),
         process_monitoring: {
             let process_monitoring_map = settings_map
                 .remove("process_monitoring")
@@ -90,4 +101,24 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
 pub fn get_app_data_directory(app_handle: &tauri::AppHandle) -> Result<PathBuf, Error> {
     let dir = app_handle.path().data_dir()?;
     Ok(dir.join("game-chronicle"))
+}
+
+pub fn get_schema_changes(app_handle: &tauri::AppHandle) -> Result<SchemaUpdate, Error> {
+    let resource_path = app_handle.path().resource_dir().unwrap();
+    let mut file = match fs::File::open(resource_path.join("resources/schema_changes.toml")) {
+        Ok(file) => file,
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::NotFound => {
+                return Ok(SchemaUpdate {
+                    igdb: None,
+                    logs: None,
+                })
+            }
+            _ => return Err(e.into()),
+        },
+    };
+    let mut file_contents = String::new();
+    file.read_to_string(&mut file_contents)?;
+    let schema_changes: SchemaUpdate = toml::from_str(&file_contents)?;
+    Ok(schema_changes)
 }
