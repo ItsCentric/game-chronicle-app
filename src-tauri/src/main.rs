@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{path::PathBuf, thread};
+use std::{collections::HashMap, path::PathBuf, thread};
 
 use database::update_table_schema;
 use serde::Deserialize;
@@ -113,8 +113,12 @@ fn main() {
                         return;
                     }
                 }
-                app_handle.notification().builder().title("Game Chronicle").body("Game Chronicle is still running in the background.").show().unwrap();
                 window.hide().unwrap();
+                let windows = app_handle.webview_windows();
+                let visible_windows = windows.iter().filter(|(_, window)| window.is_visible().unwrap()).collect::<HashMap<_, _>>();
+                if visible_windows.len() == 0 {
+                    app_handle.notification().builder().title("Game Chronicle").body("Game Chronicle is still running in the background.").show().unwrap();
+                }
                 api.prevent_close();
             },
             _ => {}
