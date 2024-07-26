@@ -204,6 +204,7 @@ fn main() {
                 autostart_manager.disable().unwrap();
             }
             let (logs_conn, igdb_conn) = database::initialize_database(app.handle().clone()).unwrap();
+            igdb_conn.execute("INSERT INTO games_fts (games_fts) VALUES ('rebuild')", rusqlite::params![])?;
             app.manage(DatabaseConnections {
                 logs_conn: std::sync::Mutex::new(logs_conn),
                 igdb_conn: std::sync::Mutex::new(igdb_conn),
