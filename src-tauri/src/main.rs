@@ -95,16 +95,6 @@ struct DatabaseConnections {
 
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-            let windows = app.webview_windows();
-            match windows.get("main") {
-                Some(window) => {
-                    window.show().unwrap();
-                    window.set_focus().unwrap();
-                }
-                None => {}                
-            }
-        }))
         .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
