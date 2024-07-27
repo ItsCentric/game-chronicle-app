@@ -12,7 +12,7 @@ use tauri::{Emitter, Manager, State};
 
 use crate::{
     helpers::get_app_data_directory,
-    igdb::{Cover, Game, Platform, Website},
+    igdb::{Cover, Game, Platform, PopularityPrimitive, Website},
     DatabaseConnections, Error,
 };
 
@@ -72,6 +72,7 @@ pub fn get_local_dump_versions(app_handle: tauri::AppHandle) -> Result<DumpVersi
             hm.insert("websites".to_string(), "".to_string());
             hm.insert("platforms".to_string(), "".to_string());
             hm.insert("games".to_string(), "".to_string());
+            hm.insert("popularity_primitives".to_string(), "".to_string());
             return Ok(hm);
         }
     };
@@ -88,7 +89,13 @@ pub fn get_local_dump_versions(app_handle: tauri::AppHandle) -> Result<DumpVersi
 
 #[tauri::command]
 pub async fn get_all_dump_info() -> Result<Vec<DumpInfo<'static>>, Error> {
-    let endpoints = ["covers", "websites", "platforms", "games"];
+    let endpoints = [
+        "covers",
+        "websites",
+        "platforms",
+        "games",
+        "popularity_primitives",
+    ];
     let mut dumps_info: Vec<DumpInfo> = vec![];
     for endpoint in endpoints {
         let csv_response = get_csv_url(endpoint).await?;
@@ -159,6 +166,13 @@ pub fn import_dumps(app_handle: tauri::AppHandle, from_directory: PathBuf) -> Re
             from_directory.join("games.csv"),
             parse_csv::<Game>,
             insert_games,
+            &mut transaction,
+        )
+        .unwrap();
+        import_csv(
+            from_directory.join("popularity_primitives.csv"),
+            parse_csv::<PopularityPrimitive>,
+            insert_popularity_primitives,
             &mut transaction,
         )
         .unwrap();
@@ -413,6 +427,65 @@ fn insert_games(transaction: &mut rusqlite::Transaction, games: &Vec<Game>) -> R
         }
     }
 
+    Ok(())
+}
+
+pub fn insert_popularity_primitives(
+    transaction: &mut rusqlite::Transaction,
+    popularity_primitives: &Vec<PopularityPrimitive>,
+) -> Result<(), Error> {
+    let mut select_stmt =
+        transaction.prepare("SELECT * FROM popularity_primitives WHERE id = ?1")?;
+    let mut insert_stmt = transaction.prepare("INSERT INTO popularity_primitives (id, game_id, popularity_type, value) VALUES (?1, ?2, ?3, ?4)")?;
+    let mut update_stmt = transaction.prepare("UPDATE popularity_primitives SET game_id = ?1, popularity_type = ?2, value = ?3 WHERE id = ?4")?;
+    for csv_popularity_primitive in popularity_primitives {
+        let popularity_primitive: Option<PopularityPrimitive> = select_stmt
+            .query_row(&[&csv_popularity_primitive.id], |row| {
+                Ok(PopularityPrimitive {
+                    id: row.get(0)?,
+                    game_id: row.get(1)?,
+                    popularity_type: row.get(2)?,
+                    value: row.get(3)?,
+                })
+            })
+            .optional()?;
+        match popularity_primitive {
+            Some(p) => {
+                if p.game_id != csv_popularity_primitive.game_id
+                    || p.popularity_type != csv_popularity_primitive.popularity_type
+                    || p.value != csv_popularity_primitive.value
+                {
+                    update_stmt.execute((
+                        csv_popularity_primitive.game_id,
+                        csv_popularity_primitive.popularity_type,
+                        csv_popularity_primitive.value,
+                        csv_popularity_primitive.id,
+                    ))?;
+                }
+            }
+            None => {
+                match transaction
+                    .query_row(
+                        "SELECT id FROM games WHERE id = ?",
+                        params![csv_popularity_primitive.game_id],
+                        |row| row.get::<usize, i32>(0),
+                    )
+                    .optional()?
+                {
+                    Some(_) => {}
+                    None => {
+                        continue;
+                    }
+                };
+                insert_stmt.execute((
+                    csv_popularity_primitive.id,
+                    csv_popularity_primitive.game_id,
+                    csv_popularity_primitive.popularity_type,
+                    csv_popularity_primitive.value,
+                ))?;
+            }
+        }
+    }
     Ok(())
 }
 

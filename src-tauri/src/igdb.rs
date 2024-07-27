@@ -56,6 +56,14 @@ pub struct GameInfo {
     pub total_rating: Option<f32>,
 }
 
+#[derive(serde::Serialize, Debug, serde::Deserialize)]
+pub struct PopularityPrimitive {
+    pub id: i32,
+    pub game_id: i32,
+    pub popularity_type: i32,
+    pub value: f32,
+}
+
 fn deserialize_list<'de, D>(deserializer: D) -> Result<Option<Vec<i32>>, D::Error>
 where
     D: serde::Deserializer<'de>,
