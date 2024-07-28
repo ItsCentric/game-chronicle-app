@@ -26,7 +26,13 @@
 			const localDumpVersions = await getLocalDumpVersions();
 			const allDumpsInfo = await getAllDumpInfo();
 			const urlsToDownload = [];
-			const dumpVersions: DumpVersions = { games: '', websites: '', platforms: '', covers: '' };
+			const dumpVersions: DumpVersions = {
+				games: '',
+				websites: '',
+				platforms: '',
+				covers: '',
+				popularity_primitives: ''
+			};
 			for (const dumpInfo of allDumpsInfo) {
 				const localDumpVersion = localDumpVersions[dumpInfo.name];
 				if (localDumpVersion !== dumpInfo.version) {

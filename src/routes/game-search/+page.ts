@@ -1,4 +1,4 @@
-import { getRandomTopGames, type GameInfo } from '$lib/rust-bindings/igdb';
+import { getPopularGames, type GameInfo } from '$lib/rust-bindings/igdb';
 import { writable } from 'svelte/store';
 
 const cachedResponse = writable<GameInfo[] | null>(null);
@@ -13,7 +13,7 @@ export const load = async () => {
 		unsubscribe();
 		return { randomGames: response };
 	}
-	const randomGames = await getRandomTopGames(72);
+	const randomGames = await getPopularGames(72);
 	cachedResponse.set(randomGames);
 	unsubscribe();
 	return { randomGames };

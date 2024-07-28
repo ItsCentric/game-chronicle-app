@@ -19,8 +19,8 @@ export async function getGamesById(gameIds: number[]) {
 	return games.map((game: unknown) => gameInfoSchema.parse(game));
 }
 
-export async function getRandomTopGames(amount: number) {
-	const games: object[] = await invoke('get_random_top_games', { amount });
+export async function getPopularGames(amount: number) {
+	const games: object[] = await invoke('get_popular_games', { amount });
 	return games.map((game: unknown) => gameInfoSchema.parse(game));
 }
 

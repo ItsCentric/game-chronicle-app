@@ -261,7 +261,7 @@ fn main() {
             database::add_log,
             database::update_log,
             database::add_executable_details,
-            igdb::get_random_top_games,
+            igdb::get_popular_games,
             igdb::search_game,
             data_import::get_steam_data,
             data_import::import_igdb_games,

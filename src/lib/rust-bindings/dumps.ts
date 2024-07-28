@@ -5,12 +5,13 @@ const dumpVersionsSchema = z.object({
 	games: z.string(),
 	covers: z.string(),
 	websites: z.string(),
-	platforms: z.string()
+	platforms: z.string(),
+	popularity_primitives: z.string()
 });
 export type DumpVersions = z.infer<typeof dumpVersionsSchema>;
 
 const dumpInfoSchema = z.object({
-	name: z.enum(['games', 'covers', 'websites', 'platforms']),
+	name: z.enum(['games', 'covers', 'websites', 'platforms', 'popularity_primitives']),
 	url: z.string(),
 	version: z.string()
 });
