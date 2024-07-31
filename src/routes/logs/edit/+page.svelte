@@ -10,7 +10,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
-	import { getLocalTimeZone, parseDate, today } from '@internationalized/date';
+	import { fromDate, getLocalTimeZone } from '@internationalized/date';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import { Button } from '$lib/components/ui/button';
 	import { logDataFromForm } from '$lib';
@@ -83,10 +83,11 @@
 		validateLogForm({ update: false }).then(
 			(superValidated) => (isNewLogFormValid = superValidated.valid)
 		);
-    onMount(() => {
-            $logFormData.logStartDate = data.form.data.logStartDate;
-            $logFormData.logEndDate = data.form.data.logEndDate;
-    });
+	onMount(() => {
+		$logFormData.logStartDate = data.form.data.logStartDate;
+		$logFormData.logEndDate = data.form.data.logEndDate;
+	});
+	const timeZone = getLocalTimeZone();
 	$: currentStartDate = $logFormData.logStartDate ? $logFormData.logStartDate : new Date();
 	$: currentEndDate = $logFormData.logEndDate ? $logFormData.logEndDate : new Date();
 </script>
@@ -172,7 +173,7 @@
 							{...attrs}
 							bind:value={$logFormData.logStartDate}
 							placeholder="Log date"
-							maxValue={parseDate(currentEndDate.toISOString().substring(0, 10))}
+							maxValue={fromDate(currentEndDate, timeZone)}
 						/>
 					</Form.Control>
 					<Form.FieldErrors />
@@ -184,8 +185,8 @@
 							{...attrs}
 							bind:value={$logFormData.logEndDate}
 							placeholder="Log date"
-							minValue={parseDate(currentStartDate.toISOString().substring(0, 10))}
-							maxValue={today(getLocalTimeZone())}
+							minValue={fromDate(currentStartDate, timeZone)}
+							maxValue={fromDate(new Date(), timeZone)}
 						/>
 					</Form.Control>
 					<Form.FieldErrors />
