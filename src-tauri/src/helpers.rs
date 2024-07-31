@@ -20,6 +20,7 @@ pub struct SchemaFieldUpdate {
     pub new_name: String,
     pub new_type: String,
     pub update_type: i32,
+    pub default: Option<String>,
 }
 
 type DatabaseUpdateTable = HashMap<String, HashMap<String, SchemaFieldUpdate>>;
