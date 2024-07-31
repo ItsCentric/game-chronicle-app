@@ -73,7 +73,7 @@
 		'similarGames',
 		async () => {
 			const logs = await getLogs(
-				'date',
+				'end_date',
 				'desc',
 				statusOptions.filter((status) => status != 'wishlist' && status != 'backlog')
 			);

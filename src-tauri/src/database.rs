@@ -26,7 +26,8 @@ pub struct Log {
     pub id: i32,
     pub created_at: String,
     pub updated_at: String,
-    pub date: String,
+    pub start_date: String,
+    pub end_date: String,
     pub rating: i32,
     pub notes: String,
     pub status: String,
@@ -37,7 +38,8 @@ pub struct Log {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct LogData {
     pub game_id: i32,
-    pub date: String,
+    pub start_date: String,
+    pub end_date: String,
     pub rating: i32,
     pub notes: String,
     pub status: String,
@@ -47,7 +49,8 @@ pub struct LogData {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct LogUpdateData {
     id: i32,
-    pub date: String,
+    pub start_date: String,
+    pub end_date: String,
     pub rating: i32,
     pub notes: String,
     pub status: String,
@@ -74,11 +77,12 @@ fn log_from_row(row: &rusqlite::Row) -> Result<Log, rusqlite::Error> {
         game_id: row.get(1)?,
         created_at: row.get(2)?,
         updated_at: row.get(3)?,
-        date: row.get(4)?,
-        rating: row.get(5)?,
-        notes: row.get(6)?,
-        status: row.get(7)?,
-        minutes_played: row.get(8)?,
+        start_date: row.get(4)?,
+        end_date: row.get(5)?,
+        rating: row.get(6)?,
+        notes: row.get(7)?,
+        status: row.get(8)?,
+        minutes_played: row.get(9)?,
     })
 }
 
@@ -105,7 +109,7 @@ pub fn get_dashboard_statistics(
     end_date: String,
 ) -> Result<DashboardStatistics, Error> {
     let conn = state.logs_conn.lock().unwrap();
-    let minutes_and_games_played_stmt = conn.prepare("SELECT COALESCE(SUM(total_minutes_played), 0), COUNT(*) FROM ( SELECT COALESCE(SUM(minutes_played), 0) AS total_minutes_played FROM logs WHERE (date BETWEEN ?1 AND ?2) AND status != 'wishlist' GROUP BY game_id ) AS subquery;").optional()?;
+    let minutes_and_games_played_stmt = conn.prepare("SELECT COALESCE(SUM(total_minutes_played), 0), COUNT(*) FROM ( SELECT COALESCE(SUM(minutes_played), 0) AS total_minutes_played FROM logs WHERE (end_date BETWEEN ?1 AND ?2) AND status != 'wishlist' GROUP BY game_id ) AS subquery;").optional()?;
     let this_minutes_and_games_played: (i32, i32) = match minutes_and_games_played_stmt {
         Some(mut stmt) => stmt.query_row([start_date.clone(), end_date.clone()], |row| {
             Ok((row.get(0)?, row.get(1)?))
@@ -113,7 +117,7 @@ pub fn get_dashboard_statistics(
         None => (0, 0),
     };
     let mut completed_games_stmt = conn.prepare(
-        "SELECT COUNT(*) FROM logs WHERE (date BETWEEN ?1 AND ?2) AND status = 'completed'",
+        "SELECT COUNT(*) FROM logs WHERE (end_date BETWEEN ?1 AND ?2) AND status = 'completed'",
     )?;
     let this_completed_games: i32 =
         completed_games_stmt.query_row([start_date.clone(), end_date.clone()], |row| {
@@ -134,7 +138,7 @@ pub fn get_recent_logs(
 ) -> Result<Vec<Log>, Error> {
     let conn = state.logs_conn.lock().unwrap();
     if filter.len() == 0 {
-        let mut stmt = conn.prepare("SELECT * FROM logs ORDER BY date DESC LIMIT ?")?;
+        let mut stmt = conn.prepare("SELECT * FROM logs ORDER BY end_date DESC LIMIT ?")?;
         let logs = stmt
             .query_map([amount], |row| Ok(log_from_row(row)?))?
             .collect::<Result<Vec<_>, _>>()?;
@@ -147,7 +151,7 @@ pub fn get_recent_logs(
         .join(",");
     let mut stmt = conn.prepare(
         format!(
-            "SELECT * FROM logs WHERE status IN ({}) ORDER BY date DESC LIMIT ?",
+            "SELECT * FROM logs WHERE status IN ({}) ORDER BY end_date DESC LIMIT ?",
             joined_filter
         )
         .as_str(),
@@ -203,14 +207,15 @@ pub fn get_log_by_id(state: State<DatabaseConnections>, id: i32) -> Result<Log, 
 pub fn add_log(state: State<DatabaseConnections>, log_data: LogData) -> Result<i32, Error> {
     let conn = state.logs_conn.lock().unwrap();
     conn.execute(
-        "INSERT INTO logs (game_id, date, rating, notes, status, minutes_played) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        "INSERT INTO logs (game_id, start_date, rating, notes, status, minutes_played, end_date) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         [
             log_data.game_id.to_string(),
-            log_data.date,
+            log_data.start_date,
             log_data.rating.to_string(),
             log_data.notes,
             log_data.status,
             log_data.minutes_played.to_string(),
+            log_data.end_date,
         ],
     )?;
     let id = conn.last_insert_rowid() as i32;
@@ -224,14 +229,15 @@ pub fn update_log(
 ) -> Result<i32, Error> {
     let conn = state.logs_conn.lock().unwrap();
     conn.execute(
-        "UPDATE logs SET date = ?1, rating = ?2, notes = ?3, status = ?4, minutes_played = ?5 WHERE id = ?6",
+        "UPDATE logs SET start_date = ?1, end_date = ?7, rating = ?2, notes = ?3, status = ?4, minutes_played = ?5 WHERE id = ?6",
         [
-            log_data.date,
+            log_data.start_date,
             log_data.rating.to_string(),
             log_data.notes,
             log_data.status,
             log_data.minutes_played.to_string(),
             log_data.id.to_string(),
+            log_data.end_date,
         ],
     )?;
     Ok(log_data.id)

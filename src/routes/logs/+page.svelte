@@ -29,7 +29,7 @@
 	let filteredLogs: PageData['logsAndGames'] = [];
 	let statusFilter: StatusOption[] = [];
 	let currentLogPage = 1;
-	let sortBy = 'date';
+	let sortBy = 'end_date';
 	let sortOrder: 'desc' | 'asc' = 'desc';
 	const queryClient = useQueryClient();
 	const deleteLogMutation = useMutation(deleteLog, {
@@ -83,11 +83,11 @@
 					return b.game.title.localeCompare(a.game.title);
 				}
 				return a.game.title.localeCompare(b.game.title);
-			case 'date':
+			case 'end_date':
 				if (sortOrder === 'desc') {
-					return new Date(b.date).getTime() - new Date(a.date).getTime();
+					return new Date(b.end_date).getTime() - new Date(a.end_date).getTime();
 				}
-				return new Date(a.date).getTime() - new Date(b.date).getTime();
+				return new Date(a.end_date).getTime() - new Date(b.end_date).getTime();
 			case 'rating':
 				if (sortOrder === 'desc') {
 					return b.rating - a.rating;

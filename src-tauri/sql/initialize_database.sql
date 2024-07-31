@@ -3,14 +3,16 @@ CREATE TABLE IF NOT EXISTS logs (
     game_id INTEGER NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    date TEXT DEFAULT CURRENT_TIMESTAMP,
+    start_date TEXT DEFAULT CURRENT_TIMESTAMP,
+    end_date TEXT DEFAULT CURRENT_TIMESTAMP,
     rating INTEGER DEFAULT 0,
     notes TEXT,
     status TEXT,
     minutes_played INTEGER DEFAULT 0,
     CONSTRAINT valid_rating CHECK (rating >= 0 AND rating <= 5),
     CONSTRAINT valid_status CHECK (status IN ('wishlist', 'backlog', 'playing', 'completed', 'played', 'abandoned', 'retired'))
-    CONSTRAINT valid_date CHECK (date(date) IS NOT NULL)
+    CONSTRAINT valid_start_date CHECK (date(start_date) IS NOT NULL)
+    CONSTRAINT valid_end_date CHECK (date(end_date) IS NOT NULL)
 );
 
 CREATE TABLE IF NOT EXISTS user_settings (

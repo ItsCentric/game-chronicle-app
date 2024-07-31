@@ -31,9 +31,13 @@ export const logSchema = z.object({
 		.number()
 		.max(5, { message: 'Rating must be 5 or less' })
 		.nonnegative({ message: 'Rating must be positive' }),
-	logDate: z
+	logStartDate: z
 		.date()
-		.max(tomorrow, { message: 'New log date must not be in the future' })
+		.max(tomorrow, { message: 'New log start date must not be in the future' })
+		.default(new Date()),
+	logEndDate: z
+		.date()
+		.max(new Date(), { message: 'New log end date must not be in the future' })
 		.default(new Date()),
 	status: z.enum(statusOptions),
 	notes: z.string().max(1000, { message: 'Notes must be less than 1000 characters' }).optional(),
