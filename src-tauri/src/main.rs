@@ -215,6 +215,11 @@ fn main() {
                     update_table_schema(&app.state::<DatabaseConnections>().igdb_conn.lock().unwrap(), &table_name, changes)?;
                 }
             }
+            if let Some(log_changes) = schema_changes.logs {
+                for (table_name, changes) in log_changes {
+                    update_table_schema(&app.state::<DatabaseConnections>().logs_conn.lock().unwrap(), &table_name, changes)?;
+                }
+            }
             if !user_settings.process_monitoring.enabled || user_settings.executable_paths.is_none() {
                 return Ok(());
             }
