@@ -73,16 +73,16 @@ pub fn initialize_database(
 
 fn log_from_row(row: &rusqlite::Row) -> Result<Log, rusqlite::Error> {
     Ok(Log {
-        id: row.get(0)?,
-        game_id: row.get(1)?,
-        created_at: row.get(2)?,
-        updated_at: row.get(3)?,
-        start_date: row.get(4)?,
-        end_date: row.get(5)?,
-        rating: row.get(6)?,
-        notes: row.get(7)?,
-        status: row.get(8)?,
-        minutes_played: row.get(9)?,
+        id: row.get("id")?,
+        game_id: row.get("game_id")?,
+        created_at: row.get("created_at")?,
+        updated_at: row.get("updated_at")?,
+        start_date: row.get("start_date")?,
+        end_date: row.get("end_date")?,
+        rating: row.get("rating")?,
+        notes: row.get("notes")?,
+        status: row.get("status")?,
+        minutes_played: row.get("minutes_played")?,
     })
 }
 
