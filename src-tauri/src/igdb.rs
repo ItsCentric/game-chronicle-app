@@ -84,8 +84,8 @@ where
 }
 
 fn game_info_from_row(row: &rusqlite::Row) -> Result<GameInfo, rusqlite::Error> {
-    let websites_string: Option<String> = row.get(3)?;
-    let similar_games_string: Option<String> = row.get(4)?;
+    let websites_string: Option<String> = row.get("websites")?;
+    let similar_games_string: Option<String> = row.get("similar_game_ids")?;
     let websites = match websites_string {
         Some(string) => Some(string.split(',').map(|s| s.to_string()).collect()),
         None => None,
@@ -100,19 +100,19 @@ fn game_info_from_row(row: &rusqlite::Row) -> Result<GameInfo, rusqlite::Error> 
         None => None,
     };
     Ok(GameInfo {
-        id: row.get(0)?,
-        title: row.get(1)?,
-        cover_image_id: row.get(2)?,
+        id: row.get("id")?,
+        title: row.get("name")?,
+        cover_image_id: row.get("image_id")?,
         websites,
         similar_games,
-        category: row.get(5)?,
-        version_parent: row.get(6)?,
-        total_rating: row.get(7)?,
+        category: row.get("category")?,
+        version_parent: row.get("version_parent")?,
+        total_rating: row.get("total_rating")?,
     })
 }
 
 fn game_info_columns() -> &'static str {
-    "g.id, g.name, c.image_id, GROUP_CONCAT(w.url, ','), GROUP_CONCAT(sg.similar_game_id, ','), g.category, g.version_parent, total_rating FROM games g LEFT JOIN covers c ON g.cover_id = c.id LEFT JOIN game_websites gw ON g.id = gw.game_id LEFT JOIN websites w ON gw.website_id = w.id LEFT JOIN similar_games sg ON sg.game_id = g.id LEFT JOIN game_platforms gp ON g.id = gp.game_id LEFT JOIN platforms p ON p.id = gp.platform_id LEFT JOIN popularity_primitives pp ON g.id = pp.game_id"
+    "g.id, g.name, c.image_id, GROUP_CONCAT(w.url, ',') websites, GROUP_CONCAT(sg.similar_game_id, ',') similar_game_ids, g.category, g.version_parent, total_rating FROM games g LEFT JOIN covers c ON g.cover_id = c.id LEFT JOIN game_websites gw ON g.id = gw.game_id LEFT JOIN websites w ON gw.website_id = w.id LEFT JOIN similar_games sg ON sg.game_id = g.id LEFT JOIN game_platforms gp ON g.id = gp.game_id LEFT JOIN platforms p ON p.id = gp.platform_id LEFT JOIN popularity_primitives pp ON g.id = pp.game_id"
 }
 
 #[tauri::command]
