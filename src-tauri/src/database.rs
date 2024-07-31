@@ -268,10 +268,17 @@ pub fn update_table_schema(
     for (field_name, schema_update) in schema_updates {
         match schema_update.update_type {
             1 => {
+                let default = match schema_update.default {
+                    Some(d) => d,
+                    None => Err(Error::from(format!(
+                        "No default value provided for {}",
+                        field_name
+                    )))?,
+                };
                 conn.execute(
                     format!(
-                        "ALTER TABLE {} ADD COLUMN {} {}",
-                        table_name, schema_update.new_name, schema_update.new_type
+                        "ALTER TABLE {} ADD COLUMN {} {} DEFAULT {}",
+                        table_name, schema_update.new_name, schema_update.new_type, default
                     )
                     .as_str(),
                     [],
