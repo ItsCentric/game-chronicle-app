@@ -10,7 +10,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
-	import { getLocalTimeZone, today } from '@internationalized/date';
+	import { fromDate, getLocalTimeZone } from '@internationalized/date';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import { Button } from '$lib/components/ui/button';
 	import { logDataFromForm } from '$lib';
@@ -18,6 +18,7 @@
 	import { addExecutableDetails, addLog, updateLog } from '$lib/rust-bindings/database';
 	import type { PageData } from './$types';
 	import { toTitleCase } from '$lib';
+	import { onMount } from 'svelte';
 
 	export let data: PageData;
 	const searchParams = $page.url.searchParams;
@@ -82,6 +83,13 @@
 		validateLogForm({ update: false }).then(
 			(superValidated) => (isNewLogFormValid = superValidated.valid)
 		);
+	onMount(() => {
+		$logFormData.logStartDate = data.form.data.logStartDate;
+		$logFormData.logEndDate = data.form.data.logEndDate;
+	});
+	const timeZone = getLocalTimeZone();
+	$: currentStartDate = $logFormData.logStartDate ? $logFormData.logStartDate : new Date();
+	$: currentEndDate = $logFormData.logEndDate ? $logFormData.logEndDate : new Date();
 </script>
 
 <main class="min-h-full container py-8 px-16">
@@ -157,18 +165,33 @@
 					</RadioGroup.Root>
 				</Form.Fieldset>
 			</div>
-			<Form.Field form={logForm} name="logDate">
-				<Form.Control let:attrs>
-					<Form.Label>Date</Form.Label>
-					<DatePicker
-						{...attrs}
-						bind:value={$logFormData.logDate}
-						placeholder="Log date"
-						max={today(getLocalTimeZone())}
-					/>
-				</Form.Control>
-				<Form.FieldErrors />
-			</Form.Field>
+			<div class="flex gap-2">
+				<Form.Field form={logForm} name="logStartDate">
+					<Form.Control let:attrs>
+						<Form.Label>Start date</Form.Label>
+						<DatePicker
+							{...attrs}
+							bind:value={$logFormData.logStartDate}
+							placeholder="Log date"
+							maxValue={fromDate(currentEndDate, timeZone)}
+						/>
+					</Form.Control>
+					<Form.FieldErrors />
+				</Form.Field>
+				<Form.Field form={logForm} name="logEndDate">
+					<Form.Control let:attrs>
+						<Form.Label>End date</Form.Label>
+						<DatePicker
+							{...attrs}
+							bind:value={$logFormData.logEndDate}
+							placeholder="Log date"
+							minValue={fromDate(currentStartDate, timeZone)}
+							maxValue={fromDate(new Date(), timeZone)}
+						/>
+					</Form.Control>
+					<Form.FieldErrors />
+				</Form.Field>
+			</div>
 			<div>
 				<p class="text-sm mb-2 pointer-events-none">Time played</p>
 				<Form.Field form={logForm} name="timePlayedHours" class="w-14 inline-block mr-1">

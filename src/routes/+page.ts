@@ -48,7 +48,7 @@ export const load = async () => {
 		(status) => status != 'wishlist' && status != 'backlog'
 	);
 	const recentLogs = await getRecentLogs(6, allButWishlistedOrBacklogged);
-	const logs = await getLogs('date', 'desc', allButWishlistedOrBacklogged);
+	const logs = await getLogs('end_date', 'desc', allButWishlistedOrBacklogged);
 	const gameIds = logs.map((log) => log.game_id);
 	const games = await getGamesById(gameIds);
 	const similarGameIds = games
