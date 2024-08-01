@@ -10,7 +10,6 @@ use std::{collections::HashMap, path::PathBuf};
 #[derive(Debug)]
 pub struct Process {
     pub name: String,
-    pub pid: u32,
     pub path: String,
     pub run_time: u64,
 }
@@ -34,7 +33,6 @@ impl Process {
                 };
                 Ok(Process {
                     name,
-                    pid: pid.try_into().unwrap(),
                     path,
                     run_time: p.run_time(),
                 })
