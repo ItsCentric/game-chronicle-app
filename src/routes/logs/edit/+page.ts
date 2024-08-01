@@ -18,7 +18,8 @@ export const load: PageLoad = async ({ url }) => {
 	if (id) {
 		const log = await getLogById(parseInt(id));
 		const formData: z.infer<LogFormSchema> = {
-			logDate: new Date(log.date),
+			logStartDate: new Date(log.start_date),
+			logEndDate: new Date(log.end_date),
 			rating: log.rating,
 			notes: log.notes,
 			status: log.status as StatusOption,

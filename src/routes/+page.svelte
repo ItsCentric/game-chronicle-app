@@ -73,7 +73,7 @@
 		'similarGames',
 		async () => {
 			const logs = await getLogs(
-				'date',
+				'end_date',
 				'desc',
 				statusOptions.filter((status) => status != 'wishlist' && status != 'backlog')
 			);
@@ -206,7 +206,7 @@
 	<div class="pb-16">
 		<div class="flex justify-between items-center mb-2">
 			<h3 class="text-xl font-heading font-semibold">Similar to What You Play</h3>
-			<Button variant="link" href="">View all similar titles</Button>
+			<Button variant="link" href="/similar-games">View all similar titles</Button>
 		</div>
 		<div class="grid grid-cols-6 gap-4 relative">
 			{#if $similarGamesQuery.isLoading}

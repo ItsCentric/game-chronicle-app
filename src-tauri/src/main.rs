@@ -194,6 +194,7 @@ fn main() {
                 autostart_manager.disable().unwrap();
             }
             let (logs_conn, igdb_conn) = database::initialize_database(app.handle().clone()).unwrap();
+            igdb_conn.execute("INSERT INTO games_fts (games_fts) VALUES ('rebuild')", rusqlite::params![])?;
             app.manage(DatabaseConnections {
                 logs_conn: std::sync::Mutex::new(logs_conn),
                 igdb_conn: std::sync::Mutex::new(igdb_conn),
@@ -202,6 +203,11 @@ fn main() {
             if let Some(igdb_changes) = schema_changes.igdb {
                 for (table_name, changes) in igdb_changes {
                     update_table_schema(&app.state::<DatabaseConnections>().igdb_conn.lock().unwrap(), &table_name, changes)?;
+                }
+            }
+            if let Some(log_changes) = schema_changes.logs {
+                for (table_name, changes) in log_changes {
+                    update_table_schema(&app.state::<DatabaseConnections>().logs_conn.lock().unwrap(), &table_name, changes)?;
                 }
             }
             if !user_settings.process_monitoring.enabled || user_settings.executable_paths.is_none() {
@@ -250,7 +256,7 @@ fn main() {
             database::add_log,
             database::update_log,
             database::add_executable_details,
-            igdb::get_random_top_games,
+            igdb::get_popular_games,
             igdb::search_game,
             data_import::get_steam_data,
             data_import::import_igdb_games,

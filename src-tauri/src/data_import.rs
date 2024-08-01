@@ -136,9 +136,11 @@ pub async fn get_steam_data(
                 },
                 None => Local::now(),
             };
+        let formatted_date = date.format("%Y-%m-%d %H:%M:%S").to_string();
         logs_data.push(LogData {
             game_id: igdb_game.id,
-            date: date.format("%Y-%m-%d %H:%M:%S").to_string(),
+            start_date: formatted_date.clone(),
+            end_date: formatted_date,
             rating: 0,
             notes: "".to_string(),
             status,
@@ -198,11 +200,12 @@ pub fn import_igdb_games(
     let logs_transaction = conn.transaction()?;
     {
         let mut stmt = logs_transaction.prepare(
-            "INSERT INTO logs (date, status, minutes_played, notes, game_id) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO logs (start_date, end_date, status, minutes_played, notes, game_id) VALUES (?, ?, ?, ?, ?, ?)",
         )?;
         for log_data in &data {
             stmt.execute(params![
-                &log_data.date,
+                &log_data.start_date,
+                &log_data.end_date,
                 &log_data.status,
                 &log_data.minutes_played,
                 &log_data.notes,

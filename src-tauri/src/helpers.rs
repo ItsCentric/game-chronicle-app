@@ -10,6 +10,7 @@ use tauri::Manager;
 use crate::{Error, ProcessMonitoringSettings, UserSettings};
 
 #[derive(serde::Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct CsvUrlResponse {
     pub url: String,
     pub version: String,
@@ -20,6 +21,7 @@ pub struct SchemaFieldUpdate {
     pub new_name: String,
     pub new_type: String,
     pub update_type: i32,
+    pub default: Option<String>,
 }
 
 type DatabaseUpdateTable = HashMap<String, HashMap<String, SchemaFieldUpdate>>;

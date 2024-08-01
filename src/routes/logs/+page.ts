@@ -5,7 +5,7 @@ export const load = async () => {
 	if (typeof window === 'undefined') {
 		return { logsAndGames: [] };
 	}
-	const logs = await getLogs('date', 'desc', []);
+	const logs = await getLogs('end_date', 'desc', []);
 	const games = await getGamesById(logs.map((log) => log.game_id));
 	const logsAndGames = logs.map((log) => {
 		const associatedGame = games.find((game) => game.id === log.game_id);

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import {
-		CalendarDate,
 		DateFormatter,
+		fromDate,
 		getLocalTimeZone,
-		parseDate
+		ZonedDateTime
 	} from '@internationalized/date';
 	import { cn } from '$lib/utils.js';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -16,9 +16,10 @@
 	});
 
 	export let value: Date | undefined = undefined;
-	export let minValue: CalendarDate | undefined = undefined;
-	export let maxValue: CalendarDate | undefined = undefined;
+	export let minValue: ZonedDateTime | undefined = undefined;
+	export let maxValue: ZonedDateTime | undefined = undefined;
 	export let disabled = false;
+	const timeZone = getLocalTimeZone();
 </script>
 
 <Popover.Root>
@@ -35,11 +36,11 @@
 	<Popover.Content class="w-auto p-0" align="start">
 		<Calendar
 			{disabled}
-			value={value ? parseDate(value?.toISOString().substring(0, 10)) : undefined}
+			value={value ? fromDate(value, timeZone) : undefined}
 			{minValue}
 			{maxValue}
 			onValueChange={(newValue) => {
-				value = newValue ? newValue.toDate(getLocalTimeZone()) : undefined;
+				value = newValue ? newValue.toDate(timeZone) : undefined;
 			}}
 		/>
 	</Popover.Content>

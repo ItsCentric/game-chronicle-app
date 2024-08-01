@@ -53,3 +53,11 @@ CREATE TABLE IF NOT EXISTS game_platforms (
     FOREIGN KEY (platform_id) REFERENCES platforms(id),
     PRIMARY KEY (game_id, platform_id)
 );
+
+CREATE TABLE IF NOT EXISTS popularity_primitives (
+    id INTEGER PRIMARY KEY,
+    game_id INTEGER,
+    popularity_type INTEGER,
+    value REAL,
+    FOREIGN KEY (game_id) REFERENCES games(id)
+);

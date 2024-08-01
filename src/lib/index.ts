@@ -7,7 +7,8 @@ export function logDataFromForm(igdbGame: GameInfo, formData: z.infer<LogFormSch
 	return {
 		status: formData.status.toLowerCase() as StatusOption,
 		rating: formData.rating,
-		date: formData.logDate.toISOString(),
+		start_date: formData.logStartDate.toISOString(),
+		end_date: formData.logEndDate.toISOString(),
 		notes: formData.notes ?? '',
 		minutes_played: formData.timePlayedHours * 60 + formData.timePlayedMinutes,
 		game_id: igdbGame.id
