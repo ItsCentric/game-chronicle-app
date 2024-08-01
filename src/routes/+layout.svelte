@@ -39,7 +39,7 @@
 	}
 </script>
 
-<main class="h-full relative">
+<main class="h-full relative" on:contextmenu={(e) => e.preventDefault()}>
 	{#if showProgress}
 		<div
 			in:fade={{ duration: 0, delay: 500 }}
