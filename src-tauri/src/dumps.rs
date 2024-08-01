@@ -8,12 +8,12 @@ use std::{
 
 use csv::Reader;
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
-use tauri::{Emitter, Manager, State};
+use tauri::Emitter;
 
 use crate::{
     helpers::get_app_data_directory,
     igdb::{Cover, Game, Platform, PopularityPrimitive, Website},
-    DatabaseConnections, Error,
+    Error,
 };
 
 #[derive(serde::Deserialize, Debug, serde::Serialize)]
