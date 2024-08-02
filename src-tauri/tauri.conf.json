@@ -39,10 +39,12 @@
 				"depends": []
 			}
 		},
-		"resources": ["resources/*"]
+		"resources": [
+			"resources/*"
+		]
 	},
 	"productName": "Game Chronicle",
-	"version": "0.12.0",
+	"version": "0.12.1",
 	"identifier": "app.gamechronicle.www",
 	"plugins": {
 		"updater": {
