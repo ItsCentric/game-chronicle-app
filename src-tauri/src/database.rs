@@ -263,12 +263,12 @@ pub fn add_executable_details(
 pub fn update_table_schema(
     conn: &Connection,
     table_name: &str,
-    schema_updates: HashMap<String, SchemaFieldUpdate>,
+    schema_updates: &HashMap<String, SchemaFieldUpdate>,
 ) -> Result<(), Error> {
     for (field_name, schema_update) in schema_updates {
         match schema_update.update_type {
             1 => {
-                let default = match schema_update.default {
+                let default = match &schema_update.default {
                     Some(d) => d,
                     None => Err(Error::from(format!(
                         "No default value provided for {}",

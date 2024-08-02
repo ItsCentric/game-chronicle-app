@@ -200,17 +200,19 @@ fn main() {
                 igdb_conn: std::sync::Mutex::new(igdb_conn),
             });
             let schema_changes = helpers::get_schema_changes(app.handle())?;
-            if let Some(igdb_changes) = schema_changes.igdb {
+            if let Some(ref igdb_changes) = schema_changes.igdb {
                 for (table_name, changes) in igdb_changes {
                     update_table_schema(&app.state::<DatabaseConnections>().igdb_conn.lock().unwrap(), &table_name, changes)?;
                 }
             }
-            if let Some(log_changes) = schema_changes.logs {
+            if let Some(ref log_changes) = schema_changes.logs {
                 for (table_name, changes) in log_changes {
                     update_table_schema(&app.state::<DatabaseConnections>().logs_conn.lock().unwrap(), &table_name, changes)?;
                 }
             }
-            remove_file(app.path().resource_dir()?.join("resources/schema_changes.toml"))?;
+            if schema_changes.igdb.is_some() || schema_changes.logs.is_some() {
+                remove_file(app.path().resource_dir()?.join("resources/schema_changes.toml"))?;
+            }
             if !user_settings.process_monitoring.enabled || user_settings.executable_paths.is_none() {
                 return Ok(());
             }
