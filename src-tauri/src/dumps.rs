@@ -346,9 +346,19 @@ fn insert_games(transaction: &mut rusqlite::Transaction, games: &Vec<Game>) -> R
                     || db_game.version_parent != csv_game.version_parent
                     || db_game.total_rating != csv_game.total_rating
                 {
+                    let cover_id = match csv_game.cover_id {
+                        Some(id) => match select_cover_stmt
+                            .query_row(&[&id], |row| row.get::<usize, i32>(0))
+                            .optional()?
+                        {
+                            Some(_) => Some(id),
+                            None => None,
+                        },
+                        None => None,
+                    };
                     update_game_stmt.execute((
                         &csv_game.name,
-                        csv_game.cover_id,
+                        cover_id,
                         csv_game.category,
                         csv_game.version_parent,
                         csv_game.total_rating,
@@ -406,27 +416,6 @@ fn insert_games(transaction: &mut rusqlite::Transaction, games: &Vec<Game>) -> R
             }
         }
     }
-    for csv_game in games {
-        if let Some(similar_games) = &csv_game.similar_games {
-            for similar_game_id in similar_games {
-                match transaction
-                    .query_row(
-                        "SELECT id FROM games WHERE id = ?",
-                        &[similar_game_id],
-                        |row| row.get::<usize, i32>(0),
-                    )
-                    .optional()?
-                {
-                    Some(_) => {}
-                    None => {
-                        continue;
-                    }
-                };
-                insert_similar_games_stmt.execute((csv_game.id, similar_game_id))?;
-            }
-        }
-    }
-
     Ok(())
 }
 

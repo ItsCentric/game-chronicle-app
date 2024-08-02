@@ -277,8 +277,16 @@ pub fn update_table_schema(
                 };
                 conn.execute(
                     format!(
-                        "ALTER TABLE {} ADD COLUMN {} {} DEFAULT {}",
-                        table_name, schema_update.new_name, schema_update.new_type, default
+                        "ALTER TABLE {} ADD COLUMN {} {}",
+                        table_name, schema_update.new_name, schema_update.new_type
+                    )
+                    .as_str(),
+                    [],
+                )?;
+                conn.execute(
+                    format!(
+                        "UPDATE {} SET {} = {}",
+                        table_name, schema_update.new_name, default
                     )
                     .as_str(),
                     [],

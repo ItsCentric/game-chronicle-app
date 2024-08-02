@@ -2,11 +2,11 @@ import { invoke } from '@tauri-apps/api/core';
 import { z } from 'zod';
 
 const dumpVersionsSchema = z.object({
-	games: z.string(),
-	covers: z.string(),
-	websites: z.string(),
-	platforms: z.string(),
-	popularity_primitives: z.string()
+	games: z.string().optional(),
+	covers: z.string().optional(),
+	websites: z.string().optional(),
+	platforms: z.string().optional(),
+	popularity_primitives: z.string().optional()
 });
 export type DumpVersions = z.infer<typeof dumpVersionsSchema>;
 

@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{collections::HashMap, path::PathBuf, thread};
+use std::{collections::HashMap, fs::remove_file, path::PathBuf, thread};
 
 use database::update_table_schema;
 use serde::Deserialize;
@@ -210,6 +210,7 @@ fn main() {
                     update_table_schema(&app.state::<DatabaseConnections>().logs_conn.lock().unwrap(), &table_name, changes)?;
                 }
             }
+            remove_file(app.path().resource_dir()?.join("resources/schema_changes.toml"))?;
             if !user_settings.process_monitoring.enabled || user_settings.executable_paths.is_none() {
                 return Ok(());
             }
