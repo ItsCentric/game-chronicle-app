@@ -7,6 +7,7 @@
 		ArrowLeft,
 		ChevronLeft,
 		ChevronRight,
+		Pencil,
 		Plus,
 		SearchX,
 		Trash
@@ -23,6 +24,7 @@
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 	import { toTitleCase } from '$lib';
 	import { getGamesById } from '$lib/rust-bindings/igdb';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 
 	export let data: PageData;
 
@@ -54,19 +56,12 @@
 		},
 		{ initialData: data.logsAndGames }
 	);
-	const logStatusColorMap: Record<StatusOption, string> = {
-		backlog: 'bg-gray-500',
-		wishlist: 'bg-blue-500',
-		playing: 'bg-green-500',
-		played: 'bg-green-500',
-		completed: 'bg-green-500',
-		abandoned: 'bg-red-500',
-		retired: 'bg-yellow-500'
-	};
 
-	function logStatusColor(status: StatusOption) {
-		return logStatusColorMap[status];
-	}
+	const dateFormatter = new Intl.DateTimeFormat('en-US', {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric'
+	});
 	$: if (statusFilter) {
 		if (statusFilter.length === 0) {
 			filteredLogs = data.logsAndGames;
@@ -101,18 +96,13 @@
 	$: end = currentLogPage * 18;
 </script>
 
-<main class="min-h-full flex flex-col gap-4 container py-12 px-16 xl:px-0">
-	<div class="flex justify-between items-center relative">
-		<Button
-			variant="ghost"
-			size="icon"
-			class="absolute -left-4 -translate-x-full"
-			on:click={() => goto('/')}><ArrowLeft size={32} /></Button
-		>
+<main class="min-h-full flex flex-col gap-4 container py-12 px-16 xl:px-8">
+	<div class="flex gap-4 items-center">
+		<Button variant="ghost" size="icon" on:click={() => goto('/')}><ArrowLeft size={32} /></Button>
 		<h1 class="font-heading text-3xl font-bold">Your Logs</h1>
 	</div>
-	<div class="flex justify-between items-center">
-		<div class="flex gap-2 items-center">
+	<div id="filterContainer" class="flex justify-between items-center gap-4">
+		<div class="flex gap-2 items-center min-w-0 overflow-auto">
 			{#each statusOptions as status}
 				{@const active = statusFilter.includes(status)}
 				<Button
@@ -135,7 +125,11 @@
 		<div class="flex gap-2 items-center">
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger asChild let:builder>
-					<Button builders={[builder]} disabled={$logsQuery.isLoading || $logsQuery.isError}>
+					<Button
+						builders={[builder]}
+						variant="secondary"
+						disabled={$logsQuery.isLoading || $logsQuery.isError}
+					>
 						<ArrowDownUp size="1.5em" class="mr-1" />
 						<p>Sort</p>
 					</Button>
@@ -145,7 +139,7 @@
 					<DropdownMenu.Separator />
 					<DropdownMenu.RadioGroup bind:value={sortBy}>
 						<DropdownMenu.RadioItem value="title">Name</DropdownMenu.RadioItem>
-						<DropdownMenu.RadioItem value="date">Date</DropdownMenu.RadioItem>
+						<DropdownMenu.RadioItem value="end_date">Date</DropdownMenu.RadioItem>
 						<DropdownMenu.RadioItem value="rating">Rating</DropdownMenu.RadioItem>
 					</DropdownMenu.RadioGroup>
 					<DropdownMenu.Separator />
@@ -164,7 +158,7 @@
 		</div>
 	</div>
 	{#if $logsQuery.isLoading}
-		<div class="grid gap-2 grid-cols-6">
+		<div class="grid gap-2 grid-cols-3">
 			{#each Array(18) as _}
 				<Skeleton class="rounded-3xl aspect-[3/4]" />
 			{/each}
@@ -182,51 +176,64 @@
 				</div>
 			</div>
 		{:else}
-			<div class="grid gap-2 grid-cols-6">
-				{#each filteredLogs.slice(start, end) as gameLog}
+			<div class="grid gap-2 grid-cols-2 xl:grid-cols-3">
+				{#each filteredLogs.slice(start, end) as gameLog, i}
 					<GameCard
-						data={gameLog.game}
-						on:click={() => goto(`/logs/edit?id=${gameLog.id}&gameId=${gameLog.game.id}`)}
+						title={gameLog.game.title ?? ''}
+						cover={gameLog.game.cover_image_id}
+						rating={gameLog.rating}
+						status={gameLog.status}
+						on:click={() => goto(`/logs/edit?gameId=${gameLog.game_id}`)}
+						class={i === 2 ? 'hidden xl:flex' : ''}
 					>
-						<AlertDialog.Root>
-							<AlertDialog.Trigger asChild let:builder>
-								<Button
-									on:click={(e) => e.stopPropagation()}
-									builders={[builder]}
-									variant="ghost"
-									size="icon"
-									class="z-30 absolute top-0 right-0 opacity-0 group-hover:opacity-100"
-									data-testid="delete-log"
-								>
-									<Trash size={24} />
-								</Button>
-							</AlertDialog.Trigger>
-							<AlertDialog.Content>
-								<AlertDialog.Header>Delete Log</AlertDialog.Header>
-								<AlertDialog.Description>
-									Are you sure you want to delete this log?
-								</AlertDialog.Description>
-								<AlertDialog.Footer>
-									<AlertDialog.Action
-										data-testid="confirm-delete"
-										on:click={() =>
-											toast.promise($deleteLogMutation.mutateAsync(gameLog.id), {
-												loading: 'Deleting log...',
-												success: 'Log was successfully deleted!',
-												error: 'Something went wrong deleting your log.'
-											})}
-									>
-										Delete
-									</AlertDialog.Action>
-									<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-								</AlertDialog.Footer>
-							</AlertDialog.Content>
-						</AlertDialog.Root>
-						<span
-							class={`absolute left-2 shadow-black shadow text-black bottom-2 rounded-2xl px-2 py-1 text-sm pointer-events-none ${logStatusColor(
-								gameLog.status
-							)}`}>{toTitleCase(gameLog.status)}</span
-						>
+						<p slot="sub-title" class="text-sm text-muted-foreground">
+							{dateFormatter.format(new Date(gameLog.end_date))}
+						</p>
+						<p slot="description" class="line-clamp-3 lg:line-clamp-4 text-ellipsis">
+							{gameLog.notes}
+						</p>
+						<svelte:fragment slot="actions">
+							<Tooltip.Root disableHoverableContent>
+								<Tooltip.Trigger>
+									<Button href={`/logs/edit?id=${gameLog.id}`} variant="ghost" size="icon">
+										<Pencil size={16} />
+									</Button>
+								</Tooltip.Trigger>
+								<Tooltip.Content sideOffset={6}>Edit log</Tooltip.Content>
+							</Tooltip.Root>
+							<AlertDialog.Root>
+								<AlertDialog.Trigger asChild let:builder>
+									<Tooltip.Root disableHoverableContent>
+										<Tooltip.Trigger>
+											<Button builders={[builder]} variant="ghost" size="icon">
+												<Trash size={16} />
+											</Button>
+										</Tooltip.Trigger>
+										<Tooltip.Content sideOffset={6}>Delete log</Tooltip.Content>
+									</Tooltip.Root>
+								</AlertDialog.Trigger>
+								<AlertDialog.Content>
+									<AlertDialog.Header>Delete Log</AlertDialog.Header>
+									<AlertDialog.Description>
+										Are you sure you want to delete this log?
+									</AlertDialog.Description>
+									<AlertDialog.Footer>
+										<AlertDialog.Action
+											data-testid="confirm-delete"
+											on:click={() =>
+												toast.promise($deleteLogMutation.mutateAsync(gameLog.id), {
+													loading: 'Deleting log...',
+													success: 'Log was successfully deleted!',
+													error: 'Something went wrong deleting your log.'
+												})}
+										>
+											Delete
+										</AlertDialog.Action>
+										<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+									</AlertDialog.Footer>
+								</AlertDialog.Content>
+							</AlertDialog.Root>
+						</svelte:fragment>
 					</GameCard>
 				{/each}
 			</div>
@@ -269,3 +276,21 @@
 		</div>
 	{/if}
 </main>
+
+<style>
+	#filterContainer::-webkit-scrollbar:horizontal {
+		width: 12px;
+	}
+
+	#filterContainer::-webkit-scrollbar-track:horizontal {
+		border-radius: 8px;
+		background-color: #e7e7e7;
+		border: 1px solid #cacaca;
+		box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+	}
+
+	#filterContainer::-webkit-scrollbar-thumb:horizontal {
+		border-radius: 8px;
+		background-color: #363636;
+	}
+</style>

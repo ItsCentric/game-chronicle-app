@@ -275,6 +275,7 @@
 						title={log.game.title ?? ''}
 						cover={log.game.cover_image_id}
 						rating={log.rating}
+						status={log.status}
 						on:click={() => goto(`/logs/edit?gameId=${log.game_id}`)}
 						class={i === 2 ? 'hidden xl:flex' : ''}
 					>

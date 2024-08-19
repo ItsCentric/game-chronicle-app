@@ -1,10 +1,27 @@
 <script lang="ts">
-	import { Gamepad2, StarIcon } from 'lucide-svelte';
+	import { Gamepad2 } from 'lucide-svelte';
+	import StarIcon from '$lib/components/icons/StarIcon.svelte';
 	import { cn } from '$lib/utils';
+	import { type StatusOption } from '$lib/schemas';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 
 	export let title: string;
 	export let cover: string | undefined | null;
 	export let rating: number | undefined | null;
+	export let status: StatusOption | undefined;
+
+	const logStatusColorMap: Record<StatusOption, string> = {
+		backlog: 'bg-gray-500',
+		wishlist: 'bg-blue-500',
+		playing: 'bg-green-500',
+		played: 'bg-green-500',
+		completed: 'bg-green-500',
+		abandoned: 'bg-red-500',
+		retired: 'bg-yellow-500'
+	};
+	function logStatusColor(status: StatusOption) {
+		return logStatusColorMap[status];
+	}
 </script>
 
 <div
@@ -31,7 +48,17 @@
 	</div>
 	<div class="flex-1">
 		<div class="mb-4">
-			<h3 class="text-lg font-semibold">{title}</h3>
+			<div class="flex gap-2 items-center">
+				<h3 class="text-lg font-semibold line-clamp-2 md:line-clamp-none">{title}</h3>
+				{#if status}
+					<Tooltip.Root disableHoverableContent>
+						<Tooltip.Trigger>
+							<div class={`rounded-full h-2 w-2 ${logStatusColor(status)}`}></div>
+						</Tooltip.Trigger>
+						<Tooltip.Content class="capitalize">{status}</Tooltip.Content>
+					</Tooltip.Root>
+				{/if}
+			</div>
 			<slot name="sub-title" class="text-sm text-muted-foreground" />
 		</div>
 		<div class="text-foreground mb-4 flex gap-1 items-center">
