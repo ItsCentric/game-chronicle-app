@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { settingsSchema, type SettingsFormSchema } from '$lib/schemas';
-	import { PencilIcon, Plus, Trash } from 'lucide-svelte';
+	import { CircleHelp, PencilIcon, Plus, Trash } from 'lucide-svelte';
 	import { superForm } from 'sveltekit-superforms';
 	import * as Form from '$lib/components/ui/form';
 	import * as Dialog from '$lib/components/ui/dialog';
@@ -16,6 +16,8 @@
 	import { relaunch } from '@tauri-apps/plugin-process';
 	import type { PageData } from './$types';
 	import type { z } from 'zod';
+	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 
 	export let data: PageData;
 	const settingsKeysThatShouldReload: (keyof z.infer<SettingsFormSchema>)[] = [
@@ -109,76 +111,109 @@
 	}
 </script>
 
-<main class="w-full h-full py-12 flex-col justify-center container items-center">
-	<div class="flex gap-2 mb-8 items-center">
-		<h1 class="text-3xl font-heading font-bold">Settings</h1>
+<div class="w-full h-full py-12 flex-col justify-center mx-auto max-w-prose items-center">
+	<div>
+		<h1 class="text-3xl font-heading mb-1 font-bold">Settings</h1>
+		<p class="text-muted-foreground">Customize every last detail here.</p>
 	</div>
+	<Separator class="mt-4 mb-8" />
 	<form method="post" use:settingsFormEnhance class="flex flex-col gap-8">
-		<section class="flex flex-col gap-2">
+		<section>
 			<div class="flex justify-between mb-2">
 				<h2 class="text-2xl font-heading font-bold">General</h2>
 			</div>
-			<Form.Field form={settingsForm} name="username">
-				<Form.Control let:attrs>
-					<div class="flex justify-between items-center">
-						<Form.Label>Username</Form.Label>
-						<Input {...attrs} bind:value={$settingsFormData.username} class="max-w-xs" />
-					</div>
-				</Form.Control>
-			</Form.Field>
-			<Form.Field form={settingsForm} name="autostart">
-				<Form.Control let:attrs>
-					<div class="flex justify-between items-center">
-						<Form.Label>Open on computer startup</Form.Label>
-						<Switch includeInput {...attrs} bind:checked={$settingsFormData.autostart} />
-					</div>
-				</Form.Control>
-			</Form.Field>
+			<div class="flex flex-col gap-4">
+				<Form.Field form={settingsForm} name="username">
+					<Form.Control let:attrs>
+						<div class="flex justify-between items-center">
+							<Form.Label>Username</Form.Label>
+							<Input {...attrs} bind:value={$settingsFormData.username} class="max-w-xs" />
+						</div>
+					</Form.Control>
+				</Form.Field>
+				<Form.Field form={settingsForm} name="autostart">
+					<Form.Control let:attrs>
+						<div class="flex justify-between items-center">
+							<Form.Label>Open on computer startup</Form.Label>
+							<Switch includeInput {...attrs} bind:checked={$settingsFormData.autostart} />
+						</div>
+					</Form.Control>
+				</Form.Field>
+			</div>
 		</section>
-		<section class="flex flex-col gap-2">
+		<Separator />
+		<section>
 			<div class="flex justify-between mb-2">
 				<h2 class="text-2xl font-heading font-bold">Monitoring</h2>
 			</div>
-			<Form.Field form={settingsForm} name="processMonitoringEnabled">
-				<Form.Control let:attrs>
-					<div class="flex justify-between items-center">
-						<Form.Label>Enable Game Monitoring</Form.Label>
-						<Switch
-							includeInput
-							{...attrs}
-							bind:checked={$settingsFormData.processMonitoringEnabled}
-						/>
-					</div>
-				</Form.Control>
-			</Form.Field>
-			<Form.Field form={settingsForm} name="processMonitoringDirectoryDepth">
-				<Form.Control let:attrs>
-					<div class="flex justify-between items-center">
-						<Form.Label>Directory Depth</Form.Label>
-						<Input
-							{...attrs}
-							bind:value={$settingsFormData.processMonitoringDirectoryDepth}
-							type="number"
-							min="1"
-							max="99"
-							class="w-16"
-							on:change={({ currentTarget }) =>
-								validateSettingsFormField('processMonitoringDirectoryDepth', {
-									value: parseInt(currentTarget.value)
-								})}
-						/>
-					</div>
-				</Form.Control>
-			</Form.Field>
-			<div class="flex justify-between items-center my-2">
-				<h3 class="text-xl font-heading font-bold">Monitoring Paths</h3>
-				<Button type="button" on:click={newDirectoryDialog} size="sm">
-					<Plus size="1.5em" class="mr-1" />
-					<p>Add Path</p>
-				</Button>
+			<div class="flex flex-col gap-4">
+				<Form.Field form={settingsForm} name="processMonitoringEnabled">
+					<Form.Control let:attrs>
+						<div class="flex justify-between items-center">
+							<Form.Label class="flex gap-2 items-center"
+								><p>Enable Game Monitoring</p>
+								<Tooltip.Root openDelay={0} disableHoverableContent>
+									<Tooltip.Trigger>
+										<CircleHelp size="1.25em" />
+									</Tooltip.Trigger>
+									<Tooltip.Content class="max-w-prose">
+										<p>
+											Game Monitoring monitors your system processes for executables in the
+											directories you specify below.
+										</p>
+									</Tooltip.Content>
+								</Tooltip.Root>
+							</Form.Label>
+							<Switch
+								includeInput
+								{...attrs}
+								bind:checked={$settingsFormData.processMonitoringEnabled}
+							/>
+						</div>
+					</Form.Control>
+				</Form.Field>
+				<Form.Field form={settingsForm} name="processMonitoringDirectoryDepth">
+					<Form.Control let:attrs>
+						<div class="flex justify-between items-center">
+							<Form.Label class="flex gap-2 items-center"
+								><p>Directory Depth</p>
+								<Tooltip.Root openDelay={0} disableHoverableContent>
+									<Tooltip.Trigger>
+										<CircleHelp size="1.25em" />
+									</Tooltip.Trigger>
+									<Tooltip.Content class="max-w-prose">
+										<p>
+											How many directories down do you want to scan for game processes from the
+											directory you specify?
+										</p>
+									</Tooltip.Content>
+								</Tooltip.Root>
+							</Form.Label>
+							<Input
+								{...attrs}
+								bind:value={$settingsFormData.processMonitoringDirectoryDepth}
+								type="number"
+								min="1"
+								max="99"
+								class="w-16"
+								on:change={({ currentTarget }) =>
+									validateSettingsFormField('processMonitoringDirectoryDepth', {
+										value: parseInt(currentTarget.value)
+									})}
+							/>
+						</div>
+					</Form.Control>
+				</Form.Field>
+				<div class="flex justify-between items-center my-4">
+					<h3 class="text-xl font-heading font-bold">Monitoring Paths</h3>
+					<Button variant="secondary" type="button" on:click={newDirectoryDialog} size="sm">
+						<Plus size="1.5em" class="mr-1" />
+						<p>Add Path</p>
+					</Button>
+				</div>
 			</div>
 			{#if $settingsFormData.executablePaths.length !== 0}
-				<Table.Root>
+				<Table.Root class="border">
 					<Table.Caption>Edit the system paths that should be monitored here.</Table.Caption>
 					<Table.Header>
 						<Table.Row>
@@ -191,16 +226,30 @@
 							<Table.Row>
 								<Table.Cell class="w-3/4">{path}</Table.Cell>
 								<Table.Cell class="text-right">
-									<Button
-										type="button"
-										size="icon"
-										class="mr-1"
-										on:click={async () => await editDirectoryDialog(path)}
-										><PencilIcon size={16} /></Button
-									>
-									<Button type="button" size="icon" on:click={() => removePath(path)}
-										><Trash size={16} /></Button
-									>
+									<Tooltip.Root disableHoverableContent>
+										<Tooltip.Trigger>
+											<Button
+												type="button"
+												variant="secondary"
+												size="icon"
+												class="mr-1"
+												on:click={async () => await editDirectoryDialog(path)}
+												><PencilIcon size={16} /></Button
+											>
+										</Tooltip.Trigger>
+										<Tooltip.Content sideOffset={6}>Edit path</Tooltip.Content>
+									</Tooltip.Root>
+									<Tooltip.Root disableHoverableContent>
+										<Tooltip.Trigger>
+											<Button
+												type="button"
+												variant="secondary"
+												size="icon"
+												on:click={() => removePath(path)}><Trash size={16} /></Button
+											>
+										</Tooltip.Trigger>
+										<Tooltip.Content sideOffset={6}>Delete path</Tooltip.Content>
+									</Tooltip.Root>
 								</Table.Cell>
 							</Table.Row>
 						{/each}
@@ -238,16 +287,9 @@
 			{/if}
 		</section>
 		<div class="flex justify-end gap-2">
-			<Button type="submit" disabled={$settingsFormErrors.length > 0}>Save</Button>
-			<Button
-				variant="destructive"
-				type="reset"
-				on:click={() => window.history.back()}
-				disabled={($settingsFormData.twitchClientId === '' ||
-					$settingsFormData.twitchClientSecret === '') &&
-					(data.form.data.twitchClientId === '' || data.form.data.twitchClientSecret === '')}
-				>Cancel</Button
+			<Button variant="secondary" type="reset" on:click={() => window.history.back()}>Cancel</Button
 			>
+			<Button type="submit" disabled={$settingsFormErrors.length > 0}>Save</Button>
 		</div>
 	</form>
 	<Dialog.Root bind:open={openReloadApplicationModal}>
@@ -265,4 +307,4 @@
 			</Dialog.Footer>
 		</Dialog.Content>
 	</Dialog.Root>
-</main>
+</div>
