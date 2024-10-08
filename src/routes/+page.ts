@@ -11,12 +11,18 @@ import { checkedForDumpUpdate as checkedForDumpUpdateStore } from '$lib/stores';
 export const load = async () => {
 	if (typeof window === 'undefined') {
 		return {
-			username: '',
+			settings: {
+				username: '',
+				new: false,
+				process_monitoring: { enabled: false, directoryDepth: 0 },
+				executable_paths: '',
+				autostart: false
+			},
 			dashboardStatistics: [
 				{ total_games_played: 0, total_minutes_played: 0, total_games_completed: 0 },
 				{ total_games_played: 0, total_minutes_played: 0, total_games_completed: 0 }
 			],
-			recentGames: [],
+			recentLogs: [],
 			similarGames: []
 		};
 	}
@@ -30,7 +36,21 @@ export const load = async () => {
 		await getCurrent().window.hide();
 		const windows = getAll();
 		await windows.find((window) => window.label === 'updater')?.show();
-		return;
+		return {
+			settings: {
+				username: '',
+				new: false,
+				process_monitoring: { enabled: false, directoryDepth: 0 },
+				executable_paths: '',
+				autostart: false
+			},
+			dashboardStatistics: [
+				{ total_games_played: 0, total_minutes_played: 0, total_games_completed: 0 },
+				{ total_games_played: 0, total_minutes_played: 0, total_games_completed: 0 }
+			],
+			recentLogs: [],
+			similarGames: []
+		};
 	}
 	let checkedForDumpUpdate = false;
 	const unsubscribe = checkedForDumpUpdateStore.subscribe((value) => {
@@ -47,10 +67,17 @@ export const load = async () => {
 	const allButWishlistedOrBacklogged = statusOptions.filter(
 		(status) => status != 'wishlist' && status != 'backlog'
 	);
-	const recentLogs = await getRecentLogs(6, allButWishlistedOrBacklogged);
+	const recentLogs = await getRecentLogs(3, allButWishlistedOrBacklogged);
+	let gameIds = recentLogs.map((log) => log.game_id);
+	let games = await getGamesById(gameIds);
+	const gameAndRecentLogs = recentLogs.map((log) => {
+		const game = games.find((game) => game.id === log.game_id);
+		if (!game) throw new Error('Game not found');
+		return { ...log, game };
+	});
 	const logs = await getLogs('end_date', 'desc', allButWishlistedOrBacklogged);
-	const gameIds = logs.map((log) => log.game_id);
-	const games = await getGamesById(gameIds);
+	gameIds = logs.map((log) => log.game_id);
+	games = await getGamesById(gameIds);
 	const similarGameIds = games
 		.filter((game) => (game.similar_games?.length ?? 0) > 0)
 		.map((game) => game.similar_games as number[])
@@ -67,9 +94,9 @@ export const load = async () => {
 	);
 
 	return {
-		username: settings.username,
+		settings,
 		dashboardStatistics: [lastMonthStatistics, thisMonthStatistics],
-		recentGames: recentLogs,
+		recentLogs: gameAndRecentLogs,
 		similarGames
 	};
 };

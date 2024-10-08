@@ -9,8 +9,8 @@
 	import Combobox from '$lib/components/Combobox.svelte';
 	import { Input } from '$lib/components/ui/input';
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
-	import DatePicker from '$lib/components/DatePicker.svelte';
-	import { fromDate, getLocalTimeZone } from '@internationalized/date';
+	import { RangeCalendar } from '$lib/components/ui/range-calendar/index.js';
+	import { getLocalTimeZone, today } from '@internationalized/date';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import { Button } from '$lib/components/ui/button';
 	import { logDataFromForm } from '$lib';
@@ -19,6 +19,9 @@
 	import type { PageData } from './$types';
 	import { toTitleCase } from '$lib';
 	import { onMount } from 'svelte';
+	import * as Popover from '$lib/components/ui/popover';
+	import { CalendarIcon } from 'lucide-svelte';
+	import { cn } from '$lib/utils';
 
 	export let data: PageData;
 	const searchParams = $page.url.searchParams;
@@ -80,16 +83,22 @@
 
 	let isNewLogFormValid = false;
 	$: if ($logFormData)
-		validateLogForm({ update: false }).then(
-			(superValidated) => (isNewLogFormValid = superValidated.valid)
-		);
+		validateLogForm({ update: false }).then((superValidated) => {
+			isNewLogFormValid = superValidated.valid;
+		});
 	onMount(() => {
 		$logFormData.logStartDate = data.form.data.logStartDate;
 		$logFormData.logEndDate = data.form.data.logEndDate;
 	});
 	const timeZone = getLocalTimeZone();
-	$: currentStartDate = $logFormData.logStartDate ? $logFormData.logStartDate : new Date();
-	$: currentEndDate = $logFormData.logEndDate ? $logFormData.logEndDate : new Date();
+	let dateRange = {
+		start: today(timeZone),
+		end: today(timeZone)
+	};
+	$: if (dateRange.start && dateRange.end) {
+		$logFormData.logStartDate = dateRange.start.toDate(timeZone);
+		$logFormData.logEndDate = dateRange.end.toDate(timeZone);
+	}
 </script>
 
 <main class="min-h-full container py-8 px-16">
@@ -167,29 +176,46 @@
 			</div>
 			<div class="flex gap-2">
 				<Form.Field form={logForm} name="logStartDate">
-					<Form.Control let:attrs>
-						<Form.Label>Start date</Form.Label>
-						<DatePicker
-							{...attrs}
-							bind:value={$logFormData.logStartDate}
-							placeholder="Log date"
-							maxValue={fromDate(currentEndDate, timeZone)}
-						/>
+					<Form.Control>
+						<Form.Label class="block mt-2">Day(s) played</Form.Label>
+						<Popover.Root openFocus>
+							<Popover.Trigger asChild let:builder>
+								<Button
+									variant="outline"
+									class={cn(
+										'w-[300px] justify-start text-left font-normal',
+										!dateRange && 'text-muted-foreground'
+									)}
+									builders={[builder]}
+								>
+									<CalendarIcon class="mr-2 h-4 w-4" />
+									{#if dateRange.start && dateRange.end}
+										{dateRange.start
+											.toDate(timeZone)
+											.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} -
+										{dateRange.end
+											.toDate(timeZone)
+											.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+									{:else}
+										Pick a date
+									{/if}
+								</Button>
+							</Popover.Trigger>
+							<Popover.Content class="w-auto p-0" align="start">
+								<RangeCalendar
+									onValueChange={(value) => {
+										validateLogFormField('logStartDate', { value: value.start?.toDate(timeZone) });
+										validateLogFormField('logEndDate', { value: value.end?.toDate(timeZone) });
+									}}
+									bind:value={dateRange}
+								/>
+							</Popover.Content>
+						</Popover.Root>
 					</Form.Control>
 					<Form.FieldErrors />
-				</Form.Field>
-				<Form.Field form={logForm} name="logEndDate">
-					<Form.Control let:attrs>
-						<Form.Label>End date</Form.Label>
-						<DatePicker
-							{...attrs}
-							bind:value={$logFormData.logEndDate}
-							placeholder="Log date"
-							minValue={fromDate(currentStartDate, timeZone)}
-							maxValue={fromDate(new Date(), timeZone)}
-						/>
-					</Form.Control>
-					<Form.FieldErrors />
+					<Form.Field form={logForm} name="logEndDate">
+						<Form.FieldErrors />
+					</Form.Field>
 				</Form.Field>
 			</div>
 			<div>
@@ -236,7 +262,11 @@
 				<Form.Field form={logForm} name="notes">
 					<Form.Control let:attrs>
 						<Form.Label>Notes</Form.Label>
-						<Textarea {...attrs} placeholder="Notes" bind:value={$logFormData.notes} />
+						<Textarea
+							{...attrs}
+							placeholder="I particularly struggled on the part where..."
+							bind:value={$logFormData.notes}
+						/>
 					</Form.Control>
 					<Form.FieldErrors />
 				</Form.Field>
@@ -244,6 +274,7 @@
 		</div>
 	</form>
 	<div class="float-right">
+		<Button variant="secondary" on:click={() => window.history.back()}>Cancel</Button>
 		<Button
 			type="submit"
 			form="logForm"
@@ -251,6 +282,5 @@
 			class="mt-4"
 			disabled={!isNewLogFormValid}>Save</Button
 		>
-		<Button variant="destructive" on:click={() => window.history.back()}>Cancel</Button>
 	</div>
 </main>
