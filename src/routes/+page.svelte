@@ -133,7 +133,7 @@
 					<Button
 						href="/logs"
 						size="icon"
-						class="rounded-full bg-primary-foreground/20 hover:bg-primary-foreground/30 shadow hover:scale-110 transition-transform"
+						class="rounded-full h-11 w-11 bg-primary-foreground/20 hover:bg-primary-foreground/30 shadow hover:scale-110 transition-transform"
 						><Library size={32} /></Button
 					>
 				</Tooltip.Trigger>
@@ -146,7 +146,7 @@
 					<Button
 						href="/settings"
 						size="icon"
-						class="rounded-full bg-primary-foreground/20 hover:bg-primary-foreground/30 shadow hover:scale-110 transition-transform"
+						class="rounded-full h-11 w-11 bg-primary-foreground/20 hover:bg-primary-foreground/30 shadow hover:scale-110 transition-transform"
 						><Settings size={32} /></Button
 					>
 				</Tooltip.Trigger>
