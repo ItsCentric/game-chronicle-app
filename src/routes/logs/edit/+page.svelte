@@ -10,7 +10,13 @@
 	import { Input } from '$lib/components/ui/input';
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
 	import { RangeCalendar } from '$lib/components/ui/range-calendar/index.js';
-	import { getLocalTimeZone, today } from '@internationalized/date';
+	import {
+		getLocalTimeZone,
+		now,
+		Time,
+		toCalendarDate,
+		toCalendarDateTime
+	} from '@internationalized/date';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import { Button } from '$lib/components/ui/button';
 	import { logDataFromForm } from '$lib';
@@ -20,7 +26,7 @@
 	import { toTitleCase } from '$lib';
 	import { onMount } from 'svelte';
 	import * as Popover from '$lib/components/ui/popover';
-	import { CalendarIcon } from 'lucide-svelte';
+	import { CalendarIcon, Clock } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
 
 	export let data: PageData;
@@ -91,13 +97,20 @@
 		$logFormData.logEndDate = data.form.data.logEndDate;
 	});
 	const timeZone = getLocalTimeZone();
+	const currentDay = now(timeZone);
 	let dateRange = {
-		start: today(timeZone),
-		end: today(timeZone)
+		start: toCalendarDate(currentDay),
+		end: toCalendarDate(currentDay)
 	};
-	$: if (dateRange.start && dateRange.end) {
-		$logFormData.logStartDate = dateRange.start.toDate(timeZone);
-		$logFormData.logEndDate = dateRange.end.toDate(timeZone);
+	let timeRange = {
+		start: new Time(currentDay.hour - 1, currentDay.minute),
+		end: new Time(currentDay.hour, currentDay.minute)
+	};
+	$: if (dateRange.start && dateRange.end && timeRange.start && timeRange.end) {
+		$logFormData.logStartDate = toCalendarDateTime(dateRange.start, timeRange.start).toDate(
+			timeZone
+		);
+		$logFormData.logEndDate = toCalendarDateTime(dateRange.end, timeRange.end).toDate(timeZone);
 	}
 </script>
 
@@ -209,6 +222,50 @@
 									}}
 									bind:value={dateRange}
 								/>
+								<div class="flex gap-4 px-4 pb-4 w-full">
+									<div class="flex-1">
+										<Form.Field form={logForm} name="logStartDate">
+											<Form.Control>
+												<Form.Label class="text-sm">Start time</Form.Label>
+												<div class="flex">
+													<Input
+														type="time"
+														id="time"
+														class="rounded-e-none"
+														value={`${currentDay.subtract({ hours: 1 }).hour}:${currentDay.minute}`}
+														required
+													/>
+													<span
+														class="inline-flex items-center px-3 text-sm border rounded-s-0 border-s-0 rounded-e-md"
+													>
+														<Clock class="h-4 w-4 text-muted-foreground" />
+													</span>
+												</div>
+											</Form.Control>
+										</Form.Field>
+									</div>
+									<div class="flex-1">
+										<Form.Field form={logForm} name="logStartDate">
+											<Form.Control>
+												<Form.Label class="text-sm">End time</Form.Label>
+												<div class="flex">
+													<Input
+														type="time"
+														id="time"
+														class="rounded-e-none"
+														value={`${currentDay.hour}:${currentDay.minute}`}
+														required
+													/>
+													<span
+														class="inline-flex items-center px-3 text-sm border rounded-s-0 border-s-0 rounded-e-md"
+													>
+														<Clock class="h-4 w-4 text-muted-foreground" />
+													</span>
+												</div>
+											</Form.Control>
+										</Form.Field>
+									</div>
+								</div>
 							</Popover.Content>
 						</Popover.Root>
 					</Form.Control>
