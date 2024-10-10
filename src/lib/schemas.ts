@@ -1,3 +1,4 @@
+import { getLocalTimeZone, today } from '@internationalized/date';
 import { z } from 'zod';
 
 export type SortFormSchema = typeof sortFormSchema;
@@ -24,8 +25,8 @@ export const gameSearchSchema = z.object({
 });
 export type GameSearchFormSchema = typeof gameSearchSchema;
 
-const tomorrow = new Date();
-tomorrow.setDate(tomorrow.getDate() + 1);
+const timeZone = getLocalTimeZone();
+const tomorrow = today(timeZone).add({ days: 1 }).toDate(timeZone);
 export const logSchema = z.object({
 	rating: z
 		.number()
@@ -37,7 +38,7 @@ export const logSchema = z.object({
 		.default(new Date()),
 	logEndDate: z
 		.date()
-		.max(new Date(), { message: 'New log end date must not be in the future' })
+		.max(tomorrow, { message: 'New log end date must not be in the future' })
 		.default(new Date()),
 	status: z.enum(statusOptions),
 	notes: z.string().max(1000, { message: 'Notes must be less than 1000 characters' }).optional(),
