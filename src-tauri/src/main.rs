@@ -202,12 +202,12 @@ fn main() {
             let schema_changes = helpers::get_schema_changes(app.handle())?;
             if let Some(ref igdb_changes) = schema_changes.igdb {
                 for (table_name, changes) in igdb_changes {
-                    update_table_schema(&app.state::<DatabaseConnections>().igdb_conn.lock().unwrap(), &table_name, changes)?;
+                    update_table_schema(&mut app.state::<DatabaseConnections>().igdb_conn.lock().unwrap(), &table_name, changes)?;
                 }
             }
             if let Some(ref log_changes) = schema_changes.logs {
                 for (table_name, changes) in log_changes {
-                    update_table_schema(&app.state::<DatabaseConnections>().logs_conn.lock().unwrap(), &table_name, changes)?;
+                    update_table_schema(&mut app.state::<DatabaseConnections>().logs_conn.lock().unwrap(), &table_name, changes)?;
                 }
             }
             if schema_changes.igdb.is_some() || schema_changes.logs.is_some() {
