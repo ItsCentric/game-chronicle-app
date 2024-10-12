@@ -8,7 +8,7 @@
 	export let title: string;
 	export let cover: string | undefined | null;
 	export let rating: number | undefined | null;
-	export let status: StatusOption | undefined;
+	export let status: StatusOption | undefined = undefined;
 
 	const logStatusColorMap: Record<StatusOption, string> = {
 		backlog: 'bg-gray-500',
