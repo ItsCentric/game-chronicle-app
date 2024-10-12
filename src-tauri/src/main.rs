@@ -9,6 +9,7 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_cli::CliExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::{NotificationExt, PermissionState};
+use tauri_plugin_window_state::StateFlags;
 
 use std::path::Path;
 
@@ -95,6 +96,7 @@ struct DatabaseConnections {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_window_state::Builder::new().with_state_flags(StateFlags::all() & !StateFlags::VISIBLE).build())
         .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
@@ -202,12 +204,12 @@ fn main() {
             let schema_changes = helpers::get_schema_changes(app.handle())?;
             if let Some(ref igdb_changes) = schema_changes.igdb {
                 for (table_name, changes) in igdb_changes {
-                    update_table_schema(&app.state::<DatabaseConnections>().igdb_conn.lock().unwrap(), &table_name, changes)?;
+                    update_table_schema(&mut app.state::<DatabaseConnections>().igdb_conn.lock().unwrap(), &table_name, changes)?;
                 }
             }
             if let Some(ref log_changes) = schema_changes.logs {
                 for (table_name, changes) in log_changes {
-                    update_table_schema(&app.state::<DatabaseConnections>().logs_conn.lock().unwrap(), &table_name, changes)?;
+                    update_table_schema(&mut app.state::<DatabaseConnections>().logs_conn.lock().unwrap(), &table_name, changes)?;
                 }
             }
             if schema_changes.igdb.is_some() || schema_changes.logs.is_some() {

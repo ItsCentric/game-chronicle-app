@@ -2,12 +2,16 @@
 	import { Button } from '$lib/components/ui/button';
 	import GameCard from '$lib/components/GameCard.svelte';
 	import Statistic from '$lib/components/Statistic.svelte';
-	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
 	import { goto } from '$app/navigation';
 	import { statusOptions } from '$lib/schemas';
-	import { useQuery } from '@sveltestack/svelte-query';
+	import { useMutation, useQuery, useQueryClient } from '@sveltestack/svelte-query';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
-	import { getDashboardStatistics, getLogs, getRecentLogs } from '$lib/rust-bindings/database';
+	import {
+		deleteLog,
+		getDashboardStatistics,
+		getLogs,
+		getRecentLogs
+	} from '$lib/rust-bindings/database';
 	import { getGamesById } from '$lib/rust-bindings/igdb';
 	import type { PageData } from './$types';
 	import { BaseDirectory, readTextFile, exists, remove } from '@tauri-apps/plugin-fs';
@@ -15,9 +19,18 @@
 	import { onMount } from 'svelte';
 	import SvelteMarkdown from 'svelte-markdown';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { Library, Pencil, Plus, Settings, Trash } from 'lucide-svelte';
+	import * as Tooltip from '$lib/components/ui/tooltip';
+	import { toast } from 'svelte-sonner';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 
 	export let data: PageData;
 	let changeLogContents: string | undefined;
+	const dateFormatter = new Intl.DateTimeFormat('en-US', {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric'
+	});
 	onMount(async () => {
 		if (await exists('resources/changelog.md', { baseDir: BaseDirectory.Resource })) {
 			changeLogContents = await readTextFile('resources/changelog.md', {
@@ -53,22 +66,28 @@
 		'recentLogs',
 		async () => {
 			const recentLogs = await getRecentLogs(
-				6,
+				3,
 				statusOptions.filter((status) => status != 'wishlist' && status != 'backlog')
 			);
 			const recentGameIds = recentLogs.map((log) => log.game_id);
 			const games = await getGamesById(recentGameIds);
-			const sortedGames = [];
-			for (let i = 0; i < recentGameIds.length; i++) {
-				const game = games.find((game) => game.id === recentGameIds[i]);
-				if (game) {
-					sortedGames.push(game);
-				}
-			}
-			return sortedGames;
+			const logs = recentLogs.map((log) => {
+				const game = games.find((game) => game.id === log.game_id);
+				if (!game) throw new Error('Game not found');
+				return { ...log, game };
+			});
+			return logs;
 		},
-		{ initialData: data.recentGames }
+		{ initialData: data.recentLogs }
 	);
+	const queryClient = useQueryClient();
+	const deleteLogMutation = useMutation(deleteLog, {
+		onSuccess: () => {
+			queryClient.invalidateQueries('recentLogs');
+			queryClient.invalidateQueries('dashboardStatistics');
+			queryClient.invalidateQueries('similarGames');
+		}
+	});
 	const similarGamesQuery = useQuery(
 		'similarGames',
 		async () => {
@@ -90,7 +109,55 @@
 	);
 </script>
 
-<main class="flex flex-col gap-12 h-full p-12 container">
+<div class="bg-primary py-8 text-primary-foreground">
+	<div class="container flex items-center justify-between">
+		<div>
+			<h1 class="font-heading font-bold text-3xl">
+				{#if data.settings.new}
+					Welcome, <span class="capitalize">{data.settings.username}</span>
+				{:else}
+					Welcome back, <span class="capitalize">{data.settings.username}</span>
+				{/if}
+			</h1>
+			{#if data.settings.new && data.settings.process_monitoring.enabled}
+				<p class="text-xl">Play some games and check back later!</p>
+			{:else if data.settings.new && !data.settings.process_monitoring.enabled}
+				<p class="text-xl">Don't forget to log your games after you play!</p>
+			{:else}
+				<p class="text-xl">Here's what you've been up to lately</p>
+			{/if}
+		</div>
+		<div class="flex gap-4">
+			<Tooltip.Root openDelay={0} disableHoverableContent>
+				<Tooltip.Trigger>
+					<Button
+						href="/logs"
+						size="icon"
+						class="rounded-full h-11 w-11 bg-primary-foreground/20 hover:bg-primary-foreground/30 shadow hover:scale-110 transition-transform"
+						><Library size={32} /></Button
+					>
+				</Tooltip.Trigger>
+				<Tooltip.Content sideOffset={6} transitionConfig={{ y: 8, duration: 200 }}
+					>Logs</Tooltip.Content
+				>
+			</Tooltip.Root>
+			<Tooltip.Root openDelay={0} disableHoverableContent>
+				<Tooltip.Trigger>
+					<Button
+						href="/settings"
+						size="icon"
+						class="rounded-full h-11 w-11 bg-primary-foreground/20 hover:bg-primary-foreground/30 shadow hover:scale-110 transition-transform"
+						><Settings size={32} /></Button
+					>
+				</Tooltip.Trigger>
+				<Tooltip.Content sideOffset={6} transitionConfig={{ y: 8, duration: 200 }}
+					>Settings</Tooltip.Content
+				>
+			</Tooltip.Root>
+		</div>
+	</div>
+</div>
+<div class="flex flex-col gap-12 h-full p-12 container">
 	{#if changeLogContents}
 		<Dialog.Root open>
 			<Dialog.Content class="overflow-auto max-h-[80vh] max-w-prose">
@@ -105,34 +172,8 @@
 			</Dialog.Content>
 		</Dialog.Root>
 	{/if}
-	<div>
-		<h1 class="font-heading font-bold text-3xl">
-			Hello, <span class="capitalize">{data.username}</span>
-		</h1>
-		<h2 class="text-xl font-heading font-semibold mb-4">Welcome to your journal</h2>
-		<div class="flex gap-2">
-			<Button href="/logs" data-testid="view-logs">View logs</Button>
-			<Button href="/settings" data-testid="settings">Settings</Button>
-		</div>
-	</div>
-	<div class="flex justify-around items-center border-y border-slate-800 py-4 relative">
-		{#if $dashboardStatisticsQuery.isLoading}
-			<div class="flex flex-col gap-3">
-				<Skeleton class="h-4 w-44" />
-				<Skeleton class="h-9 w-16" />
-				<Skeleton class="h-3 w-48" />
-			</div>
-			<div class="flex flex-col gap-3">
-				<Skeleton class="h-4 w-44" />
-				<Skeleton class="h-9 w-16" />
-				<Skeleton class="h-3 w-48" />
-			</div>
-			<div class="flex flex-col gap-3">
-				<Skeleton class="h-4 w-44" />
-				<Skeleton class="h-9 w-16" />
-				<Skeleton class="h-3 w-48" />
-			</div>
-		{:else if $dashboardStatisticsQuery.isError || !$dashboardStatisticsQuery.data}
+	<div class="flex justify-around items-center border-y py-4 relative">
+		{#if $dashboardStatisticsQuery.isError || !$dashboardStatisticsQuery.data}
 			<div class="flex flex-col gap-3">
 				<span class="h-4 w-44 bg-white/5 rounded-xl" />
 				<span class="h-9 w-16 bg-white/5 rounded-xl" />
@@ -172,23 +213,55 @@
 	<div>
 		<div class="flex justify-between items-center mb-2">
 			<h3 class="text-xl font-heading font-semibold">Recently Played</h3>
-			<Button variant="link" href="/logs">View all games</Button>
+			<Button variant="link" href="/logs">View all logs</Button>
 		</div>
-		<div class="grid grid-cols-6 gap-4 relative">
-			{#if $recentLogsQuery.isLoading}
-				{#each Array(6) as _}
-					<Skeleton class="h-full w-full aspect-[3/4] rounded-3xl" />
-				{/each}
-			{:else if $recentLogsQuery.isError || !$recentLogsQuery.data}
-				{#each Array(6) as _}
-					<span class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl" />
+		<div class="grid grid-cols-2 xl:grid-cols-3 gap-4 relative">
+			{#if $recentLogsQuery.isError || !$recentLogsQuery.data}
+				{#each Array(3) as _, i}
+					<div
+						class={`px-4 py-2 border relative rounded-lg group flex gap-4 ${
+							i === 2 ? 'hidden xl:flex' : ''
+						}`}
+					>
+						<div class="relative aspect-[3/4] bg-muted flex-1 h-full rounded-lg" />
+						<div class="flex-1">
+							<div class="mb-4">
+								<div class="text-lg bg-muted mb-1 font-semibold h-5 w-24 rounded" />
+								<div class="text-sm bg-muted h-3 w-20 rounded" />
+							</div>
+							<div class="mb-4 h-4 rounded bg-muted w-12" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+						</div>
+					</div>
 				{/each}
 				<ErrorMessage error={$recentLogsQuery.error}
 					>Couldn't get your recently played games</ErrorMessage
 				>
 			{:else if $recentLogsQuery.data.length === 0}
-				{#each Array(6) as _}
-					<div class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl"></div>
+				{#each Array(3) as _, i}
+					<div
+						class={`px-4 py-2 border relative rounded-lg group flex gap-4 ${
+							i === 2 ? 'hidden xl:flex' : ''
+						}`}
+					>
+						<div class="relative aspect-[3/4] bg-muted flex-1 h-full rounded-lg" />
+						<div class="flex-1">
+							<div class="mb-4">
+								<div class="text-lg bg-muted mb-1 font-semibold h-5 w-24 rounded" />
+								<div class="text-sm bg-muted h-3 w-20 rounded" />
+							</div>
+							<div class="mb-4 h-4 rounded bg-muted w-12" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+						</div>
+					</div>
 				{/each}
 				<div
 					class="absolute px-4 py-2 bg-black/80 shadow-lg rounded-xl text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
@@ -197,8 +270,62 @@
 					<p>Start logging your games to see them here</p>
 				</div>
 			{:else}
-				{#each $recentLogsQuery.data as game}
-					<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />
+				{#each $recentLogsQuery.data.slice(0, 3) as log, i}
+					<GameCard
+						title={log.game.title ?? ''}
+						cover={log.game.cover_image_id}
+						rating={log.rating}
+						status={log.status}
+						on:click={() => goto(`/logs/edit?gameId=${log.game_id}`)}
+						class={i === 2 ? 'hidden xl:flex' : ''}
+					>
+						<p slot="sub-title" class="text-sm text-muted-foreground">
+							{dateFormatter.format(new Date(log.end_date))}
+						</p>
+						<p slot="description" class="line-clamp-3 lg:line-clamp-4 text-ellipsis">{log.notes}</p>
+						<svelte:fragment slot="actions">
+							<Tooltip.Root disableHoverableContent>
+								<Tooltip.Trigger>
+									<Button href={`/logs/edit?id=${log.id}`} variant="ghost" size="icon">
+										<Pencil size={16} />
+									</Button>
+								</Tooltip.Trigger>
+								<Tooltip.Content sideOffset={6}>Edit log</Tooltip.Content>
+							</Tooltip.Root>
+							<AlertDialog.Root>
+								<AlertDialog.Trigger asChild let:builder>
+									<Tooltip.Root disableHoverableContent>
+										<Tooltip.Trigger>
+											<Button builders={[builder]} variant="ghost" size="icon">
+												<Trash size={16} />
+											</Button>
+										</Tooltip.Trigger>
+										<Tooltip.Content sideOffset={6}>Delete log</Tooltip.Content>
+									</Tooltip.Root>
+								</AlertDialog.Trigger>
+								<AlertDialog.Content>
+									<AlertDialog.Header>Delete Log</AlertDialog.Header>
+									<AlertDialog.Description>
+										Are you sure you want to delete this log?
+									</AlertDialog.Description>
+									<AlertDialog.Footer>
+										<AlertDialog.Action
+											data-testid="confirm-delete"
+											on:click={() =>
+												toast.promise($deleteLogMutation.mutateAsync(log.id), {
+													loading: 'Deleting log...',
+													success: 'Log was successfully deleted!',
+													error: 'Something went wrong deleting your log.'
+												})}
+										>
+											Delete
+										</AlertDialog.Action>
+										<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+									</AlertDialog.Footer>
+								</AlertDialog.Content>
+							</AlertDialog.Root>
+						</svelte:fragment>
+					</GameCard>
 				{/each}
 			{/if}
 		</div>
@@ -208,21 +335,53 @@
 			<h3 class="text-xl font-heading font-semibold">Similar to What You Play</h3>
 			<Button variant="link" href="/similar-games">View all similar titles</Button>
 		</div>
-		<div class="grid grid-cols-6 gap-4 relative">
-			{#if $similarGamesQuery.isLoading}
-				{#each Array(6) as _}
-					<Skeleton class="h-full w-full aspect-[3/4] rounded-3xl" />
-				{/each}
-			{:else if $similarGamesQuery.isError || !$similarGamesQuery.data}
-				{#each Array(6) as _}
-					<div class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl"></div>
+		<div class="grid grid-cols-2 xl:grid-cols-3 gap-4 relative">
+			{#if $similarGamesQuery.isError || !$similarGamesQuery.data}
+				{#each Array(3) as _, i}
+					<div
+						class={`px-4 py-2 border relative rounded-lg group flex gap-4 ${
+							i === 2 ? 'hidden xl:flex' : ''
+						}`}
+					>
+						<div class="relative aspect-[3/4] bg-muted flex-1 h-full rounded-lg" />
+						<div class="flex-1">
+							<div class="mb-4">
+								<div class="text-lg bg-muted mb-1 font-semibold h-5 w-24 rounded" />
+								<div class="text-sm bg-muted h-3 w-20 rounded" />
+							</div>
+							<div class="mb-4 h-4 rounded bg-muted w-12" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+						</div>
+					</div>
 				{/each}
 				<ErrorMessage error={$similarGamesQuery.error}
 					>Couldn't get your recommendations</ErrorMessage
 				>
 			{:else if $similarGamesQuery.data.length === 0}
-				{#each Array(6) as _}
-					<div class="h-full w-full aspect-[3/4] bg-white/5 rounded-3xl"></div>
+				{#each Array(3) as _, i}
+					<div
+						class={`px-4 py-2 border relative rounded-lg group flex gap-4 ${
+							i === 2 ? 'hidden xl:flex' : ''
+						}`}
+					>
+						<div class="relative aspect-[3/4] bg-muted flex-1 h-full rounded-lg" />
+						<div class="flex-1">
+							<div class="mb-4">
+								<div class="text-lg bg-muted mb-1 font-semibold h-5 w-24 rounded" />
+								<div class="text-sm bg-muted h-3 w-20 rounded" />
+							</div>
+							<div class="mb-4 h-4 rounded bg-muted w-12" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+							<div class="h-4 w-32 bg-muted mb-1 rounded" />
+						</div>
+					</div>
 				{/each}
 				<div
 					class="absolute px-4 py-2 bg-black/80 shadow-lg rounded-xl text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
@@ -231,10 +390,27 @@
 					<p>Start logging your games to see your suggestions here</p>
 				</div>
 			{:else}
-				{#each $similarGamesQuery.data.slice(0, 6) as game}
-					<GameCard data={game} on:click={() => goto(`/logs/edit?gameId=${game.id}`)} />
+				{#each $similarGamesQuery.data.slice(0, 3) as game, i}
+					<GameCard
+						title={game.title}
+						cover={game.cover_image_id}
+						rating={(game.total_rating ?? 0) / 10 / 2}
+						on:click={() => goto(`/logs/edit?gameId=${game.id}`)}
+						class={i === 2 ? 'hidden xl:flex' : ''}
+					>
+						<svelte:fragment slot="actions">
+							<Tooltip.Root disableHoverableContent>
+								<Tooltip.Trigger>
+									<Button href={`/logs/edit?gameId=${game.id}`} variant="ghost" size="icon">
+										<Plus size={16} />
+									</Button>
+								</Tooltip.Trigger>
+								<Tooltip.Content sideOffset={6}>Create log</Tooltip.Content>
+							</Tooltip.Root>
+						</svelte:fragment>
+					</GameCard>
 				{/each}
 			{/if}
 		</div>
 	</div>
-</main>
+</div>

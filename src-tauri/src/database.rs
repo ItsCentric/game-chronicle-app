@@ -57,6 +57,67 @@ pub struct LogUpdateData {
     pub minutes_played: i32,
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct SchemaModifier {
+    table_name: String,
+    schema: String,
+}
+
+impl SchemaModifier {
+    fn load_schema(table_name: &str, conn: &Connection) -> Result<SchemaModifier, Error> {
+        let mut stmt =
+            conn.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?1")?;
+
+        let mut rows = stmt.query([table_name])?;
+        let schema: String;
+        if let Some(row) = rows.next()? {
+            schema = row.get(0)?;
+        } else {
+            return Err(Error::from(format!("Table '{}' not found", table_name)));
+        }
+        Ok(SchemaModifier {
+            table_name: table_name.to_string(),
+            schema,
+        })
+    }
+
+    fn change_table_name(&self, new_table_name: &str) -> SchemaModifier {
+        let new_schema = self.schema.replacen(&self.table_name, new_table_name, 1);
+        SchemaModifier {
+            table_name: new_table_name.to_string(),
+            schema: new_schema,
+        }
+    }
+
+    fn add_constraint(&self, constraint_name: &str, new_constraint: &str) -> SchemaModifier {
+        let mut schema_lines = self.schema.lines().collect::<Vec<_>>();
+        let constraint = format!("CONSTRAINT {} {}", constraint_name, new_constraint);
+        schema_lines.insert(schema_lines.len() - 2, &constraint);
+        let new_schema = schema_lines.join("\n");
+        SchemaModifier {
+            table_name: self.table_name.clone(),
+            schema: new_schema,
+        }
+    }
+
+    fn remove_constraint(&self, constraint_name: &str) -> SchemaModifier {
+        let schema_lines = self.schema.lines().collect::<Vec<_>>();
+        let new_schema_lines = schema_lines
+            .iter()
+            .filter(|line| !line.contains(constraint_name))
+            .map(|line| *line)
+            .collect::<Vec<&str>>();
+        SchemaModifier {
+            table_name: self.table_name.clone(),
+            schema: new_schema_lines.join("\n"),
+        }
+    }
+
+    fn commit(&self) -> String {
+        self.schema.clone()
+    }
+}
+
 pub fn initialize_database(
     app_handle: tauri::AppHandle,
 ) -> Result<(rusqlite::Connection, rusqlite::Connection), Error> {
@@ -261,7 +322,7 @@ pub fn add_executable_details(
 }
 
 pub fn update_table_schema(
-    conn: &Connection,
+    conn: &mut Connection,
     table_name: &str,
     schema_updates: &HashMap<String, SchemaFieldUpdate>,
 ) -> Result<(), Error> {
@@ -307,6 +368,87 @@ pub fn update_table_schema(
                     format!("ALTER TABLE {} DROP COLUMN {}", table_name, field_name).as_str(),
                     [],
                 )?;
+            }
+            4 => {
+                let constraint_data = match &schema_update.constraint_data {
+                    Some(d) => d,
+                    None => Err(Error::from(format!(
+                        "No constraint data provided for {}",
+                        field_name
+                    )))?,
+                };
+                let temp_table_name = "new_".to_owned() + table_name;
+                let new_schema = SchemaModifier::load_schema(table_name, &conn)?
+                    .change_table_name(&temp_table_name)
+                    .add_constraint(&field_name, constraint_data)
+                    .commit();
+                let transaction = conn.transaction()?;
+                transaction.execute(&new_schema, [])?;
+                transaction.execute(
+                    &format!(
+                        "INSERT INTO {} SELECT * FROM {}",
+                        temp_table_name, table_name
+                    ),
+                    [],
+                )?;
+                transaction.execute(&format!("DROP TABLE {}", table_name), [])?;
+                transaction.execute(
+                    &format!("ALTER TABLE {} RENAME TO {}", temp_table_name, table_name),
+                    [],
+                )?;
+                transaction.commit()?;
+            }
+            5 => {
+                let constraint_data = match &schema_update.constraint_data {
+                    Some(d) => d,
+                    None => Err(Error::from(format!(
+                        "No constraint data provided for {}",
+                        field_name
+                    )))?,
+                };
+                let temp_table_name = "new_".to_owned() + table_name;
+                let new_schema = SchemaModifier::load_schema(table_name, &conn)?
+                    .change_table_name(&temp_table_name)
+                    .remove_constraint(&field_name)
+                    .add_constraint(&schema_update.new_name, constraint_data)
+                    .commit();
+                let transaction = conn.transaction()?;
+                transaction.execute(&new_schema, [])?;
+                transaction.execute(
+                    &format!(
+                        "INSERT INTO {} SELECT * FROM {}",
+                        temp_table_name, table_name
+                    ),
+                    [],
+                )?;
+                transaction.execute(&format!("DROP TABLE {}", table_name), [])?;
+                transaction.execute(
+                    &format!("ALTER TABLE {} RENAME TO {}", temp_table_name, table_name),
+                    [],
+                )?;
+                transaction.commit()?;
+            }
+            6 => {
+                let temp_table_name = "new_".to_owned() + table_name;
+                let new_schema = SchemaModifier::load_schema(table_name, &conn)?
+                    .change_table_name(&temp_table_name)
+                    .remove_constraint(&field_name)
+                    .commit();
+                let transaction = conn.transaction()?;
+                transaction.execute(&new_schema, [])?;
+                transaction.execute(
+                    &format!(
+                        "INSERT INTO {} SELECT * FROM {}",
+                        temp_table_name, table_name
+                    ),
+                    [],
+                )?;
+                transaction.execute(&format!("DROP TABLE {}", table_name), [])?;
+                transaction.execute(
+                    &format!("ALTER TABLE {} RENAME TO {}", temp_table_name, table_name),
+                    [],
+                )?;
+                transaction.commit()?;
             }
             _ => {}
         }

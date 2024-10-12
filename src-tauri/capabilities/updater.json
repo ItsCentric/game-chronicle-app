@@ -4,12 +4,12 @@
 	"local": true,
 	"windows": ["updater"],
 	"permissions": [
-		"event:default",
-		"window:default",
-		"app:default",
-		"resources:default",
+		"core:event:default",
+		"core:window:default",
+		"core:app:default",
+		"core:resources:default",
 		"updater:default",
-		"window:allow-close",
-		"window:allow-show"
+		"core:window:allow-close",
+		"core:window:allow-show"
 	]
 }
