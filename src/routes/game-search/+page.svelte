@@ -111,7 +111,7 @@
 		{@const minutesPlayed = $page.url.searchParams.get('minutesPlayed')}
 		{@const isNewGame = executableName && minutesPlayed}
 		<div class="grid grid-cols-3 gap-4">
-			{#each games.slice(beginningPageIndex, beginningPageIndex + gamesPerPage) as game, i}
+			{#each games.slice(beginningPageIndex, beginningPageIndex + gamesPerPage) as game}
 				<GameCard
 					title={game.title}
 					cover={game.cover_image_id}
@@ -123,7 +123,6 @@
 									? `&executableName=${executableName}&minutesPlayed=${minutesPlayed}`
 									: '')
 						)}
-					class={i === 2 ? 'hidden xl:flex' : ''}
 				>
 					<svelte:fragment slot="actions">
 						<Tooltip.Root disableHoverableContent>
