@@ -1,22 +1,19 @@
-Some minor stuff this time around, but I promise I'm _still_ cooking.
+Your eyes aren't deceiving you, Game Chronicle is back and with a new look!
 
-### Popular Games
+### A Makeover
 
-The random games displayed on the game search page will now show popular games instead of random games.
+It's about time for a makeover! Everything from the font, colors, and more has changed, take a look for yourself!
 
-### Multi-Day Sessions
+### Window State
 
-Started playing a game just before midnight? Had too many "just one more game"s? You can now specify the day you started your session and the day you ended.
+The Game Chronicle window will now appear the same way as the last time you closed it
 
-### Similar Games Page
+### Time Selection for Logs
 
-I honestly don't understand how it took me so long to realize but... I never actually implemented this even though it's on the dashboard... embarassing...
+Logs on the same day will no longer be sorted by title, and this comes with a new ability to log exactly what time your session took place!
 
-### Smoke and Mirrors
+### Bug fixes
 
-You can no longer access the browser context menu (the thing that appears when you right click) to keep the illusion.
-
-### Bug Fixes
-
-- You can now search for games again, sorry.
-- The application no longer sometimes breaks after an update
+- Fixed some crashes upon start up
+- Application now starts on desktop start up again, if enabled
+- Fixed some logs on the log page and games on the game search page being hidden on smaller windows
