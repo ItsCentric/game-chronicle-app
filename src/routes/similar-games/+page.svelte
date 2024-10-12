@@ -31,7 +31,7 @@
 				<svelte:fragment slot="actions">
 					<Tooltip.Root disableHoverableContent>
 						<Tooltip.Trigger>
-							<Button href={`/logs/edit?gameId=${game.id}`} variant="ghost" size="icon">
+							<Button href={`/logs/edit?gameId=${game.id}`} variant="ghost" size="action">
 								<Plus size={16} />
 							</Button>
 						</Tooltip.Trigger>

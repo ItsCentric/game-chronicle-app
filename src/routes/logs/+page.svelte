@@ -194,7 +194,7 @@
 						<svelte:fragment slot="actions">
 							<Tooltip.Root disableHoverableContent>
 								<Tooltip.Trigger>
-									<Button href={`/logs/edit?id=${gameLog.id}`} variant="ghost" size="icon">
+									<Button href={`/logs/edit?id=${gameLog.id}`} variant="ghost" size="action">
 										<Pencil size={16} />
 									</Button>
 								</Tooltip.Trigger>
@@ -204,7 +204,7 @@
 								<AlertDialog.Trigger asChild let:builder>
 									<Tooltip.Root disableHoverableContent>
 										<Tooltip.Trigger>
-											<Button builders={[builder]} variant="ghost" size="icon">
+											<Button builders={[builder]} variant="ghost" size="action">
 												<Trash size={16} />
 											</Button>
 										</Tooltip.Trigger>

@@ -68,7 +68,7 @@
 		<slot name="description" />
 	</div>
 	<div
-		class="opacity-0 -bottom-2 group-hover:opacity-100 duration-200 transition-opacity flex gap-1 -right-2 bg-background z-50 absolute border rounded-md px-2 py-1"
+		class="opacity-0 -bottom-2 group-hover:opacity-100 duration-200 transition-opacity flex gap-2 -right-2 bg-background z-50 absolute border rounded-md px-2 py-1"
 	>
 		<slot name="actions" />
 	</div>
