@@ -177,14 +177,13 @@
 			</div>
 		{:else}
 			<div class="grid gap-2 grid-cols-2 xl:grid-cols-3">
-				{#each filteredLogs.slice(start, end) as gameLog, i}
+				{#each filteredLogs.slice(start, end) as gameLog}
 					<GameCard
 						title={gameLog.game.title ?? ''}
 						cover={gameLog.game.cover_image_id}
 						rating={gameLog.rating}
 						status={gameLog.status}
 						on:click={() => goto(`/logs/edit?gameId=${gameLog.game_id}`)}
-						class={i === 2 ? 'hidden xl:flex' : ''}
 					>
 						<p slot="sub-title" class="text-sm text-muted-foreground">
 							{dateFormatter.format(new Date(gameLog.end_date))}
