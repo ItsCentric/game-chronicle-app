@@ -129,7 +129,7 @@
 													: '')
 										)}
 									variant="ghost"
-									size="icon"
+									size="action"
 								>
 									<Plus size={16} />
 								</Button>

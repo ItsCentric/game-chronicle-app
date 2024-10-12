@@ -92,8 +92,8 @@
 				return 0;
 		}
 	});
-	$: start = (currentLogPage - 1) * 18;
-	$: end = currentLogPage * 18;
+	$: start = (currentLogPage - 1) * 12;
+	$: end = currentLogPage * 12;
 </script>
 
 <main class="min-h-full flex flex-col gap-4 container py-12 px-16 xl:px-8">
@@ -159,7 +159,7 @@
 	</div>
 	{#if $logsQuery.isLoading}
 		<div class="grid gap-2 grid-cols-3">
-			{#each Array(18) as _}
+			{#each Array(12) as _}
 				<Skeleton class="rounded-3xl aspect-[3/4]" />
 			{/each}
 		</div>
@@ -194,7 +194,7 @@
 						<svelte:fragment slot="actions">
 							<Tooltip.Root disableHoverableContent>
 								<Tooltip.Trigger>
-									<Button href={`/logs/edit?id=${gameLog.id}`} variant="ghost" size="icon">
+									<Button href={`/logs/edit?id=${gameLog.id}`} variant="ghost" size="action">
 										<Pencil size={16} />
 									</Button>
 								</Tooltip.Trigger>
@@ -204,7 +204,7 @@
 								<AlertDialog.Trigger asChild let:builder>
 									<Tooltip.Root disableHoverableContent>
 										<Tooltip.Trigger>
-											<Button builders={[builder]} variant="ghost" size="icon">
+											<Button builders={[builder]} variant="ghost" size="action">
 												<Trash size={16} />
 											</Button>
 										</Tooltip.Trigger>
@@ -237,7 +237,7 @@
 				{/each}
 			</div>
 		{/if}
-		<Pagination.Root count={filteredLogs.length} perPage={18} let:pages bind:page={currentLogPage}>
+		<Pagination.Root count={filteredLogs.length} perPage={12} let:pages bind:page={currentLogPage}>
 			<Pagination.Content>
 				<Pagination.Item>
 					<Pagination.PrevButton>

@@ -8,7 +8,7 @@
 	export let title: string;
 	export let cover: string | undefined | null;
 	export let rating: number | undefined | null;
-	export let status: StatusOption | undefined;
+	export let status: StatusOption | undefined = undefined;
 
 	const logStatusColorMap: Record<StatusOption, string> = {
 		backlog: 'bg-gray-500',
@@ -68,7 +68,7 @@
 		<slot name="description" />
 	</div>
 	<div
-		class="opacity-0 -bottom-2 group-hover:opacity-100 duration-200 transition-opacity flex gap-1 -right-2 bg-background z-50 absolute border rounded-md px-2 py-1"
+		class="opacity-0 -bottom-2 group-hover:opacity-100 duration-200 transition-opacity flex gap-2 -right-2 bg-background z-50 absolute border rounded-md px-2 py-1"
 	>
 		<slot name="actions" />
 	</div>
