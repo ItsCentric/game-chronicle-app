@@ -116,18 +116,21 @@
 					title={game.title}
 					cover={game.cover_image_id}
 					rating={(game.total_rating ?? 0) / 10 / 2}
-					on:click={() =>
-						goto(
-							`/logs/edit?gameId=${game.id}` +
-								(isNewGame
-									? `&executableName=${executableName}&minutesPlayed=${minutesPlayed}`
-									: '')
-						)}
 				>
 					<svelte:fragment slot="actions">
 						<Tooltip.Root disableHoverableContent>
 							<Tooltip.Trigger>
-								<Button href={`/logs/edit?gameId=${game.id}`} variant="ghost" size="icon">
+								<Button
+									on:click={() =>
+										goto(
+											`/logs/edit?gameId=${game.id}` +
+												(isNewGame
+													? `&executableName=${executableName}&minutesPlayed=${minutesPlayed}`
+													: '')
+										)}
+									variant="ghost"
+									size="icon"
+								>
 									<Plus size={16} />
 								</Button>
 							</Tooltip.Trigger>
