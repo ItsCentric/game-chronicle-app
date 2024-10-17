@@ -49,10 +49,11 @@ jobs:
         run: bun install
 
       - name: Install cargo tauri cli
-        run: cargo install tauri-cli@^2.0.0-beta
+        run: cargo install tauri-cli@^2.0.0
 
       - name: Set prerelease value
         id: prerelease_check
+        shell: bash
         run: |
           VERSION=${{ github.ref_name }}
           if [[ "$VERSION" == *".beta"* ]]; then
