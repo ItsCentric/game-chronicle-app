@@ -1,19 +1,11 @@
-Your eyes aren't deceiving you, Game Chronicle is back and with a new look!
+Hey me! Need a reminder of what's new in the latest version of Game Chronicle? Look no further!
 
-### A Makeover
+### Beta Channel
 
-It's about time for a makeover! Everything from the font, colors, and more has changed, take a look for yourself!
-
-### Window State
-
-The Game Chronicle window will now appear the same way as the last time you closed it
-
-### Time Selection for Logs
-
-Logs on the same day will no longer be sorted by title, and this comes with a new ability to log exactly what time your session took place!
+That's how you're seeing this right now! Beta channels are for testing new features and updates before they're released to the public. If you're seeing this, you're a beta tester! Thanks for helping me test new features and updates!
 
 ### Bug fixes
 
-- Fixed some crashes upon start up
-- Application now starts on desktop start up again, if enabled
-- Fixed some logs on the log page and games on the game search page being hidden on smaller windows
+- Game playtime now correctly auto fills again after closing a game
+- Logs page now correctly displays 12 logs per page instead of 16
+- Similar games page is now fixed... overlooked that page during the redesign
