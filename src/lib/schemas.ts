@@ -63,7 +63,8 @@ export const settingsSchema = z.object({
 	executablePaths: z.array(z.string()),
 	processMonitoringEnabled: z.boolean(),
 	processMonitoringDirectoryDepth: z.number().min(0).max(99).default(3),
-	autostart: z.boolean()
+	autostart: z.boolean(),
+	beta: z.boolean()
 });
 export type SettingsFormSchema = typeof settingsSchema;
 
