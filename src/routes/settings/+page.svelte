@@ -24,7 +24,8 @@
 		'processMonitoringEnabled',
 		'processMonitoringDirectoryDepth',
 		'executablePaths',
-		'autostart'
+		'autostart',
+		'beta'
 	];
 	let openReloadApplicationModal = false;
 
@@ -67,7 +68,8 @@
 						directory_depth: form.data.processMonitoringDirectoryDepth
 					},
 					autostart: form.data.autostart,
-					new: false
+					new: false,
+					beta: form.data.beta
 				};
 				toast.promise($userPreferencesMutation.mutateAsync(newSettings), {
 					loading: 'Saving new settings...',
@@ -136,6 +138,14 @@
 						<div class="flex justify-between items-center">
 							<Form.Label>Open on computer startup</Form.Label>
 							<Switch includeInput {...attrs} bind:checked={$settingsFormData.autostart} />
+						</div>
+					</Form.Control>
+				</Form.Field>
+				<Form.Field form={settingsForm} name="beta">
+					<Form.Control let:attrs>
+						<div class="flex justify-between items-center">
+							<Form.Label>Participate in beta</Form.Label>
+							<Switch includeInput {...attrs} bind:checked={$settingsFormData.beta} />
 						</div>
 					</Form.Control>
 				</Form.Field>

@@ -13,7 +13,8 @@ export const load = async () => {
 		executablePaths: userSettings.executable_paths ? userSettings.executable_paths.split(';') : [],
 		processMonitoringEnabled: userSettings.process_monitoring.enabled,
 		processMonitoringDirectoryDepth: userSettings.process_monitoring.directory_depth,
-		autostart: userSettings.autostart
+		autostart: userSettings.autostart,
+		beta: userSettings.beta
 	};
 	const form = await superValidate(formData, zod(settingsSchema));
 

@@ -9,6 +9,7 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_cli::CliExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::{NotificationExt, PermissionState};
+use tauri_plugin_updater::UpdaterExt;
 use tauri_plugin_window_state::StateFlags;
 
 use std::path::Path;
@@ -17,7 +18,7 @@ use tauri::{
     image::Image,
     menu::MenuBuilder,
     tray::{MouseButton::Left, TrayIconEvent::Click},
-    Manager,
+    Manager, Url,
 };
 
 mod data_import;
@@ -72,6 +73,7 @@ pub struct UserSettings {
     process_monitoring: ProcessMonitoringSettings,
     autostart: bool,
     new: bool,
+    beta: bool,
 }
 
 #[derive(serde::Serialize, Debug, Deserialize)]
@@ -172,6 +174,7 @@ fn main() {
                         },
                         autostart: false,
                         new: true,
+                        beta: false,
                     };
                     match helpers::create_dir_if_not_exists(app.path().config_dir()?.join("game-chronicle").as_path()) {
                         Ok(_) => {}
@@ -189,6 +192,8 @@ fn main() {
                     saved_settings
                 }
             };
+            let version = if user_settings.beta { "{{version}}" } else { "latest" };
+            app.updater_builder().endpoints(vec![Url::parse(&format!("https://github.com/ItsCentric/game-chronicle-app/releases/tag/v{}", version))?])?.build()?;
             let autostart_manager = app.autolaunch();
             if user_settings.autostart && !autostart_manager.is_enabled().unwrap() {
                 autostart_manager.enable().unwrap();

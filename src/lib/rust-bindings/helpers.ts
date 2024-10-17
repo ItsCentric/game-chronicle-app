@@ -9,7 +9,8 @@ const userSettingsSchema = z.object({
 		directory_depth: z.number()
 	}),
 	autostart: z.boolean(),
-	new: z.boolean()
+	new: z.boolean(),
+	beta: z.boolean()
 });
 
 export type UserSettings = z.infer<typeof userSettingsSchema>;

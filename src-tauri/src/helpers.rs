@@ -72,6 +72,10 @@ pub fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, E
             .remove("new")
             .and_then(|v| v.as_bool())
             .unwrap_or(true),
+        beta: settings_map
+            .remove("beta")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false),
     };
 
     Ok(user_settings)
