@@ -19,7 +19,7 @@
 	import { onMount } from 'svelte';
 	import SvelteMarkdown from 'svelte-markdown';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import { Library, Pencil, Plus, Settings, Trash } from 'lucide-svelte';
+	import { Eye, Library, Pencil, Plus, Settings, Trash } from 'lucide-svelte';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { toast } from 'svelte-sonner';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
@@ -284,6 +284,14 @@
 						</p>
 						<p slot="description" class="line-clamp-3 lg:line-clamp-4 text-ellipsis">{log.notes}</p>
 						<svelte:fragment slot="actions">
+							<Tooltip.Root disableHoverableContent>
+								<Tooltip.Trigger>
+									<Button href={`/logs/${log.id}`} variant="ghost" size="action">
+										<Eye size={16} />
+									</Button>
+								</Tooltip.Trigger>
+								<Tooltip.Content sideOffset={6}>View log</Tooltip.Content>
+							</Tooltip.Root>
 							<Tooltip.Root disableHoverableContent>
 								<Tooltip.Trigger>
 									<Button href={`/logs/edit?id=${log.id}`} variant="ghost" size="action">

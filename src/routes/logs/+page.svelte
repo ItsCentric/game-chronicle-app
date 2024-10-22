@@ -7,6 +7,7 @@
 		ArrowLeft,
 		ChevronLeft,
 		ChevronRight,
+		Eye,
 		Pencil,
 		Plus,
 		SearchX,
@@ -192,6 +193,14 @@
 							{gameLog.notes}
 						</p>
 						<svelte:fragment slot="actions">
+							<Tooltip.Root disableHoverableContent>
+								<Tooltip.Trigger>
+									<Button href={`/logs/${gameLog.id}`} variant="ghost" size="action">
+										<Eye size={16} />
+									</Button>
+								</Tooltip.Trigger>
+								<Tooltip.Content sideOffset={6}>View log</Tooltip.Content>
+							</Tooltip.Root>
 							<Tooltip.Root disableHoverableContent>
 								<Tooltip.Trigger>
 									<Button href={`/logs/edit?id=${gameLog.id}`} variant="ghost" size="action">
