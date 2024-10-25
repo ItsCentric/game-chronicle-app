@@ -97,7 +97,9 @@ struct DatabaseConnections {
 }
 
 fn main() {
-    tauri::Builder::default()
+    #[cfg(debug_assertions)]
+    let devtools = tauri_plugin_devtools::init();
+    let mut tauri_builder = tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::new().with_state_flags(StateFlags::all() & !StateFlags::VISIBLE).build())
         .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_fs::init())
@@ -275,7 +277,13 @@ fn main() {
             dumps::get_all_dump_info,
             dumps::import_dumps,
             dumps::download_dumps,
-        ])
+        ]);
+    #[cfg(debug_assertions)]
+    {
+        tauri_builder = tauri_builder.plugin(devtools);
+    }
+
+    tauri_builder
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
