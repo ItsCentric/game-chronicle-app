@@ -232,7 +232,7 @@
 														type="time"
 														id="time"
 														class="rounded-e-none"
-														value={`${currentDay.subtract({ hours: 1 }).hour}:${currentDay.minute}`}
+														bind:value={timeRange.start}
 														required
 													/>
 													<span
@@ -253,7 +253,7 @@
 														type="time"
 														id="time"
 														class="rounded-e-none"
-														value={`${currentDay.hour}:${currentDay.minute}`}
+														bind:value={timeRange.end}
 														required
 													/>
 													<span
