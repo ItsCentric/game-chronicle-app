@@ -4,8 +4,8 @@ import { getGamesById } from '$lib/rust-bindings/igdb';
 import { statusOptions } from '$lib/schemas';
 import { redirect } from '@sveltejs/kit';
 import { check } from '@tauri-apps/plugin-updater';
-import { getCurrent } from '@tauri-apps/api/webview';
-import { getAll } from '@tauri-apps/api/window';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { getAllWindows } from '@tauri-apps/api/window';
 import { checkedForDumpUpdate as checkedForDumpUpdateStore } from '$lib/stores';
 
 export const load = async () => {
@@ -33,8 +33,8 @@ export const load = async () => {
 		console.error(error);
 	}
 	if (update?.available) {
-		await getCurrent().window.hide();
-		const windows = getAll();
+		await getCurrentWebview().window.hide();
+		const windows = await getAllWindows();
 		await windows.find((window) => window.label === 'updater')?.show();
 		return {
 			settings: {
