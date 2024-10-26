@@ -20,10 +20,12 @@
 				description: 'Tell us what it is so we know for future reference.'
 			});
 			goto(
-				`/game-search?executableName=${data.executable_name}&minutesPlayed=${data.minutes_played}`
+				`/game-search?executableName=${data.executable_name}&minutesPlayed=${data.minutes_played}&startTime=${data.start_time}`
 			);
 		} else {
-			goto(`/logs/edit?gameId=${data.game_id}&minutesPlayed=${data.minutes_played}`);
+			goto(
+				`/logs/edit?gameId=${data.game_id}&minutesPlayed=${data.minutes_played}&startTime=${data.start_time}`
+			);
 		}
 	});
 

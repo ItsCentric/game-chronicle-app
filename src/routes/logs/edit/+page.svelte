@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { logSchema, statusOptions } from '$lib/schemas';
+	import { createLogSchema, statusOptions } from '$lib/schemas';
 	import { toast } from 'svelte-sonner';
 	import { defaults, superForm } from 'sveltekit-superforms';
 	import { zod, zodClient } from 'sveltekit-superforms/adapters';
@@ -17,7 +17,8 @@
 		parseTime,
 		Time,
 		toCalendarDate,
-		toCalendarDateTime
+		toCalendarDateTime,
+		fromDate
 	} from '@internationalized/date';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import { Button } from '$lib/components/ui/button';
@@ -52,6 +53,7 @@
 		onSuccess: () => queryClient.invalidateQueries('logs')
 	});
 	const queryClient = useQueryClient();
+	const logSchema = createLogSchema();
 	const logForm = superForm(defaults(zod(logSchema)), {
 		validators: zodClient(logSchema),
 		SPA: true,
@@ -86,12 +88,15 @@
 		form: logFormData,
 		enhance: logEnhance,
 		validate: validateLogFormField,
-		validateForm: validateLogForm
+		validateForm: validateLogForm,
+		allErrors: logFormErrors
 	} = logForm;
 
 	let isNewLogFormValid = false;
 	$: if ($logFormData)
 		validateLogForm({ update: false }).then((superValidated) => {
+			console.log(superValidated.data);
+			console.log(superValidated.errors);
 			isNewLogFormValid = superValidated.valid;
 		});
 	onMount(() => {
@@ -101,7 +106,8 @@
 	const timeZone = getLocalTimeZone();
 	const currentDay = now(timeZone);
 	let startDate = toCalendarDate(currentDay);
-	let startTime = new Time(currentDay.hour - 1, currentDay.minute);
+	const startTimeParam = fromDate(new Date(parseInt(searchParams.get('startTime') ?? "") * 1000), timeZone);
+	let startTime = searchParams.has('startTime') ? new Time(startTimeParam.hour, startTimeParam.minute): new Time(currentDay.hour - 1, currentDay.minute);
 	async function updateEndDate(date: CalendarDateTime, hours: number, minutes: number) {
 		$logFormData.logEndDate = date
 			.add({

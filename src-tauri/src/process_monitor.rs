@@ -12,6 +12,7 @@ pub struct Process {
     pub name: String,
     pub path: String,
     pub run_time: u64,
+    pub start_time: u64,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -19,6 +20,7 @@ struct GameStoppedPayload {
     executable_name: Option<String>,
     game_id: Option<i32>,
     minutes_played: i32,
+    start_time: u64,
 }
 
 impl Process {
@@ -35,6 +37,7 @@ impl Process {
                     name,
                     path,
                     run_time: p.run_time(),
+                    start_time: p.start_time(),
                 })
             }
             None => Err(Error::ProcessNotFound),
@@ -79,6 +82,7 @@ impl ProcessMonitor {
                                 executable_name: None,
                                 game_id: Some(details.game_id),
                                 minutes_played: minutes_played as i32,
+                                start_time: process.start_time,
                             },
                         )?;
                     }
@@ -90,6 +94,7 @@ impl ProcessMonitor {
                                     executable_name: Some(process.name.clone()),
                                     game_id: None,
                                     minutes_played: minutes_played as i32,
+                                    start_time: process.start_time,
                                 },
                             )?;
                         }
