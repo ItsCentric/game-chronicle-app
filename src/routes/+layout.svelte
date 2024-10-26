@@ -39,7 +39,12 @@
 	}
 </script>
 
-<main class="h-full relative" on:contextmenu={(e) => e.preventDefault()}>
+<main
+	class="h-full relative"
+	on:contextmenu={(e) => {
+		if (process.env.NODE_ENV === 'production') e.preventDefault();
+	}}
+>
 	{#if showProgress}
 		<div
 			in:fade={{ duration: 0, delay: 500 }}
