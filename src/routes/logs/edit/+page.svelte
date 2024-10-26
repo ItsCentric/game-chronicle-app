@@ -9,10 +9,12 @@
 	import Combobox from '$lib/components/Combobox.svelte';
 	import { Input } from '$lib/components/ui/input';
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
-	import { RangeCalendar } from '$lib/components/ui/range-calendar/index.js';
+	import { Calendar } from '$lib/components/ui/calendar';
 	import {
+		CalendarDateTime,
 		getLocalTimeZone,
 		now,
+		parseTime,
 		Time,
 		toCalendarDate,
 		toCalendarDateTime
@@ -98,19 +100,20 @@
 	});
 	const timeZone = getLocalTimeZone();
 	const currentDay = now(timeZone);
-	let dateRange = {
-		start: toCalendarDate(currentDay),
-		end: toCalendarDate(currentDay)
-	};
-	let timeRange = {
-		start: new Time(currentDay.hour - 1, currentDay.minute),
-		end: new Time(currentDay.hour, currentDay.minute)
-	};
-	$: if (dateRange.start && dateRange.end && timeRange.start && timeRange.end) {
-		$logFormData.logStartDate = toCalendarDateTime(dateRange.start, timeRange.start).toDate(
-			timeZone
-		);
-		$logFormData.logEndDate = toCalendarDateTime(dateRange.end, timeRange.end).toDate(timeZone);
+	let startDate = toCalendarDate(currentDay);
+	let startTime = new Time(currentDay.hour - 1, currentDay.minute);
+	async function updateEndDate(date: CalendarDateTime, hours: number, minutes: number) {
+		$logFormData.logEndDate = date
+			.add({
+				hours,
+				minutes
+			})
+			.toDate(timeZone);
+		const errors = await validateLogFormField('logEndDate', {
+			value: $logFormData.logEndDate
+		});
+
+		return !!errors;
 	}
 </script>
 
@@ -190,128 +193,132 @@
 			<div class="flex gap-2">
 				<Form.Field form={logForm} name="logStartDate">
 					<Form.Control>
-						<Form.Label class="block mt-2">Day(s) played</Form.Label>
+						<Form.Label class="block mt-2">Session start date</Form.Label>
 						<Popover.Root openFocus>
 							<Popover.Trigger asChild let:builder>
 								<Button
 									variant="outline"
 									class={cn(
 										'w-[300px] justify-start text-left font-normal',
-										!dateRange && 'text-muted-foreground'
+										!startDate && 'text-muted-foreground'
 									)}
 									builders={[builder]}
 								>
 									<CalendarIcon class="mr-2 h-4 w-4" />
-									{#if dateRange.start && dateRange.end}
-										{dateRange.start
-											.toDate(timeZone)
-											.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} -
-										{dateRange.end
-											.toDate(timeZone)
-											.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-									{:else}
-										Pick a date
-									{/if}
+									{startDate
+										? startDate
+												.toDate(timeZone)
+												.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+										: 'Pick a date'}
 								</Button>
 							</Popover.Trigger>
 							<Popover.Content class="w-auto p-0" align="start">
-								<RangeCalendar
-									onValueChange={(value) => {
-										validateLogFormField('logStartDate', { value: value.start?.toDate(timeZone) });
-										validateLogFormField('logEndDate', { value: value.end?.toDate(timeZone) });
+								<Calendar
+									onValueChange={async (value) => {
+										const startDateErrors = await validateLogFormField('logStartDate', {
+											value: value?.toDate(timeZone)
+										});
+										if (startDateErrors) return;
+										const startDateTime = toCalendarDateTime(startDate, startTime);
+										$logFormData.logStartDate = startDateTime.toDate(timeZone);
+										updateEndDate(
+											startDateTime,
+											$logFormData.timePlayedHours,
+											$logFormData.timePlayedMinutes
+										);
 									}}
-									bind:value={dateRange}
+									bind:value={startDate}
+									maxValue={currentDay}
 								/>
-								<div class="flex gap-4 px-4 pb-4 w-full">
-									<div class="flex-1">
-										<Form.Field form={logForm} name="logStartDate">
-											<Form.Control>
-												<Form.Label class="text-sm">Start time</Form.Label>
-												<div class="flex">
-													<Input
-														type="time"
-														id="time"
-														class="rounded-e-none"
-														bind:value={timeRange.start}
-														required
-													/>
-													<span
-														class="inline-flex items-center px-3 text-sm border rounded-s-0 border-s-0 rounded-e-md"
-													>
-														<Clock class="h-4 w-4 text-muted-foreground" />
-													</span>
-												</div>
-											</Form.Control>
-										</Form.Field>
-									</div>
-									<div class="flex-1">
-										<Form.Field form={logForm} name="logStartDate">
-											<Form.Control>
-												<Form.Label class="text-sm">End time</Form.Label>
-												<div class="flex">
-													<Input
-														type="time"
-														id="time"
-														class="rounded-e-none"
-														bind:value={timeRange.end}
-														required
-													/>
-													<span
-														class="inline-flex items-center px-3 text-sm border rounded-s-0 border-s-0 rounded-e-md"
-													>
-														<Clock class="h-4 w-4 text-muted-foreground" />
-													</span>
-												</div>
-											</Form.Control>
-										</Form.Field>
-									</div>
-								</div>
 							</Popover.Content>
 						</Popover.Root>
 					</Form.Control>
 					<Form.FieldErrors />
-					<Form.Field form={logForm} name="logEndDate">
-						<Form.FieldErrors />
-					</Form.Field>
 				</Form.Field>
 			</div>
-			<div>
-				<p class="text-sm mb-2 pointer-events-none">Time played</p>
-				<Form.Field form={logForm} name="timePlayedHours" class="w-14 inline-block mr-1">
-					<Form.Control let:attrs>
-						<Input
-							{...attrs}
-							type="number"
-							placeholder="HH"
-							min="0"
-							bind:value={$logFormData.timePlayedHours}
-							data-testid="hours-played"
-							on:change={(newValue) => {
-								validateLogFormField('timePlayedHours', {
-									value: parseInt(newValue.currentTarget.value)
-								});
-							}}
-						/>
+			<div class="flex gap-4">
+				<Form.Field form={logForm} name="logStartDate">
+					<Form.Control>
+						<Form.Label class="text-sm">Start time</Form.Label>
+						<div class="flex">
+							<Input
+								type="time"
+								id="time"
+								class="rounded-e-none"
+								bind:value={startTime}
+								on:change={(event) => {
+									const time = parseTime(event.currentTarget.value.split(' ')[0]);
+									$logFormData.logStartDate = toCalendarDateTime(startDate, time).toDate(timeZone);
+								}}
+								required
+							/>
+							<span
+								class="inline-flex items-center px-3 text-sm border rounded-s-0 border-s-0 rounded-e-md"
+							>
+								<Clock class="h-4 w-4 text-muted-foreground" />
+							</span>
+						</div>
 					</Form.Control>
-					<Form.FieldErrors />
 				</Form.Field>
-				<Form.Field form={logForm} name="timePlayedMinutes" class="w-14 inline-block">
-					<Form.Control let:attrs>
-						<Input
-							{...attrs}
-							type="number"
-							placeholder="MM"
-							min="0"
-							max="59"
-							data-testid="minutes-played"
-							bind:value={$logFormData.timePlayedMinutes}
-							on:change={(newValue) => {
-								validateLogFormField('timePlayedMinutes', {
-									value: parseInt(newValue.currentTarget.value)
-								});
-							}}
-						/>
-					</Form.Control>
+				<div class="flex flex-col justify-end">
+					<p class="text-sm mb-2 pointer-events-none">Time played</p>
+					<div>
+						<Form.Field
+							form={logForm}
+							name="timePlayedHours"
+							class="w-14 inline-block mr-1 space-y-0"
+						>
+							<Form.Control let:attrs>
+								<Input
+									{...attrs}
+									type="number"
+									placeholder="HH"
+									min="0"
+									bind:value={$logFormData.timePlayedHours}
+									data-testid="hours-played"
+									on:change={(newValue) => {
+										const parsedValue = parseInt(newValue.currentTarget.value);
+										validateLogFormField('timePlayedHours', {
+											value: parsedValue
+										});
+										updateEndDate(
+											toCalendarDateTime(startDate, startTime),
+											parsedValue,
+											$logFormData.timePlayedMinutes
+										);
+									}}
+								/>
+							</Form.Control>
+							<Form.FieldErrors />
+						</Form.Field>
+						<Form.Field form={logForm} name="timePlayedMinutes" class="w-14 inline-block space-y-0">
+							<Form.Control let:attrs>
+								<Input
+									{...attrs}
+									type="number"
+									placeholder="MM"
+									min="0"
+									max="59"
+									data-testid="minutes-played"
+									bind:value={$logFormData.timePlayedMinutes}
+									on:change={(newValue) => {
+										const parsedValue = parseInt(newValue.currentTarget.value);
+										validateLogFormField('timePlayedMinutes', {
+											value: parsedValue
+										});
+										updateEndDate(
+											toCalendarDateTime(startDate, startTime),
+											$logFormData.timePlayedHours,
+											parsedValue
+										);
+									}}
+								/>
+							</Form.Control>
+							<Form.FieldErrors />
+						</Form.Field>
+					</div>
+				</div>
+				<Form.Field form={logForm} name="logEndDate" class="self-end -ml-2">
 					<Form.FieldErrors />
 				</Form.Field>
 			</div>

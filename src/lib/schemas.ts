@@ -1,4 +1,4 @@
-import { getLocalTimeZone, today } from '@internationalized/date';
+import { getLocalTimeZone, now } from '@internationalized/date';
 import { z } from 'zod';
 
 export type SortFormSchema = typeof sortFormSchema;
@@ -26,7 +26,8 @@ export const gameSearchSchema = z.object({
 export type GameSearchFormSchema = typeof gameSearchSchema;
 
 const timeZone = getLocalTimeZone();
-const tomorrow = today(timeZone).add({ days: 1 }).toDate(timeZone);
+const rightNow = now(timeZone);
+const rightNowDate = rightNow.toDate();
 export const logSchema = z.object({
 	rating: z
 		.number()
@@ -34,12 +35,12 @@ export const logSchema = z.object({
 		.nonnegative({ message: 'Rating must be positive' }),
 	logStartDate: z
 		.date()
-		.max(tomorrow, { message: 'New log start date must not be in the future' })
-		.default(new Date()),
+		.max(rightNowDate, { message: 'New log start date must not be in the future' })
+		.default(rightNow.subtract({ hours: 1 }).toDate()),
 	logEndDate: z
 		.date()
-		.max(tomorrow, { message: 'New log end date must not be in the future' })
-		.default(new Date()),
+		.max(rightNowDate, { message: 'Play time is too long for this session' })
+		.default(rightNowDate),
 	status: z.enum(statusOptions),
 	notes: z.string().max(1000, { message: 'Notes must be less than 1000 characters' }).optional(),
 	timePlayedHours: z
