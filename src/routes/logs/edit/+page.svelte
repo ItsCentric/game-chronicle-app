@@ -88,8 +88,7 @@
 		form: logFormData,
 		enhance: logEnhance,
 		validate: validateLogFormField,
-		validateForm: validateLogForm,
-		allErrors: logFormErrors
+		validateForm: validateLogForm
 	} = logForm;
 
 	let isNewLogFormValid = false;
@@ -106,8 +105,13 @@
 	const timeZone = getLocalTimeZone();
 	const currentDay = now(timeZone);
 	let startDate = toCalendarDate(currentDay);
-	const startTimeParam = fromDate(new Date(parseInt(searchParams.get('startTime') ?? "") * 1000), timeZone);
-	let startTime = searchParams.has('startTime') ? new Time(startTimeParam.hour, startTimeParam.minute): new Time(currentDay.hour - 1, currentDay.minute);
+	const startTimeParam = fromDate(
+		new Date(parseInt(searchParams.get('startTime') ?? '') * 1000),
+		timeZone
+	);
+	let startTime = searchParams.has('startTime')
+		? new Time(startTimeParam.hour, startTimeParam.minute)
+		: new Time(currentDay.hour - 1, currentDay.minute);
 	async function updateEndDate(date: CalendarDateTime, hours: number, minutes: number) {
 		$logFormData.logEndDate = date
 			.add({
