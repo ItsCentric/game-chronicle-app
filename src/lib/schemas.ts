@@ -25,34 +25,36 @@ export const gameSearchSchema = z.object({
 });
 export type GameSearchFormSchema = typeof gameSearchSchema;
 
-const timeZone = getLocalTimeZone();
-const rightNow = now(timeZone);
-const rightNowDate = rightNow.toDate();
-export const logSchema = z.object({
-	rating: z
-		.number()
-		.max(5, { message: 'Rating must be 5 or less' })
-		.nonnegative({ message: 'Rating must be positive' }),
-	logStartDate: z
-		.date()
-		.max(rightNowDate, { message: 'New log start date must not be in the future' })
-		.default(rightNow.subtract({ hours: 1 }).toDate()),
-	logEndDate: z
-		.date()
-		.max(rightNowDate, { message: 'Play time is too long for this session' })
-		.default(rightNowDate),
-	status: z.enum(statusOptions),
-	notes: z.string().max(1000, { message: 'Notes must be less than 1000 characters' }).optional(),
-	timePlayedHours: z
-		.number({ invalid_type_error: 'Invalid value for hour' })
-		.min(0)
-		.default('' as unknown as number),
-	timePlayedMinutes: z
-		.number({ invalid_type_error: 'Invalid value for minute' })
-		.min(0)
-		.default('' as unknown as number)
-});
-export type LogFormSchema = typeof logSchema;
+export function createLogSchema() {
+	const timeZone = getLocalTimeZone();
+	const rightNow = now(timeZone);
+	const rightNowDate = rightNow.toDate();
+	return z.object({
+		rating: z
+			.number()
+			.max(5, { message: 'Rating must be 5 or less' })
+			.nonnegative({ message: 'Rating must be positive' }),
+		logStartDate: z
+			.date()
+			.max(rightNowDate, { message: 'New log date must not be in the future' })
+			.default(rightNow.subtract({ hours: 1 }).toDate()),
+		logEndDate: z
+			.date()
+			.max(rightNowDate, { message: 'Play time is too long for this session' })
+			.default(rightNowDate),
+		status: z.enum(statusOptions),
+		notes: z.string().max(1000, { message: 'Notes must be less than 1000 characters' }).optional(),
+		timePlayedHours: z
+			.number({ invalid_type_error: 'Invalid value for hour' })
+			.min(0)
+			.default('' as unknown as number),
+		timePlayedMinutes: z
+			.number({ invalid_type_error: 'Invalid value for minute' })
+			.min(0)
+			.default('' as unknown as number)
+	});
+}
+export type LogFormSchema = ReturnType<typeof createLogSchema>;
 
 export const filterFormSchema = z.object({
 	status: z.array(z.enum(statusOptions))

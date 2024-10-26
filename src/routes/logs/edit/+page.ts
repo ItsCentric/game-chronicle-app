@@ -2,12 +2,14 @@ import { getLogById } from '$lib/rust-bindings/database';
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 import type { z } from 'zod';
-import { logSchema, type LogFormSchema, type StatusOption } from '$lib/schemas';
+import { createLogSchema, type LogFormSchema, type StatusOption } from '$lib/schemas';
 import { superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 import { getGamesById, type GameInfo } from '$lib/rust-bindings/igdb';
+import { fromDate, getLocalTimeZone } from '@internationalized/date';
 
 export const load: PageLoad = async ({ url }) => {
+	const logSchema = createLogSchema();
 	if (typeof window === 'undefined') {
 		return { igdbGame: { id: 0, title: '' } as GameInfo, form: superValidate(zod(logSchema)) };
 	}
@@ -15,6 +17,8 @@ export const load: PageLoad = async ({ url }) => {
 	const minutesPlayed = url.searchParams.has('minutesPlayed')
 		? parseInt(url.searchParams.get('minutesPlayed') as string)
 		: undefined;
+	const startTimeSeconds = parseInt(url.searchParams.get('startTime') as string);
+	const startTimeDate = fromDate(new Date(startTimeSeconds * 1000), getLocalTimeZone());
 	if (id) {
 		const log = await getLogById(parseInt(id));
 		const formData: z.infer<LogFormSchema> = {
@@ -39,9 +43,11 @@ export const load: PageLoad = async ({ url }) => {
 		}
 		const game = await getGamesById([parseInt(gameId)]);
 		const form = await superValidate(zod(logSchema));
+		form.data.logStartDate = startTimeDate.toDate();
 		if (minutesPlayed != undefined) {
 			form.data.timePlayedHours = Math.floor(minutesPlayed / 60);
 			form.data.timePlayedMinutes = minutesPlayed % 60;
+			form.data.logEndDate = startTimeDate.add({ minutes: minutesPlayed }).toDate();
 			form.data.status = 'playing';
 		} else {
 			form.data.timePlayedHours = 0;
