@@ -72,7 +72,7 @@
 			});
 		}
 	}
-	$: filteredLogs = ($logsQuery.data ?? data.logsAndGames).sort((a, b) => {
+	$: filteredLogs = filteredLogs.sort((a, b) => {
 		switch (sortBy) {
 			case 'title':
 				if (sortOrder === 'desc') {
