@@ -17,8 +17,6 @@ export const load: PageLoad = async ({ url }) => {
 	const minutesPlayed = url.searchParams.has('minutesPlayed')
 		? parseInt(url.searchParams.get('minutesPlayed') as string)
 		: undefined;
-	const startTimeSeconds = parseInt(url.searchParams.get('startTime') as string);
-	const startTimeDate = fromDate(new Date(startTimeSeconds * 1000), getLocalTimeZone());
 	if (id) {
 		const log = await getLogById(parseInt(id));
 		const formData: z.infer<LogFormSchema> = {
@@ -43,8 +41,10 @@ export const load: PageLoad = async ({ url }) => {
 		}
 		const game = await getGamesById([parseInt(gameId)]);
 		const form = await superValidate(zod(logSchema));
-		form.data.logStartDate = startTimeDate.toDate();
 		if (minutesPlayed != undefined) {
+			const startTimeSeconds = parseInt(url.searchParams.get('startTime') as string);
+			const startTimeDate = fromDate(new Date(startTimeSeconds * 1000), getLocalTimeZone());
+			form.data.logStartDate = startTimeDate.toDate();
 			form.data.timePlayedHours = Math.floor(minutesPlayed / 60);
 			form.data.timePlayedMinutes = minutesPlayed % 60;
 			form.data.logEndDate = startTimeDate.add({ minutes: minutesPlayed }).toDate();
