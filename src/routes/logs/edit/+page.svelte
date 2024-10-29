@@ -94,8 +94,6 @@
 	let isNewLogFormValid = false;
 	$: if ($logFormData)
 		validateLogForm({ update: false }).then((superValidated) => {
-			console.log(superValidated.data);
-			console.log(superValidated.errors);
 			isNewLogFormValid = superValidated.valid;
 		});
 	onMount(() => {
