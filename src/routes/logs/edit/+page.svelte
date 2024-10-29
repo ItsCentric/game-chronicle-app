@@ -105,11 +105,14 @@
 	const timeZone = getLocalTimeZone();
 	const currentDay = now(timeZone);
 	let startDate = toCalendarDate(currentDay);
-	const startTimeParam = fromDate(
-		new Date(parseInt(searchParams.get('startTime') ?? '') * 1000),
-		timeZone
-	);
-	let startTime = searchParams.has('startTime')
+	let startTimeParam;
+	if (searchParams.has('startTime')) {
+		startTimeParam = fromDate(
+			new Date(parseInt(searchParams.get('startTime') ?? '') * 1000),
+			timeZone
+		);
+	}
+	let startTime = startTimeParam
 		? new Time(startTimeParam.hour, startTimeParam.minute)
 		: new Time(currentDay.hour - 1, currentDay.minute);
 	async function updateEndDate(date: CalendarDateTime, hours: number, minutes: number) {
