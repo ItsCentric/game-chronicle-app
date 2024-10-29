@@ -42,7 +42,7 @@
 		"resources": ["resources/*"]
 	},
 	"productName": "Game Chronicle",
-	"version": "0.14.0-1",
+	"version": "0.14.0-2",
 	"identifier": "app.gamechronicle.www",
 	"plugins": {
 		"updater": {
