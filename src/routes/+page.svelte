@@ -286,7 +286,7 @@
 						<svelte:fragment slot="actions">
 							<Tooltip.Root disableHoverableContent>
 								<Tooltip.Trigger>
-									<Button href={`/logs/${log.id}`} variant="ghost" size="action">
+									<Button href={`/logs/view?id=${log.id}`} variant="ghost" size="action">
 										<Eye size={16} />
 									</Button>
 								</Tooltip.Trigger>
