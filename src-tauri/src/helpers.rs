@@ -109,23 +109,3 @@ pub fn get_app_data_directory(app_handle: &tauri::AppHandle) -> Result<PathBuf, 
     let dir = app_handle.path().data_dir()?;
     Ok(dir.join("game-chronicle"))
 }
-
-pub fn get_schema_changes(app_handle: &tauri::AppHandle) -> Result<SchemaUpdate, Error> {
-    let resource_path = app_handle.path().resource_dir().unwrap();
-    let mut file = match fs::File::open(resource_path.join("resources/schema_changes.toml")) {
-        Ok(file) => file,
-        Err(e) => match e.kind() {
-            std::io::ErrorKind::NotFound => {
-                return Ok(SchemaUpdate {
-                    igdb: None,
-                    logs: None,
-                })
-            }
-            _ => return Err(e.into()),
-        },
-    };
-    let mut file_contents = String::new();
-    file.read_to_string(&mut file_contents)?;
-    let schema_changes: SchemaUpdate = toml::from_str(&file_contents)?;
-    Ok(schema_changes)
-}
