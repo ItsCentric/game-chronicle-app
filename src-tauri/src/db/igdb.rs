@@ -12,22 +12,12 @@ use tauri::State;
 pub struct Game {
     pub id: i32,
     pub name: String,
-    #[serde(rename(deserialize = "cover"))]
     pub cover_id: Option<i32>,
-    #[serde(
-        rename(deserialize = "websites"),
-        deserialize_with = "deserialize_list"
-    )]
     pub website_ids: Option<Vec<i32>>,
-    #[serde(deserialize_with = "deserialize_list")]
     pub similar_games: Option<Vec<i32>>,
     pub category: i32,
     pub version_parent: Option<i32>,
     pub total_rating: Option<f32>,
-    #[serde(
-        rename(deserialize = "platforms"),
-        deserialize_with = "deserialize_list"
-    )]
     pub platform_ids: Option<Vec<i32>>,
 }
 
@@ -74,7 +64,6 @@ pub struct PopularityPrimitive {
     pub value: f32,
 }
 
-
 pub async fn init_igdb_db(dir: &Path) -> Result<IgdbDb, Error> {
     let db_path = Path::new("sqlite:").join(dir).join("igdb.db?mode=rwc");
     let db_url = match db_path.to_str() {
@@ -91,25 +80,6 @@ pub async fn init_igdb_db(dir: &Path) -> Result<IgdbDb, Error> {
     sqlx::migrate!("migrations/igdb").run(&pool).await?;
 
     Ok(pool)
-}
-
-fn deserialize_list<'de, D>(deserializer: D) -> Result<Option<Vec<i32>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s: String = serde::Deserialize::deserialize(deserializer)?;
-    let s = s.trim_start_matches('{').trim_end_matches('}');
-    if s.is_empty() {
-        return Ok(None);
-    }
-    Ok(Some(
-        s.split(',')
-            .map(|item| match item.trim().parse::<i32>() {
-                Ok(id) => id,
-                Err(_) => 0,
-            })
-            .collect(),
-    ))
 }
 
 fn game_info_columns() -> &'static str {

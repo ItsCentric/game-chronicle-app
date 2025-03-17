@@ -58,7 +58,6 @@ pub struct LogUpdateData {
     pub minutes_played: i32,
 }
 
-
 pub async fn init_logs_db(dir: &Path) -> Result<LogsDb, sqlx::Error> {
     let path = Path::new("sqlite:").join(dir).join("logs.db?mode=rwc");
     let db_url = match  path.to_str() {
