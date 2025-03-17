@@ -109,6 +109,7 @@
 	{:else}
 		{@const executableName = $page.url.searchParams.get('executableName')}
 		{@const minutesPlayed = $page.url.searchParams.get('minutesPlayed')}
+		{@const startTime = $page.url.searchParams.get('startTime')}
 		{@const isNewGame = executableName && minutesPlayed}
 		<div class="grid grid-cols-3 gap-4">
 			{#each games.slice(beginningPageIndex, beginningPageIndex + gamesPerPage) as game}
@@ -125,7 +126,7 @@
 										goto(
 											`/logs/edit?gameId=${game.id}` +
 												(isNewGame
-													? `&executableName=${executableName}&minutesPlayed=${minutesPlayed}`
+													? `&executableName=${executableName}&minutesPlayed=${minutesPlayed}&startTime=${startTime}`
 													: '')
 										)}
 									variant="ghost"

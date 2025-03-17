@@ -1,4 +1,4 @@
-<script lang='ts'>
+<script lang="ts">
 	import { Toaster, toast } from 'svelte-sonner';
 	import '../app.css';
 	import { goto } from '$app/navigation';
@@ -80,14 +80,14 @@
 			</AlertDialog.Header>
 			<AlertDialog.Footer>
 				<AlertDialog.Cancel>Don't add playtime</AlertDialog.Cancel>
-				<AlertDialog.Action on:click={async () => toast.promise(
-						updateLog(updatedLog),
-						{
+				<AlertDialog.Action
+					on:click={async () =>
+						toast.promise(updateLog(updatedLog), {
 							loading: 'Updating log...',
 							success: 'Log updated successfully!',
 							error: 'Failed to update log'
-						}
-					)}>Yes, add playtime</AlertDialog.Action>
+						})}>Yes, add playtime</AlertDialog.Action
+				>
 			</AlertDialog.Footer>
 		</AlertDialog.Content>
 	</AlertDialog.Root>
