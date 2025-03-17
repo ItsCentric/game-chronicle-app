@@ -39,7 +39,7 @@
 				"depends": []
 			}
 		},
-		"resources": ["resources/*"]
+		"resources": ["resources/*", "migrations/**/*"]
 	},
 	"productName": "Game Chronicle",
 	"version": "0.14.0-3",

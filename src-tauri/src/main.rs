@@ -1,9 +1,9 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{collections::HashMap, fs::remove_file, path::PathBuf, thread};
+use std::{collections::HashMap, path::PathBuf, thread};
 
-use database::update_table_schema;
+use db::{igdb::init_igdb_db, logs::init_logs_db, IgdbDb, LogsDb};
 use serde::Deserialize;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_cli::CliExt;
@@ -22,18 +22,15 @@ use tauri::{
 };
 
 mod data_import;
-mod database;
+mod db;
 mod dumps;
 mod helpers;
-mod igdb;
 mod process_monitor;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
     Env(#[from] std::env::VarError),
-    #[error(transparent)]
-    Rusqlite(#[from] rusqlite::Error),
     #[error("Process not found")]
     ProcessNotFound,
     #[error(transparent)]
@@ -50,6 +47,10 @@ pub enum Error {
     TomlSer(#[from] toml::ser::Error),
     #[error(transparent)]
     Csv(#[from] csv::Error),
+    #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
+    #[error(transparent)]
+    SqlxMigrate(#[from] sqlx::migrate::MigrateError),
     #[error("Error: {0}")]
     Custom(String),
 }
@@ -91,9 +92,9 @@ impl serde::Serialize for Error {
     }
 }
 
-struct DatabaseConnections {
-    logs_conn: std::sync::Mutex<rusqlite::Connection>,
-    igdb_conn: std::sync::Mutex<rusqlite::Connection>,
+struct DatabasePools {
+    logs_pool: LogsDb,
+    igdb_pool: IgdbDb,
 }
 
 fn main() {
@@ -109,58 +110,45 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .on_window_event(|window, event| match event {
-            tauri::WindowEvent::CloseRequested { api, ..} => {
-                let app_handle = window.app_handle();
-                let mut notification_permission_state = app_handle.notification().permission_state().unwrap();
+        .on_window_event(|window, event| if let tauri::WindowEvent::CloseRequested { api, ..} = event {
+            let app_handle = window.app_handle();
+            let mut notification_permission_state = app_handle.notification().permission_state().unwrap();
+            if notification_permission_state != PermissionState::Granted {
+                notification_permission_state = app_handle.notification().request_permission().unwrap();
                 if notification_permission_state != PermissionState::Granted {
-                    notification_permission_state = app_handle.notification().request_permission().unwrap();
-                    if notification_permission_state != PermissionState::Granted {
-                        return;
+                    return;
+                }
+            }
+            window.hide().unwrap();
+            let windows = app_handle.webview_windows();
+            let visible_windows = windows.iter().filter(|(_, window)| window.is_visible().unwrap()).collect::<HashMap<_, _>>();
+            if visible_windows.is_empty() {
+                app_handle.notification().builder().title("Game Chronicle").body("Game Chronicle is still running in the background.").show().unwrap();
+            }
+            api.prevent_close();
+        })
+        .setup(move |app| {
+            if let Ok(matches) = app.cli().matches() {
+                if let Some(is_hidden_set) = matches.args.get("hidden") {
+                    if is_hidden_set.value.as_bool().unwrap() {
+                    if let Some(webview_window) = app.get_webview_window("main") {
+                        webview_window.close()?;
+                    }
                     }
                 }
-                window.hide().unwrap();
-                let windows = app_handle.webview_windows();
-                let visible_windows = windows.iter().filter(|(_, window)| window.is_visible().unwrap()).collect::<HashMap<_, _>>();
-                if visible_windows.len() == 0 {
-                    app_handle.notification().builder().title("Game Chronicle").body("Game Chronicle is still running in the background.").show().unwrap();
-                }
-                api.prevent_close();
-            },
-            _ => {}
-        })
-        .setup(|app| {
-            match app.cli().matches() {
-                Ok(matches) => match matches.args.get("hidden") {
-                    Some(is_hidden_set) => {
-                        if is_hidden_set.value.as_bool().unwrap() {
-                        match app.get_webview_window("main") {
-                            Some(webview_window) => {
-                                webview_window.close()?;
-                            }
-                            None => {}
-                        }
-                        }
-                    },
-                    None => {}
-                },
-                Err(_) => {}
             };
             let tray_icon = Image::from_bytes(include_bytes!("../icons/icon.png")).unwrap();
             let menu = MenuBuilder::new(app).quit().build().unwrap();
             tauri::tray::TrayIconBuilder::new().title("Game Chronicle").tooltip("Game Chronicle").icon(tray_icon).menu(&menu)
             .on_tray_icon_event(|tray, event| {
-                match event {
-                    Click { id: _, position: _, rect: _, button: mouse_button, .. } => {
-                        if mouse_button == Left {
-                            let app = tray.app_handle();
-                            if let Some(webview_window) = app.get_webview_window("main") {
-                                let _ = webview_window.show();
-                                let _ = webview_window.set_focus();
-                            }
+                if let Click { id: _, position: _, rect: _, button: mouse_button, .. } = event {
+                    if mouse_button == Left {
+                        let app = tray.app_handle();
+                        if let Some(webview_window) = app.get_webview_window("main") {
+                            let _ = webview_window.show();
+                            let _ = webview_window.set_focus();
                         }
-                    },
-                    _ => {}
+                    }
                 }
             })
             .build(app)?;
@@ -190,8 +178,7 @@ fn main() {
                             }
                         },
                     }
-                    let saved_settings = helpers::save_user_settings(settings, app.handle().clone())?;
-                    saved_settings
+                    helpers::save_user_settings(settings, app.handle().clone())?
                 }
             };
             let version = if user_settings.beta { "{{version}}" } else { "latest" };
@@ -202,31 +189,22 @@ fn main() {
             } else if !user_settings.autostart && autostart_manager.is_enabled().unwrap() {
                 autostart_manager.disable().unwrap();
             }
-            let (logs_conn, igdb_conn) = database::initialize_database(app.handle().clone()).unwrap();
-            igdb_conn.execute("INSERT INTO games_fts (games_fts) VALUES ('rebuild')", rusqlite::params![])?;
-            app.manage(DatabaseConnections {
-                logs_conn: std::sync::Mutex::new(logs_conn),
-                igdb_conn: std::sync::Mutex::new(igdb_conn),
+            let app_data_dir = app.path().app_data_dir()?;
+            let app_data_path = app_data_dir.as_path();
+            let logs_pool = tauri::async_runtime::block_on(init_logs_db(app_data_path))?;
+            let igdb_pool = tauri::async_runtime::block_on(init_igdb_db(app_data_path))?;
+            tauri::async_runtime::block_on(
+                sqlx::query("INSERT INTO games_fts (games_fts) VALUES ('rebuild')").execute(&igdb_pool)
+            )?;
+            app.manage(DatabasePools {
+                logs_pool,
+                igdb_pool,
             });
-            let schema_changes = helpers::get_schema_changes(app.handle())?;
-            if let Some(ref igdb_changes) = schema_changes.igdb {
-                for (table_name, changes) in igdb_changes {
-                    update_table_schema(&mut app.state::<DatabaseConnections>().igdb_conn.lock().unwrap(), &table_name, changes)?;
-                }
-            }
-            if let Some(ref log_changes) = schema_changes.logs {
-                for (table_name, changes) in log_changes {
-                    update_table_schema(&mut app.state::<DatabaseConnections>().logs_conn.lock().unwrap(), &table_name, changes)?;
-                }
-            }
-            if schema_changes.igdb.is_some() || schema_changes.logs.is_some() {
-                remove_file(app.path().resource_dir()?.join("resources/schema_changes.toml"))?;
-            }
             if !user_settings.process_monitoring.enabled || user_settings.executable_paths.is_none() {
                 return Ok(());
             }
             let executable_paths = user_settings.executable_paths.expect("None check to not fail");
-            let executable_paths_vec = executable_paths.split(";");
+            let executable_paths_vec = executable_paths.split(';');
             let mut paths_to_monitor: Vec<PathBuf> = Vec::new();
             for path in executable_paths_vec {
                 let path = Path::new(path);
@@ -245,11 +223,11 @@ fn main() {
                 }
             }
             let app_handle = app.handle().clone();
-            thread::spawn(move || {
+            tauri::async_runtime::spawn(async move {
                 let mut process_monitor = process_monitor::ProcessMonitor::new();
                 loop {
                     process_monitor
-                        .monitor_processes(paths_to_monitor.clone(), &app_handle)
+                        .monitor_processes(paths_to_monitor.clone(), &app_handle).await
                         .unwrap();
                     thread::sleep(std::time::Duration::from_secs(1));
                 }
@@ -257,19 +235,19 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            database::get_dashboard_statistics,
-            igdb::get_games_by_id,
-            database::get_recent_logs,
-            database::get_logs,
+            db::logs::get_dashboard_statistics,
+            db::igdb::get_games_by_id,
+            db::logs::get_recent_logs,
+            db::logs::get_logs,
             helpers::get_user_settings,
             helpers::save_user_settings,
-            database::delete_log,
-            database::get_log_by_id,
-            database::add_log,
-            database::update_log,
-            database::add_executable_details,
-            igdb::get_popular_games,
-            igdb::search_game,
+            db::logs::delete_log,
+            db::logs::get_log_by_id,
+            db::logs::add_log,
+            db::logs::update_log,
+            db::logs::add_executable_details,
+            db::igdb::get_popular_games,
+            db::igdb::search_game,
             data_import::get_steam_data,
             data_import::import_igdb_games,
             dumps::get_local_dump_versions,

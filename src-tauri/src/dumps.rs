@@ -3,18 +3,18 @@ use std::{
     fs::{self, File},
     io::Read,
     path::PathBuf,
-    thread,
 };
 
 use csv::Reader;
-use rusqlite::{params, Connection, OptionalExtension, Transaction};
-use tauri::Emitter;
+use tauri::{Emitter, State};
 
 use crate::{
     helpers::get_app_data_directory,
-    igdb::{Cover, Game, Platform, PopularityPrimitive, Website},
-    Error,
+    db::igdb::{Cover, Game, Platform, PopularityPrimitive, Website},
+    DatabasePools, Error,
 };
+
+use sqlx::{sqlite::SqliteRow, Row, Sqlite, Transaction};
 
 #[derive(serde::Deserialize, Debug, serde::Serialize)]
 pub struct CsvUrlResponse {
@@ -121,223 +121,207 @@ pub async fn download_dumps(
     Ok(())
 }
 
-fn import_csv<T: serde::de::DeserializeOwned>(
-    file_path: PathBuf,
-    parse_func: fn(&PathBuf) -> Result<Vec<T>, Error>,
-    insert_func: fn(&mut Transaction, &Vec<T>) -> Result<(), Error>,
-    transaction: &mut rusqlite::Transaction,
-) -> Result<(), Error> {
-    if file_path.exists() {
-        let items = parse_func(&file_path)?;
-        transaction.busy_timeout(std::time::Duration::from_secs(10))?;
-        insert_func(transaction, &items)?;
-    }
-    Ok(())
-}
-
 #[tauri::command]
-pub fn import_dumps(app_handle: tauri::AppHandle, from_directory: PathBuf) -> Result<(), Error> {
-    thread::spawn(move || {
-        let app_data_dir = get_app_data_directory(&app_handle).unwrap();
-        let mut conn = Connection::open(app_data_dir.join("igdb.db")).unwrap();
-        let mut transaction = conn.transaction().unwrap();
-        import_csv(
-            from_directory.join("covers.csv"),
-            parse_csv::<Cover>,
-            insert_covers,
-            &mut transaction,
-        )
-        .unwrap();
-        import_csv(
-            from_directory.join("websites.csv"),
-            parse_csv::<Website>,
-            insert_websites,
-            &mut transaction,
-        )
-        .unwrap();
-        import_csv(
-            from_directory.join("platforms.csv"),
-            parse_csv::<Platform>,
-            insert_platforms,
-            &mut transaction,
-        )
-        .unwrap();
-        import_csv(
-            from_directory.join("games.csv"),
-            parse_csv::<Game>,
-            insert_games,
-            &mut transaction,
-        )
-        .unwrap();
-        import_csv(
-            from_directory.join("popularity_primitives.csv"),
-            parse_csv::<PopularityPrimitive>,
-            insert_popularity_primitives,
-            &mut transaction,
-        )
-        .unwrap();
-        transaction.commit().unwrap();
+pub async fn import_dumps(
+    state: State<'_, DatabasePools>,
+    app_handle: tauri::AppHandle,
+    from_directory: PathBuf,
+) -> Result<(), Error> {
+    let igdb_pool = state.igdb_pool.clone();
+    tauri::async_runtime::spawn(async move {
+        let mut transaction = igdb_pool.begin().await.unwrap();
+        let covers_dir = from_directory.join("covers.csv");
+        if covers_dir.exists() {
+            let covers = parse_csv::<Cover>(&covers_dir).unwrap();
+            insert_covers(&mut transaction, &covers).await.unwrap();
+        }
+        let websites_dir = from_directory.join("websites.csv");
+        if websites_dir.exists() {
+            let websites = parse_csv::<Website>(&websites_dir).unwrap();
+            insert_websites(&mut transaction, &websites).await.unwrap();
+        }
+        let platforms_dir = from_directory.join("platforms.csv");
+        if platforms_dir.exists() {
+            let platforms = parse_csv::<Platform>(&platforms_dir).unwrap();
+            insert_platforms(&mut transaction, &platforms)
+                .await
+                .unwrap();
+        }
+        let games_dir = from_directory.join("games.csv");
+        if games_dir.exists() {
+            let games = parse_csv::<Game>(&games_dir).unwrap();
+            insert_games(&mut transaction, &games).await.unwrap();
+        }
+        let popularity_primitives_dir = from_directory.join("popularity_primitives.csv");
+        if popularity_primitives_dir.exists() {
+            let popularity_primitives =
+                parse_csv::<PopularityPrimitive>(&popularity_primitives_dir).unwrap();
+            insert_popularity_primitives(&mut transaction, &popularity_primitives).await.unwrap();
+        }
+        transaction.commit().await.unwrap();
         app_handle.emit("import_finished", "").unwrap();
     });
     Ok(())
 }
 
-fn insert_covers(
-    transaction: &mut rusqlite::Transaction,
+async fn insert_covers(
+    transaction: &mut Transaction<'_, Sqlite>,
     covers: &Vec<Cover>,
 ) -> Result<(), Error> {
-    let mut select_stmt = transaction.prepare("SELECT image_id FROM covers WHERE id = ?1")?;
-    let mut insert_stmt =
-        transaction.prepare("INSERT INTO covers (id, image_id) VALUES (?1, ?2)")?;
-    let mut update_stmt = transaction.prepare("UPDATE covers SET image_id = ?1 WHERE id = ?2")?;
     for cover in covers {
-        match select_stmt
-            .query_row(&[&cover.id], |row| row.get::<_, String>(0))
-            .optional()?
+        match sqlx::query_scalar::<Sqlite, String>(
+            "SELECT image_id FROM covers WHERE id = ?1",
+        )
+        .bind(cover.id)
+        .fetch_optional(&mut **transaction)
+        .await?
         {
             Some(i_id) => {
                 if i_id != cover.image_id {
-                    update_stmt.execute(params![&cover.image_id, &cover.id])?;
+                    sqlx::query("UPDATE covers SET image_id = ?1 WHERE id = ?2")
+                        .bind(cover.image_id.clone())
+                        .bind(cover.id)
+                        .execute(&mut **transaction)
+                        .await?;
                 }
             }
             None => {
-                insert_stmt.execute((cover.id, &cover.image_id))?;
+                sqlx::query("INSERT INTO covers (id, image_id) VALUES (?1, ?2)")
+                    .bind(cover.id)
+                    .bind(cover.image_id.clone())
+                    .execute(&mut **transaction)
+                    .await?;
             }
-        };
+        }
     }
     Ok(())
 }
 
-fn insert_websites(
-    transaction: &mut rusqlite::Transaction,
+async fn insert_websites(
+    transaction: &mut Transaction<'_, Sqlite>,
     websites: &Vec<Website>,
 ) -> Result<(), Error> {
-    let mut select_stmt = transaction.prepare("SELECT url FROM websites WHERE id = ?1")?;
-    let mut insert_stmt = transaction.prepare("INSERT INTO websites (id, url) VALUES (?1, ?2)")?;
-    let mut update_stmt = transaction.prepare("UPDATE websites SET url = ?1 WHERE id = ?2")?;
     for website in websites {
-        let url: Option<String> = select_stmt
-            .query_row(&[&website.id], |row| row.get(0))
-            .optional()?;
+        let url =
+            sqlx::query_scalar::<Sqlite, String>("SELECT url FROM websites WHERE id = ?1")
+                .bind(website.id)
+                .fetch_optional(&mut **transaction)
+                .await?;
         match url {
             Some(u) => {
                 if u != website.url {
-                    update_stmt.execute(params![&website.url, &website.id])?;
+                    sqlx::query("UPDATE websites SET url = ?1 WHERE id = ?2")
+                        .bind(website.url.clone())
+                        .bind(website.id)
+                        .execute(&mut **transaction)
+                        .await?;
                 }
             }
             None => {
-                insert_stmt.execute((website.id, &website.url))?;
+                sqlx::query("INSERT INTO websites (id, url) VALUES (?1, ?2)")
+                    .bind(website.id)
+                    .bind(website.url.clone())
+                    .execute(&mut **transaction)
+                    .await?;
             }
         }
     }
     Ok(())
 }
 
-fn insert_platforms(
-    transaction: &mut rusqlite::Transaction,
+async fn insert_platforms(
+    transaction: &mut Transaction<'_, Sqlite>,
     platforms: &Vec<Platform>,
 ) -> Result<(), Error> {
-    let mut select_stmt = transaction.prepare("SELECT * FROM platforms WHERE id = ?1")?;
-    let mut insert_stmt =
-        transaction.prepare("INSERT INTO platforms (id, name, category) VALUES (?1, ?2, ?3)")?;
-    let mut update_stmt =
-        transaction.prepare("UPDATE platforms SET name = ?1, category = ?2 WHERE id = ?3")?;
     for csv_platform in platforms {
-        let platform: Option<Platform> = select_stmt
-            .query_row(&[&csv_platform.id], |row| {
-                Ok(Platform {
-                    id: row.get(0)?,
-                    name: row.get(1)?,
-                    category: row.get(2)?,
-                })
-            })
-            .optional()?;
+        let platform: Option<Platform> = sqlx::query_as::<Sqlite, Platform>(
+            "SELECT id, name, category FROM platforms WHERE id = ?1",
+        )
+        .bind(csv_platform.id)
+        .fetch_optional(&mut **transaction)
+        .await?;
         match platform {
             Some(p) => {
                 if p.name != csv_platform.name || p.category != csv_platform.category {
-                    update_stmt.execute((
-                        &csv_platform.name,
-                        csv_platform.category,
-                        csv_platform.id,
-                    ))?;
+                    sqlx::query("UPDATE platforms SET name = ?1, category = ?2 WHERE id = ?3")
+                        .bind(&csv_platform.name)
+                        .bind(csv_platform.category)
+                        .bind(csv_platform.id)
+                        .execute(&mut **transaction)
+                        .await?;
                 }
             }
             None => {
-                insert_stmt.execute((
-                    csv_platform.id,
-                    &csv_platform.name,
-                    csv_platform.category,
-                ))?;
+                sqlx::query("INSERT INTO platforms (id, name, category) VALUES (?1, ?2, ?3)")
+                    .bind(csv_platform.id)
+                    .bind(&csv_platform.name)
+                    .bind(csv_platform.category)
+                    .execute(&mut **transaction)
+                    .await?;
             }
         }
     }
     Ok(())
 }
 
-fn insert_games(transaction: &mut rusqlite::Transaction, games: &Vec<Game>) -> Result<(), Error> {
-    let mut select_game_stmt =
-        transaction.prepare("SELECT g.id, g.name, g.cover_id, g.category, g.version_parent, g.total_rating, GROUP_CONCAT(w.id, ','), GROUP_CONCAT(p.id, ','), GROUP_CONCAT(sg.game_id, ',') FROM games g LEFT JOIN covers c ON c.id = g.cover_id LEFT JOIN game_websites gw ON gw.game_id = g.id LEFT JOIN websites w ON w.id = gw.website_id LEFT JOIN similar_games sg ON sg.game_id = g.id LEFT JOIN game_platforms gp ON gp.game_id = g.id LEFT JOIN platforms p ON p.id = gp.platform_id WHERE g.id = ?1 GROUP BY g.id;")?;
-    let mut insert_game_stmt = transaction.prepare("INSERT INTO games (id, name, cover_id, category, version_parent, total_rating) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")?;
-    let mut update_game_stmt = transaction.prepare("UPDATE games SET name = ?1, cover_id = ?2, category = ?3, version_parent = ?4, total_rating = ?5 WHERE id = ?6")?;
-    let mut insert_game_websites_stmt =
-        transaction.prepare("INSERT INTO game_websites (game_id, website_id) VALUES (?1, ?2)")?;
-    let mut delete_game_websites_stmt =
-        transaction.prepare("DELETE FROM game_websites WHERE game_id = ?1")?;
-    let mut insert_similar_games_stmt = transaction
-        .prepare("INSERT INTO similar_games (game_id, similar_game_id) VALUES (?1, ?2)")?;
-    let mut delete_similar_games_stmt =
-        transaction.prepare("DELETE FROM similar_games WHERE game_id = ?1")?;
-    let mut insert_game_platforms_stmt =
-        transaction.prepare("INSERT INTO game_platforms (game_id, platform_id) VALUES (?1, ?2)")?;
-    let mut delete_game_platforms_stmt =
-        transaction.prepare("DELETE FROM game_platforms WHERE game_id = ?1")?;
-    let mut select_cover_stmt = transaction.prepare("SELECT id FROM covers WHERE id = ?1")?;
-
+async fn insert_games(
+    transaction: &mut Transaction<'_, Sqlite>,
+    games: &Vec<Game>,
+) -> Result<(), Error> {
     for csv_game in games {
-        let result = select_game_stmt
-            .query_row(&[&csv_game.id], |row| {
-                let website_ids: Option<Vec<i32>> = match row.get::<usize, Option<String>>(6)? {
-                    Some(string) => Some(
+        let result = sqlx::query("SELECT g.id, g.name, c.image_id, g.category, g.version_parent, g.total_rating, GROUP_CONCAT(w.id, ','), GROUP_CONCAT(p.id, ','), GROUP_CONCAT(sg.game_id, ',') FROM games g LEFT JOIN covers c ON c.id = g.cover_id LEFT JOIN game_websites gw ON gw.game_id = g.id LEFT JOIN websites w ON w.id = gw.website_id LEFT JOIN similar_games sg ON sg.game_id = g.id LEFT JOIN game_platforms gp ON gp.game_id = g.id LEFT JOIN platforms p ON p.id = gp.platform_id WHERE g.id = ?1 GROUP BY g.id;")
+            .bind(csv_game.id)
+            .map(|row: SqliteRow| {
+                let website_ids: Option<Vec<i32>> = match row.try_get::<String, usize>(6) {
+                    Ok(string) => Some(
                         string
                             .split(',')
                             .map(|s| s.parse::<i32>().unwrap())
                             .collect(),
                     ),
-                    None => None,
+                    Err(_) => None,
                 };
-                let platform_ids: Option<Vec<i32>> = match row.get::<usize, Option<String>>(7)? {
-                    Some(string) => Some(
+
+                let platform_ids: Option<Vec<i32>> = match row.try_get::<String, usize>(7) {
+                    Ok(string) => Some(
                         string
                             .split(',')
                             .map(|s| s.parse::<i32>().unwrap())
                             .collect(),
                     ),
-                    None => None,
+                    Err(_) => None,
                 };
-                let similar_games: Option<Vec<i32>> = match row.get::<usize, Option<String>>(8)? {
-                    Some(string) => Some(
+
+                let similar_games: Option<Vec<i32>> = match row.try_get::<String, usize>(8) {
+                    Ok(string) => Some(
                         string
                             .split(',')
                             .map(|s| s.parse::<i32>().unwrap())
                             .collect(),
                     ),
-                    None => None,
+                    Err(_) => None,
                 };
-                let cover_id = row.get::<usize, Option<i32>>(2)?;
-                let g = Game {
-                    id: row.get(0)?,
-                    name: row.get(1)?,
+
+                let cover_id = match row.try_get::<Option<i32>, usize>(2) {
+                    Ok(id) => id,
+                    Err(_) => None,
+                };
+
+                Game {
+                    id: row.get::<i32, usize>(0),
+                    name: row.get::<String, usize>(1),
                     cover_id,
-                    category: row.get(3)?,
-                    version_parent: row.get(4)?,
-                    total_rating: row.get(5)?,
-                    website_ids: website_ids.clone(),
-                    similar_games: similar_games.clone(),
-                    platform_ids: platform_ids.clone(),
-                };
-                Ok(g)
+                    category: row.get::<i32, usize>(3),
+                    version_parent: row.get::<Option<i32>, usize>(4),
+                    total_rating: row.get::<Option<f32>, usize>(5),
+                    website_ids,
+                    similar_games,
+                    platform_ids,
+                }
             })
-            .optional()?;
+            .fetch_optional(&mut **transaction).await?;
+        let select_cover =
+            sqlx::query_scalar::<Sqlite, i32>("SELECT id FROM covers WHERE id = ?1");
         match result {
             Some(db_game) => {
                 if db_game.name != csv_game.name
@@ -347,70 +331,103 @@ fn insert_games(transaction: &mut rusqlite::Transaction, games: &Vec<Game>) -> R
                     || db_game.total_rating != csv_game.total_rating
                 {
                     let cover_id = match csv_game.cover_id {
-                        Some(id) => match select_cover_stmt
-                            .query_row(&[&id], |row| row.get::<usize, i32>(0))
-                            .optional()?
-                        {
-                            Some(_) => Some(id),
-                            None => None,
-                        },
+                        Some(id) => select_cover
+                            .bind(id)
+                            .fetch_optional(&mut **transaction)
+                            .await?.map(|_| id),
                         None => None,
                     };
-                    update_game_stmt.execute((
-                        &csv_game.name,
-                        cover_id,
-                        csv_game.category,
-                        csv_game.version_parent,
-                        csv_game.total_rating,
-                        csv_game.id,
-                    ))?;
+                    sqlx::query("UPDATE games SET name = ?1, cover_id = ?2, category = ?3, version_parent = ?4, total_rating = ?5 WHERE id = ?6")
+                        .bind(&csv_game.name)
+                        .bind(cover_id)
+                        .bind(csv_game.category)
+                        .bind(csv_game.version_parent)
+                        .bind(csv_game.total_rating)
+                        .bind(csv_game.id)
+                        .execute(&mut **transaction).await?;
                 }
                 if let Some(website_ids) = &csv_game.website_ids {
-                    delete_game_websites_stmt.execute(&[&csv_game.id])?;
+                    sqlx::query("DELETE FROM game_websites WHERE game_id = ?1")
+                        .bind(csv_game.id)
+                        .execute(&mut **transaction)
+                        .await?;
                     for website_id in website_ids {
-                        insert_game_websites_stmt.execute((csv_game.id, website_id))?;
+                        sqlx::query(
+                            "INSERT INTO game_websites (game_id, website_id) VALUES (?1, ?2)",
+                        )
+                        .bind(csv_game.id)
+                        .bind(website_id)
+                        .execute(&mut **transaction)
+                        .await?;
                     }
                 }
                 if let Some(similar_games) = &csv_game.similar_games {
-                    delete_similar_games_stmt.execute(&[&csv_game.id])?;
+                    sqlx::query("DELETE FROM similar_games WHERE game_id = ?1")
+                        .bind(csv_game.id)
+                        .execute(&mut **transaction)
+                        .await?;
                     for similar_game_id in similar_games {
-                        insert_similar_games_stmt.execute((csv_game.id, similar_game_id))?;
+                        sqlx::query(
+                            "INSERT INTO similar_games (game_id, similar_game_id) VALUES (?1, ?2)",
+                        )
+                        .bind(csv_game.id)
+                        .bind(similar_game_id)
+                        .execute(&mut **transaction)
+                        .await?;
                     }
                 }
                 if let Some(platform_ids) = &csv_game.platform_ids {
-                    delete_game_platforms_stmt.execute(&[&csv_game.id])?;
+                    sqlx::query("DELETE FROM game_platforms WHERE game_id = ?1")
+                        .bind(csv_game.id)
+                        .execute(&mut **transaction)
+                        .await?;
                     for platform_id in platform_ids {
-                        insert_game_platforms_stmt.execute((csv_game.id, platform_id))?;
+                        sqlx::query(
+                            "INSERT INTO game_platforms (game_id, platform_id) VALUES (?1, ?2)",
+                        )
+                        .bind(csv_game.id)
+                        .bind(platform_id)
+                        .execute(&mut **transaction)
+                        .await?;
                     }
                 }
             }
             None => {
                 let cover_id = match csv_game.cover_id {
-                    Some(id) => match select_cover_stmt
-                        .query_row(&[&id], |row| row.get::<usize, i32>(0))
-                        .optional()?
-                    {
-                        Some(_) => Some(id),
-                        None => None,
-                    },
+                    Some(id) => select_cover
+                        .bind(id)
+                        .fetch_optional(&mut **transaction)
+                        .await?.map(|_| id),
                     None => None,
                 };
-                insert_game_stmt.execute((
-                    csv_game.id,
-                    &csv_game.name,
-                    cover_id,
-                    csv_game.category,
-                    csv_game.version_parent,
-                    csv_game.total_rating,
-                ))?;
+                sqlx::query("INSERT INTO games (id, name, cover_id, category, version_parent, total_rating) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")
+                    .bind(csv_game.id)
+                    .bind(&csv_game.name)
+                    .bind(cover_id)
+                    .bind(csv_game.category)
+                    .bind(csv_game.version_parent)
+                    .bind(csv_game.total_rating)
+                    .execute(&mut **transaction).await?;
                 if let Some(website_ids) = &csv_game.website_ids {
                     for website_id in website_ids {
-                        insert_game_websites_stmt.execute((csv_game.id, website_id))?;
+                        sqlx::query(
+                            "INSERT INTO game_websites (game_id, website_id) VALUES (?1, ?2)",
+                        )
+                        .bind(csv_game.id)
+                        .bind(website_id)
+                        .execute(&mut **transaction)
+                        .await?;
                     }
                 }
                 if let Some(platform_ids) = &csv_game.platform_ids {
                     for platform_id in platform_ids {
-                        insert_game_platforms_stmt.execute((csv_game.id, platform_id))?;
+                        sqlx::query(
+                            "INSERT INTO game_platforms (game_id, platform_id) VALUES (?1, ?2)",
+                        )
+                        .bind(csv_game.id)
+                        .bind(platform_id)
+                        .execute(&mut **transaction)
+                        .await?;
                     }
                 }
             }
@@ -419,59 +436,49 @@ fn insert_games(transaction: &mut rusqlite::Transaction, games: &Vec<Game>) -> R
     Ok(())
 }
 
-pub fn insert_popularity_primitives(
-    transaction: &mut rusqlite::Transaction,
+pub async fn insert_popularity_primitives(
+    transaction: &mut Transaction<'_, Sqlite>,
     popularity_primitives: &Vec<PopularityPrimitive>,
 ) -> Result<(), Error> {
-    let mut select_stmt =
-        transaction.prepare("SELECT * FROM popularity_primitives WHERE id = ?1")?;
-    let mut insert_stmt = transaction.prepare("INSERT INTO popularity_primitives (id, game_id, popularity_type, value) VALUES (?1, ?2, ?3, ?4)")?;
-    let mut update_stmt = transaction.prepare("UPDATE popularity_primitives SET game_id = ?1, popularity_type = ?2, value = ?3 WHERE id = ?4")?;
     for csv_popularity_primitive in popularity_primitives {
-        let popularity_primitive: Option<PopularityPrimitive> = select_stmt
-            .query_row(&[&csv_popularity_primitive.id], |row| {
-                Ok(PopularityPrimitive {
-                    id: row.get(0)?,
-                    game_id: row.get(1)?,
-                    popularity_type: row.get(2)?,
-                    value: row.get(3)?,
-                })
-            })
-            .optional()?;
+        let popularity_primitive = sqlx::query_as::<Sqlite, PopularityPrimitive>(
+            "SELECT * FROM popularity_primitives WHERE id = ?1",
+        )
+        .bind(csv_popularity_primitive.id)
+        .fetch_optional(&mut **transaction)
+        .await?;
         match popularity_primitive {
             Some(p) => {
                 if p.game_id != csv_popularity_primitive.game_id
                     || p.popularity_type != csv_popularity_primitive.popularity_type
                     || p.value != csv_popularity_primitive.value
                 {
-                    update_stmt.execute((
-                        csv_popularity_primitive.game_id,
-                        csv_popularity_primitive.popularity_type,
-                        csv_popularity_primitive.value,
-                        csv_popularity_primitive.id,
-                    ))?;
+                    sqlx::query("UPDATE popularity_primitives SET game_id = ?1, popularity_type = ?2, value = ?3 WHERE id = ?4")
+                        .bind(csv_popularity_primitive.game_id)
+                        .bind(csv_popularity_primitive.popularity_type)
+                        .bind(csv_popularity_primitive.value)
+                        .bind(csv_popularity_primitive.id)
+                        .execute(&mut **transaction)
+                        .await?;
                 }
             }
             None => {
-                match transaction
-                    .query_row(
-                        "SELECT id FROM games WHERE id = ?",
-                        params![csv_popularity_primitive.game_id],
-                        |row| row.get::<usize, i32>(0),
-                    )
-                    .optional()?
+                match sqlx::query_scalar::<Sqlite, i32>("SELECT id FROM games WHERE id = ?1")
+                    .bind(csv_popularity_primitive.game_id)
+                    .fetch_optional(&mut **transaction)
+                    .await?
                 {
                     Some(_) => {}
                     None => {
                         continue;
                     }
                 };
-                insert_stmt.execute((
-                    csv_popularity_primitive.id,
-                    csv_popularity_primitive.game_id,
-                    csv_popularity_primitive.popularity_type,
-                    csv_popularity_primitive.value,
-                ))?;
+                sqlx::query("INSERT INTO popularity_primitives (id, game_id, popularity_type, value) VALUES (?1, ?2, ?3, ?4)")
+                    .bind(csv_popularity_primitive.id)
+                    .bind(csv_popularity_primitive.game_id)
+                    .bind(csv_popularity_primitive.popularity_type)
+                    .bind(csv_popularity_primitive.value)
+                    .execute(&mut **transaction).await?;
             }
         }
     }

@@ -38,7 +38,7 @@
 	const deleteLogMutation = useMutation(deleteLog, {
 		onSuccess: (deletedLogId) => {
 			queryClient.invalidateQueries('logs');
-			data.logsAndGames = data.logsAndGames.filter((log) => log.id !== deletedLogId);
+			$logsQuery.data = $logsQuery.data?.filter((log) => log.id !== deletedLogId) ?? [];
 		}
 	});
 	const logsQuery = useQuery(
@@ -63,13 +63,14 @@
 		month: 'long',
 		day: 'numeric'
 	});
-	$: if (statusFilter) {
+	$: {
 		if (statusFilter.length === 0) {
-			filteredLogs = data.logsAndGames;
+			filteredLogs = $logsQuery.data ?? [];
 		} else {
-			filteredLogs = data.logsAndGames.filter((log) => {
-				return statusFilter.includes(log.status);
-			});
+			filteredLogs =
+				$logsQuery.data?.filter((log) => {
+					return statusFilter.includes(log.status);
+				}) ?? [];
 		}
 	}
 	$: filteredLogs = filteredLogs.sort((a, b) => {

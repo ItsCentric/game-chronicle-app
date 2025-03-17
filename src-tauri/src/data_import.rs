@@ -3,10 +3,9 @@ use std::{
     thread,
 };
 
-use crate::{database::LogData, igdb::get_games_from_links, DatabaseConnections};
+use crate::{db::logs::LogData, db::igdb::get_games_from_links, DatabasePools};
 use chrono::{DateTime, Local};
 use reqwest::Client;
-use rusqlite::params;
 use tauri::{Emitter, Manager, State};
 
 use crate::Error;
@@ -111,7 +110,7 @@ pub async fn get_steam_data(
         .iter()
         .map(|s_game| format!("https://store.steampowered.com/app/{}", s_game.appid))
         .collect::<Vec<String>>();
-    let games = get_games_from_links(app_handle.state::<DatabaseConnections>(), steam_links)?;
+    let games = get_games_from_links(app_handle.state::<DatabasePools>(), steam_links).await?;
     for steam_game in owned_steam_games_response.games {
         let igdb_game = match games.iter().find(|g| {
             g.websites.iter().any(|w| {
@@ -160,12 +159,11 @@ pub async fn get_steam_data(
 }
 
 #[tauri::command]
-pub fn import_igdb_games(
+pub async fn import_igdb_games(
     app_handle: tauri::AppHandle,
-    state: State<DatabaseConnections>,
+    state: State<'_, DatabasePools>,
     data: Vec<LogData>,
 ) -> Result<usize, Error> {
-    let mut conn = state.logs_conn.lock().unwrap();
     let app_handle_clone = app_handle.clone();
     let import_finished = Arc::new((Mutex::new(false), Condvar::new()));
     let games_imported = Arc::new(RwLock::new(0));
@@ -197,25 +195,22 @@ pub fn import_igdb_games(
             let _ = *import_finished_lock;
         }
     });
-    let logs_transaction = conn.transaction()?;
+    let logs_transaction = state.logs_pool.begin().await?;
     {
-        let mut stmt = logs_transaction.prepare(
-            "INSERT INTO logs (start_date, end_date, status, minutes_played, notes, game_id) VALUES (?, ?, ?, ?, ?, ?)",
-        )?;
         for log_data in &data {
-            stmt.execute(params![
-                &log_data.start_date,
-                &log_data.end_date,
-                &log_data.status,
-                &log_data.minutes_played,
-                &log_data.notes,
-                &log_data.game_id,
-            ])?;
+            sqlx::query("INSERT INTO logs (start_date, end_date, status, minutes_played, notes, game_id) VALUES (?, ?, ?, ?, ?, ?)")
+                .bind(&log_data.start_date)
+                .bind(&log_data.end_date)
+                .bind(&log_data.status)
+                .bind(&log_data.minutes_played)
+                .bind(&log_data.notes)
+                .bind(&log_data.game_id)
+                .execute(&state.logs_pool).await?;
             let mut games_imported_lock = games_imported.write().unwrap();
             *games_imported_lock += 1;
         }
     }
-    logs_transaction.commit()?;
+    logs_transaction.commit().await?;
     {
         let (import_finished_lock, cvar) = &*import_finished;
         let mut import_finished_lock = import_finished_lock.lock().unwrap();

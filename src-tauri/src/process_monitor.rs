@@ -1,10 +1,13 @@
+use sqlx::sqlite::SqliteConnectOptions;
+use sqlx::SqlitePool;
 use sysinfo::{Pid, System};
 use tauri::{Emitter, Manager};
 use tauri_plugin_notification::{NotificationExt, PermissionState};
 
-use crate::database::get_executable_details;
-use crate::{helpers, Error};
+use crate::db::logs::get_executable_details;
+use crate::Error;
 
+use std::str::FromStr;
 use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Debug)]
@@ -57,11 +60,21 @@ impl ProcessMonitor {
         }
     }
 
-    pub fn monitor_processes(
+    pub async fn monitor_processes(
         &mut self,
         paths_to_monitor: Vec<PathBuf>,
         app: &tauri::AppHandle,
     ) -> Result<(), Error> {
+        let db_path = std::path::Path::new("sqlite:").join(app.path().app_data_dir()?.as_path()).join("logs.db?mode=rwc");
+        let db_url = match db_path.to_str() {
+            Some(url) => url,
+            None => return Err(Error::from("Could not convert database path to string"))
+        };
+        let logs_pool = SqlitePool::connect_with(
+            SqliteConnectOptions::from_str(db_url)?
+                .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal),
+        )
+        .await?;
         let mut running_processes = get_running_processes()?;
         if !paths_to_monitor.is_empty() {
             running_processes = filter_process_map(running_processes, paths_to_monitor);
@@ -72,9 +85,7 @@ impl ProcessMonitor {
                 if minutes_played < 1 {
                     continue;
                 }
-                let data_dir = helpers::get_app_data_directory(app)?;
-                let conn = rusqlite::Connection::open(data_dir.join("logs.db"))?;
-                match get_executable_details(&conn, &process.name) {
+                match get_executable_details(&logs_pool, &process.name).await {
                     Ok(details) => {
                         app.emit(
                             "game-stopped",
@@ -87,7 +98,7 @@ impl ProcessMonitor {
                         )?;
                     }
                     Err(e) => match e {
-                        Error::Rusqlite(rusqlite::Error::QueryReturnedNoRows) => {
+                        Error::Sqlx(sqlx::Error::RowNotFound) => {
                             app.emit(
                                 "game-stopped",
                                 &GameStoppedPayload {
@@ -98,7 +109,7 @@ impl ProcessMonitor {
                                 },
                             )?;
                         }
-                        _ => return Err(e.into()),
+                        _ => return Err(e),
                     },
                 };
                 match app.get_webview_window("main") {
@@ -147,9 +158,8 @@ pub fn get_running_processes() -> Result<ProcessMap, Error> {
 }
 
 pub fn filter_process_map(process_map: ProcessMap, paths: Vec<PathBuf>) -> ProcessMap {
-    let filtered_map = process_map
+    process_map
         .into_iter()
         .filter(|(path, _)| paths.contains(path))
-        .collect();
-    filtered_map
+        .collect()
 }
