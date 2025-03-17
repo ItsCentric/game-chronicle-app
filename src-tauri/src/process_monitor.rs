@@ -4,7 +4,7 @@ use sysinfo::{Pid, System};
 use tauri::{Emitter, Manager};
 use tauri_plugin_notification::{NotificationExt, PermissionState};
 
-use crate::database::get_executable_details;
+use crate::db::logs::get_executable_details;
 use crate::Error;
 
 use std::str::FromStr;

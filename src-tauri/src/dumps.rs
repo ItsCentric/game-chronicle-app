@@ -10,7 +10,7 @@ use tauri::{Emitter, State};
 
 use crate::{
     helpers::get_app_data_directory,
-    igdb::{Cover, Game, Platform, PopularityPrimitive, Website},
+    db::igdb::{Cover, Game, Platform, PopularityPrimitive, Website},
     DatabasePools, Error,
 };
 

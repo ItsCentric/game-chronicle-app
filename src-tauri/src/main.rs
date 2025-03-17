@@ -22,11 +22,9 @@ use tauri::{
 };
 
 mod data_import;
-mod database;
 mod db;
 mod dumps;
 mod helpers;
-mod igdb;
 mod process_monitor;
 
 #[derive(Debug, thiserror::Error)]
@@ -237,19 +235,19 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            database::get_dashboard_statistics,
-            igdb::get_games_by_id,
-            database::get_recent_logs,
-            database::get_logs,
+            db::logs::get_dashboard_statistics,
+            db::igdb::get_games_by_id,
+            db::logs::get_recent_logs,
+            db::logs::get_logs,
             helpers::get_user_settings,
             helpers::save_user_settings,
-            database::delete_log,
-            database::get_log_by_id,
-            database::add_log,
-            database::update_log,
-            database::add_executable_details,
-            igdb::get_popular_games,
-            igdb::search_game,
+            db::logs::delete_log,
+            db::logs::get_log_by_id,
+            db::logs::add_log,
+            db::logs::update_log,
+            db::logs::add_executable_details,
+            db::igdb::get_popular_games,
+            db::igdb::search_game,
             data_import::get_steam_data,
             data_import::import_igdb_games,
             dumps::get_local_dump_versions,
