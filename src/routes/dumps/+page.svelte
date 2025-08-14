@@ -1,63 +1,34 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		downloadDumps,
-		getAllDumpInfo,
-		getLocalDumpVersions,
-		importDumps,
-		saveLocalDumpVersions,
-		type DumpVersions
-	} from '$lib/rust-bindings/dumps';
+	import { importIgdbDumps } from '$lib/rust-bindings/dumps';
 	import { checkedForDumpUpdate } from '$lib/stores';
 	import { LoaderCircle } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
-	import { BaseDirectory, exists, mkdir, remove } from '@tauri-apps/plugin-fs';
-	import { tempDir } from '@tauri-apps/api/path';
-	import { once } from '@tauri-apps/api/event';
+	import { listen } from '@tauri-apps/api/event';
 
 	let importFailed = false;
 	let importing = false;
 
-	onMount(async () => {
-		try {
-			if (!(await exists('game-chronicle', { baseDir: BaseDirectory.Temp }))) {
-				await mkdir('game-chronicle', { baseDir: BaseDirectory.Temp });
+	type ImportProgressPayload = {
+		step: 'Download' | 'Import';
+		status: 'Started' | 'Completed';
+	};
+
+	onMount(() => {
+		const unlisten = listen<ImportProgressPayload>('import_progress', async (event) => {
+			const { payload } = event;
+			if (payload.step === 'Import' && payload.status === 'Started') importing = true;
+			else if (payload.step === 'Import' && payload.status === 'Completed') {
+				$checkedForDumpUpdate = true;
+				await goto('/');
 			}
-			const localDumpVersions = await getLocalDumpVersions();
-			const allDumpsInfo = await getAllDumpInfo();
-			const urlsToDownload = [];
-			const dumpVersions: DumpVersions = {
-				games: '',
-				websites: '',
-				platforms: '',
-				covers: '',
-				popularity_primitives: ''
-			};
-			for (const dumpInfo of allDumpsInfo) {
-				const localDumpVersion = localDumpVersions[dumpInfo.name];
-				if (localDumpVersion !== dumpInfo.version) {
-					urlsToDownload.push(dumpInfo.url);
-				}
-				dumpVersions[dumpInfo.name] = dumpInfo.version;
-			}
-			$checkedForDumpUpdate = true;
-			if (urlsToDownload.length === 0) {
-				goto('/');
-				return;
-			}
-			importing = true;
-			const directory = (await tempDir()).concat('/game-chronicle');
-			await downloadDumps(allDumpsInfo, directory);
-			await importDumps(directory);
-			await once('import_finished', async () => {
-				await saveLocalDumpVersions(dumpVersions);
-				await remove(directory, { baseDir: BaseDirectory.Temp, recursive: true });
-				goto('/');
-			});
-		} catch (e) {
-			console.error(e);
+		});
+		importIgdbDumps().catch((e) => {
+			console.error(JSON.stringify(e));
 			importFailed = true;
-		}
+		});
+
+		return () => unlisten.then((f) => f());
 	});
 </script>
 

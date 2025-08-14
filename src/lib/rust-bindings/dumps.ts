@@ -38,3 +38,7 @@ export async function downloadDumps(dumpInfo: DumpInfo[], toDirectory: string) {
 export async function importDumps(fromDirectory: string) {
 	await invoke('import_dumps', { fromDirectory });
 }
+
+export async function importIgdbDumps() {
+	await invoke('import_igdb_dumps');
+}

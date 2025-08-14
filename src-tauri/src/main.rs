@@ -250,11 +250,7 @@ fn main() {
             db::igdb::search_game,
             data_import::get_steam_data,
             data_import::import_igdb_games,
-            dumps::get_local_dump_versions,
-            dumps::save_local_dump_versions,
-            dumps::get_all_dump_info,
-            dumps::import_dumps,
-            dumps::download_dumps,
+            dumps::import_igdb_dumps,
         ]);
     #[cfg(debug_assertions)]
     {
