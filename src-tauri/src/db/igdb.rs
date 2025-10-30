@@ -107,8 +107,8 @@ pub async fn get_games_by_id(
     if game_ids.is_empty() {
         return Ok(vec![]);
     }
-    let query = format!(
-        "SELECT {} WHERE g.id IN ({}) AND g.category IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;",
+    let query = /*format!(
+        "SELECT {} WHERE g.id IN ({}) AND g.category IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;", fix g.category - breaking api change */ format!("SELECT {} WHERE g.id IN ({}) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;", 
         game_info_columns(), game_ids
             .iter()
             .map(|id| id.to_string())

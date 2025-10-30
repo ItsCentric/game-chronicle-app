@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use csv::ReaderBuilder;
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::SqlitePool;
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Cursor};
 use std::fs;
 use std::path::Path;
 use std::str::FromStr;
@@ -25,22 +25,25 @@ pub struct ImportError {
     pub code: Option<String>,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, Clone)]
 pub enum ImportStep {
     Download,
     Import,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, Clone)]
 pub enum ImportStatus {
     Started,
+    Progress,
     Completed,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, Clone)]
 pub struct ImportProgressPayload {
     pub step: ImportStep,
     pub status: ImportStatus,
+    pub progress: Option<usize>, // total items processed
+    pub total: Option<usize>,  // total items to process
 }
 
 impl From<anyhow::Error> for ImportError {
@@ -213,16 +216,22 @@ pub struct IgdbImporter {
     dumps: Vec<DumpConfig>,
     base_url: String,
     download_dir: String,
+    app_handle: AppHandle,
 }
 
 impl IgdbImporter {
     /// Create a new importer with database connection
-    pub async fn new(pool: SqlitePool, download_dir: String) -> Result<Self> {
+    pub async fn new(
+        pool: SqlitePool,
+        download_dir: String,
+        app_handle: AppHandle,
+    ) -> Result<Self> {
         Ok(Self {
             pool,
             dumps: Vec::new(),
             base_url: "https://api.gamechronicle.app/csv".to_string(),
             download_dir,
+            app_handle,
         })
     }
 
@@ -304,7 +313,16 @@ impl IgdbImporter {
 
         while let Some(result) = join_set.join_next().await {
             match result {
-                Ok(Ok(())) => continue,
+                Ok(Ok(())) => 
+                    self.app_handle.emit(
+                        "import_progress",
+                        ImportProgressPayload {
+                            step: ImportStep::Download,
+                            status: ImportStatus::Progress,
+                            progress: Some(1), // Increment progress for each successful download
+                            total: None,
+                        },
+                    )?,
                 Ok(Err(e)) => return Err(e),
                 Err(join_err) => return Err(anyhow::anyhow!(join_err)),
             }
@@ -339,6 +357,8 @@ impl IgdbImporter {
             &ImportProgressPayload {
                 step: ImportStep::Download,
                 status: ImportStatus::Started,
+                progress: None,
+                total: Some(self.dumps.len()),
             },
         )?;
         self.download_dumps().await?;
@@ -347,6 +367,8 @@ impl IgdbImporter {
             &ImportProgressPayload {
                 step: ImportStep::Download,
                 status: ImportStatus::Completed,
+                progress: None,
+                total: None,
             },
         )?;
         app_handle.emit(
@@ -354,6 +376,8 @@ impl IgdbImporter {
             &ImportProgressPayload {
                 step: ImportStep::Import,
                 status: ImportStatus::Started,
+                progress: None,
+                total: None,
             },
         )?;
         self.import_dumps().await?;
@@ -362,6 +386,8 @@ impl IgdbImporter {
             &ImportProgressPayload {
                 step: ImportStep::Import,
                 status: ImportStatus::Completed,
+                progress: None,
+                total: None,
             },
         )?;
         Ok(())
@@ -420,7 +446,7 @@ impl IgdbImporter {
         let content = fs::read_to_string(file_path)?;
         let mut reader = ReaderBuilder::new()
             .buffer_capacity(8 * 1024 * 1024)
-            .from_reader(content.as_bytes()); // 8MB buffer for large files
+            .from_reader(Cursor::new(content.as_bytes())); // 8MB buffer for large files
 
         let headers = reader.headers()?.clone();
 
@@ -497,7 +523,10 @@ impl IgdbImporter {
         let content = fs::read_to_string(file_path)?;
         let mut reader = ReaderBuilder::new()
             .buffer_capacity(8 * 1024 * 1024)
-            .from_reader(content.as_bytes());
+            .from_reader(Cursor::new(content.as_bytes()));
+        let beginning_pos = reader.position().clone();
+        let total_records = reader.records().count();
+        reader.records().reader_mut().seek(beginning_pos)?;
         let headers = reader.headers()?.clone();
 
         // Find column indices
@@ -543,10 +572,21 @@ impl IgdbImporter {
                     )
                     .await?;
                     imported_count += batch_values.len();
+                self.app_handle.emit(
+                    "import_progress",
+                    ImportProgressPayload {
+                        step: ImportStep::Import,
+                        status: ImportStatus::Progress,
+                        progress: Some(imported_count),
+                        total: Some(total_records * 10), // Estimate 20 relations per record
+                    },
+                )?;
                     println!(
-                        "Inserted {} relationships into for {}",
+                        "Inserted {} relationships into for {} ({} out of {})",
                         batch_values.len(),
-                        config.endpoint
+                        config.endpoint,
+                        imported_count,
+                        total_records * 5
                     );
                     batch_values.clear();
                 }
@@ -679,7 +719,7 @@ impl IgdbImporter {
         config: &DumpConfig,
         fields: &[FieldConfig],
         field_indices: &[usize],
-        mut reader: csv::Reader<&[u8]>,
+        mut reader: csv::Reader<Cursor<&[u8]>>,
     ) -> Result<()> {
         let table_name = config.get_table_name();
 
@@ -693,6 +733,9 @@ impl IgdbImporter {
         let mut batch_values = Vec::with_capacity(BATCH_SIZE);
         let mut imported_count = 0;
         let single_row_placeholders = format!("({})", vec!["?"; fields.len()].join(","));
+        let beginning_pos = reader.position().clone();
+        let total_records = reader.records().count();
+        reader.records().reader_mut().seek(beginning_pos)?;
 
         for result in reader.records() {
             let record = result?;
@@ -715,6 +758,15 @@ impl IgdbImporter {
                 )
                 .await?;
                 imported_count += batch_values.len();
+                self.app_handle.emit(
+                    "import_progress",
+                    ImportProgressPayload {
+                        step: ImportStep::Import,
+                        status: ImportStatus::Progress,
+                        progress: Some(imported_count),
+                        total: Some(total_records),
+                    },
+                )?;
                 println!(
                     "Batch inserted {} records into {} ({} total records)",
                     batch_values.len(),
@@ -826,6 +878,7 @@ pub async fn import_igdb_dumps(app_handle: AppHandle) -> Result<(), ImportError>
             .context("Could not get temp directory for dumps")?
             .to_string_lossy()
             .to_string(),
+        app_handle.clone(),
     )
     .await
     .context("Failed to create IGDB importer")?;
