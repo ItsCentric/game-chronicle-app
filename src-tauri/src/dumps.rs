@@ -893,7 +893,7 @@ pub async fn import_igdb_dumps(app_handle: AppHandle) -> Result<(), ImportError>
                 "id".as_field(),
                 "name".as_field(),
                 "cover".aliased_as("cover_id"),
-                "category".as_field(),
+                "game_type".as_field(),
                 "version_parent".as_field(),
                 "total_rating".as_field(),
             ],
@@ -902,6 +902,7 @@ pub async fn import_igdb_dumps(app_handle: AppHandle) -> Result<(), ImportError>
             "popularity_primitives",
             ["id", "game_id", "popularity_type", "value"],
         )
+        .add_dump("game_types", ["id", "type"])
         .add_embedded_relationship(
             "games",
             "id",

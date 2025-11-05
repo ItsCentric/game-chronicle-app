@@ -7,7 +7,7 @@ export const gameInfoSchema = z.object({
 	cover_image_id: z.string().optional().nullable(),
 	websites: z.array(z.string()).optional().nullable(),
 	similar_games: z.array(z.number()).optional().nullable(),
-	category: z.number(),
+	game_type: z.number(),
 	version_parent: z.number().optional().nullable(),
 	total_rating: z.number().optional().nullable()
 });
