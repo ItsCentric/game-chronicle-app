@@ -3,10 +3,10 @@ use anyhow::{Context, Result};
 use csv::ReaderBuilder;
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::SqlitePool;
-use std::{collections::HashMap, io::Cursor};
 use std::fs;
 use std::path::Path;
 use std::str::FromStr;
+use std::{collections::HashMap, io::Cursor};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::helpers::create_dir_if_not_exists;
@@ -43,7 +43,7 @@ pub struct ImportProgressPayload {
     pub step: ImportStep,
     pub status: ImportStatus,
     pub progress: Option<usize>, // total items processed
-    pub total: Option<usize>,  // total items to process
+    pub total: Option<usize>,    // total items to process
 }
 
 impl From<anyhow::Error> for ImportError {
@@ -313,16 +313,15 @@ impl IgdbImporter {
 
         while let Some(result) = join_set.join_next().await {
             match result {
-                Ok(Ok(())) => 
-                    self.app_handle.emit(
-                        "import_progress",
-                        ImportProgressPayload {
-                            step: ImportStep::Download,
-                            status: ImportStatus::Progress,
-                            progress: Some(1), // Increment progress for each successful download
-                            total: None,
-                        },
-                    )?,
+                Ok(Ok(())) => self.app_handle.emit(
+                    "import_progress",
+                    ImportProgressPayload {
+                        step: ImportStep::Download,
+                        status: ImportStatus::Progress,
+                        progress: Some(1), // Increment progress for each successful download
+                        total: None,
+                    },
+                )?,
                 Ok(Err(e)) => return Err(e),
                 Err(join_err) => return Err(anyhow::anyhow!(join_err)),
             }
@@ -572,15 +571,15 @@ impl IgdbImporter {
                     )
                     .await?;
                     imported_count += batch_values.len();
-                self.app_handle.emit(
-                    "import_progress",
-                    ImportProgressPayload {
-                        step: ImportStep::Import,
-                        status: ImportStatus::Progress,
-                        progress: Some(imported_count),
-                        total: Some(total_records * 10), // Estimate 20 relations per record
-                    },
-                )?;
+                    self.app_handle.emit(
+                        "import_progress",
+                        ImportProgressPayload {
+                            step: ImportStep::Import,
+                            status: ImportStatus::Progress,
+                            progress: Some(imported_count),
+                            total: Some(total_records * 10), // Estimate 20 relations per record
+                        },
+                    )?;
                     println!(
                         "Inserted {} relationships into for {} ({} out of {})",
                         batch_values.len(),

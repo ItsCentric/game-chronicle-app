@@ -1,6 +1,9 @@
 use std::{path::Path, str::FromStr};
 
-use sqlx::{migrate::MigrateDatabase, sqlite::SqliteConnectOptions, Sqlite, SqlitePool, sqlite::SqliteRow, Row};
+use sqlx::{
+    migrate::MigrateDatabase, sqlite::SqliteConnectOptions, sqlite::SqliteRow, Row, Sqlite,
+    SqlitePool,
+};
 
 use crate::{DatabasePools, Error};
 
@@ -68,14 +71,15 @@ pub async fn init_igdb_db(dir: &Path) -> Result<IgdbDb, Error> {
     let db_path = Path::new("sqlite:").join(dir).join("igdb.db?mode=rwc");
     let db_url = match db_path.to_str() {
         Some(url) => url,
-        None => return Err(Error::from("Could not convert database path to string"))
+        None => return Err(Error::from("Could not convert database path to string")),
     };
     if !Sqlite::database_exists(db_url).await? {
         Sqlite::create_database(db_url).await?;
     }
     let pool = SqlitePool::connect_with(
         SqliteConnectOptions::from_str(db_url)?.journal_mode(sqlx::sqlite::SqliteJournalMode::Wal),
-    ).await?;
+    )
+    .await?;
 
     sqlx::migrate!("migrations/igdb").run(&pool).await?;
 
@@ -91,8 +95,12 @@ fn row_to_game_info(row: SqliteRow) -> GameInfo {
         id: row.get("id"),
         title: row.get("name"),
         cover_image_id: row.get("image_id"),
-        websites: row.get::<Option<String>, _>("websites").map(|s| s.split(',').map(String::from).collect()),
-        similar_games: row.get::<Option<String>, _>("similar_game_ids").map(|s| s.split(',').filter_map(|x| x.parse::<i32>().ok()).collect()),
+        websites: row
+            .get::<Option<String>, _>("websites")
+            .map(|s| s.split(',').map(String::from).collect()),
+        similar_games: row
+            .get::<Option<String>, _>("similar_game_ids")
+            .map(|s| s.split(',').filter_map(|x| x.parse::<i32>().ok()).collect()),
         game_type: row.get("game_type"),
         version_parent: row.get("version_parent"),
         total_rating: row.get("total_rating"),
@@ -115,7 +123,10 @@ pub async fn get_games_by_id(
             .collect::<Vec<String>>()
             .join(",")
     );
-    let games: Vec<GameInfo> = sqlx::query(&query).map(row_to_game_info).fetch_all(&state.igdb_pool).await?;
+    let games: Vec<GameInfo> = sqlx::query(&query)
+        .map(row_to_game_info)
+        .fetch_all(&state.igdb_pool)
+        .await?;
     Ok(games)
 }
 

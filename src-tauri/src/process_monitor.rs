@@ -65,10 +65,12 @@ impl ProcessMonitor {
         paths_to_monitor: Vec<PathBuf>,
         app: &tauri::AppHandle,
     ) -> Result<(), Error> {
-        let db_path = std::path::Path::new("sqlite:").join(app.path().app_data_dir()?.as_path()).join("logs.db?mode=rwc");
+        let db_path = std::path::Path::new("sqlite:")
+            .join(app.path().app_data_dir()?.as_path())
+            .join("logs.db?mode=rwc");
         let db_url = match db_path.to_str() {
             Some(url) => url,
-            None => return Err(Error::from("Could not convert database path to string"))
+            None => return Err(Error::from("Could not convert database path to string")),
         };
         let logs_pool = SqlitePool::connect_with(
             SqliteConnectOptions::from_str(db_url)?
