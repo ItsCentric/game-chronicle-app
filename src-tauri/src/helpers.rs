@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    fs,
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, fs, io::Read, path::Path};
 
 use tauri::Manager;
 
@@ -103,9 +98,4 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
             e => Err(e.into()),
         },
     }
-}
-
-pub fn get_app_data_directory(app_handle: &tauri::AppHandle) -> Result<PathBuf, Error> {
-    let dir = app_handle.path().data_dir()?;
-    Ok(dir.join("game-chronicle"))
 }

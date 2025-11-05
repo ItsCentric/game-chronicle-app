@@ -4,9 +4,7 @@ use sqlx::{migrate::MigrateDatabase, sqlite::SqliteConnectOptions, Sqlite, Sqlit
 
 use super::LogsDb;
 
-use crate::{
-    DatabasePools, Error,
-};
+use crate::{DatabasePools, Error};
 use tauri::State;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, sqlx::FromRow)]
@@ -60,7 +58,7 @@ pub struct LogUpdateData {
 
 pub async fn init_logs_db(dir: &Path) -> Result<LogsDb, sqlx::Error> {
     let path = Path::new("sqlite:").join(dir).join("logs.db?mode=rwc");
-    let db_url = match  path.to_str() {
+    let db_url = match path.to_str() {
         Some(url) => url,
         None => return Err(sqlx::Error::Configuration("Invalid database URL".into())),
     };
@@ -69,7 +67,8 @@ pub async fn init_logs_db(dir: &Path) -> Result<LogsDb, sqlx::Error> {
     }
     let pool = SqlitePool::connect_with(
         SqliteConnectOptions::from_str(db_url)?.journal_mode(sqlx::sqlite::SqliteJournalMode::Wal),
-    ).await?;
+    )
+    .await?;
     sqlx::migrate!("migrations/logs").run(&pool).await?;
 
     Ok(pool)
@@ -83,7 +82,8 @@ pub async fn get_executable_details(
         "SELECT executable_name, game_id FROM executable_details WHERE executable_name = $1",
     )
     .bind(executable_name)
-    .fetch_one(logs_pool).await?;
+    .fetch_one(logs_pool)
+    .await?;
     Ok(executable)
 }
 
@@ -94,7 +94,13 @@ pub async fn get_dashboard_statistics(
     end_date: String,
 ) -> Result<DashboardStatistics, Error> {
     let this_minutes_and_games_played: (i32, i32) = sqlx::query_as("SELECT COALESCE(SUM(total_minutes_played), 0), COUNT(*) FROM ( SELECT COALESCE(SUM(minutes_played), 0) AS total_minutes_played FROM logs WHERE (end_date BETWEEN $1 AND $2) AND status != 'wishlist' GROUP BY game_id ) AS subquery;").bind(start_date.clone()).bind(end_date.clone()).fetch_one(&state.logs_pool).await?;
-    let completed_games: i32 = sqlx::query_scalar("SELECT COUNT(*) FROM logs WHERE (end_date BETWEEN $1 AND $2) AND status = 'completed'").bind(start_date).bind(end_date).fetch_one(&state.logs_pool).await?;
+    let completed_games: i32 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM logs WHERE (end_date BETWEEN $1 AND $2) AND status = 'completed'",
+    )
+    .bind(start_date)
+    .bind(end_date)
+    .fetch_one(&state.logs_pool)
+    .await?;
     Ok(DashboardStatistics {
         total_minutes_played: this_minutes_and_games_played.0,
         total_games_played: this_minutes_and_games_played.1,
@@ -139,7 +145,10 @@ pub async fn get_logs(
 
 #[tauri::command]
 pub async fn delete_log(state: State<'_, DatabasePools>, id: i32) -> Result<i32, Error> {
-    sqlx::query("DELETE FROM logs WHERE id = $1").bind(id).execute(&state.logs_pool).await?;
+    sqlx::query("DELETE FROM logs WHERE id = $1")
+        .bind(id)
+        .execute(&state.logs_pool)
+        .await?;
     Ok(id)
 }
 

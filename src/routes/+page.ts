@@ -6,7 +6,7 @@ import { redirect } from '@sveltejs/kit';
 import { check } from '@tauri-apps/plugin-updater';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getAllWindows } from '@tauri-apps/api/window';
-import { checkedForDumpUpdate as checkedForDumpUpdateStore } from '$lib/stores';
+import { load as loadStore } from '@tauri-apps/plugin-store';
 
 export const load = async () => {
 	if (typeof window === 'undefined') {
@@ -52,14 +52,12 @@ export const load = async () => {
 			similarGames: []
 		};
 	}
-	let checkedForDumpUpdate = false;
-	const unsubscribe = checkedForDumpUpdateStore.subscribe((value) => {
-		checkedForDumpUpdate = value;
-	});
-	if (!checkedForDumpUpdate) {
+	const store = await loadStore('persistent.json');
+	const DAY_IN_MS = 24 * 60 * 60 * 1000;
+	const lastDumpUpdate = (await store.get<number>('lastDumpUpdate')) ?? Date.now() - DAY_IN_MS;
+	if (Date.now() - lastDumpUpdate >= DAY_IN_MS) {
 		throw redirect(301, '/dumps');
 	}
-	unsubscribe();
 	const settings = await getUserSettings();
 	if (settings.new) {
 		throw redirect(301, '/onboarding');

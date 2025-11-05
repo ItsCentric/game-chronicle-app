@@ -1,82 +1,80 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		downloadDumps,
-		getAllDumpInfo,
-		getLocalDumpVersions,
-		importDumps,
-		saveLocalDumpVersions,
-		type DumpVersions
-	} from '$lib/rust-bindings/dumps';
-	import { checkedForDumpUpdate } from '$lib/stores';
-	import { LoaderCircle } from 'lucide-svelte';
+	import { importIgdbDumps } from '$lib/rust-bindings/dumps';
 	import { goto } from '$app/navigation';
-	import { BaseDirectory, exists, mkdir, remove } from '@tauri-apps/plugin-fs';
-	import { tempDir } from '@tauri-apps/api/path';
-	import { once } from '@tauri-apps/api/event';
+	import { listen } from '@tauri-apps/api/event';
+	import { Progress } from '$lib/components/ui/progress';
+	import { load } from '@tauri-apps/plugin-store';
 
 	let importFailed = false;
 	let importing = false;
+	let progress = 0;
+	let total = 0;
 
-	onMount(async () => {
-		try {
-			if (!(await exists('game-chronicle', { baseDir: BaseDirectory.Temp }))) {
-				await mkdir('game-chronicle', { baseDir: BaseDirectory.Temp });
-			}
-			const localDumpVersions = await getLocalDumpVersions();
-			const allDumpsInfo = await getAllDumpInfo();
-			const urlsToDownload = [];
-			const dumpVersions: DumpVersions = {
-				games: '',
-				websites: '',
-				platforms: '',
-				covers: '',
-				popularity_primitives: ''
-			};
-			for (const dumpInfo of allDumpsInfo) {
-				const localDumpVersion = localDumpVersions[dumpInfo.name];
-				if (localDumpVersion !== dumpInfo.version) {
-					urlsToDownload.push(dumpInfo.url);
-				}
-				dumpVersions[dumpInfo.name] = dumpInfo.version;
-			}
-			$checkedForDumpUpdate = true;
-			if (urlsToDownload.length === 0) {
-				goto('/');
-				return;
-			}
-			importing = true;
-			const directory = (await tempDir()).concat('/game-chronicle');
-			await downloadDumps(allDumpsInfo, directory);
-			await importDumps(directory);
-			await once('import_finished', async () => {
-				await saveLocalDumpVersions(dumpVersions);
-				await remove(directory, { baseDir: BaseDirectory.Temp, recursive: true });
-				goto('/');
-			});
-		} catch (e) {
-			console.error(e);
-			importFailed = true;
+	type ImportProgressPayload = {
+		step: 'Download' | 'Import';
+		status: 'Started' | 'Progress' | 'Completed';
+		progress?: number;
+		total?: number;
+	};
+
+	async function handleStarted(payload: ImportProgressPayload) {
+		const store = await load('persistent.json');
+		store.set('lastDumpUpdate', Date.now());
+		if (payload.step === 'Import') importing = true;
+		progress = 0;
+		total = payload.total || 0;
+	}
+
+	function handleProgress(payload: ImportProgressPayload) {
+		if (payload.step === 'Import' && (payload.progress ?? 0) % 9000 === 0) {
+			progress = payload.progress ?? 0;
+		} else if (payload.step === 'Download') {
+			progress += payload.progress ?? 0;
 		}
+		if (payload.total) total = payload.total;
+	}
+
+	async function handleCompleted(payload: ImportProgressPayload) {
+		if (payload.step === 'Import') {
+			await goto('/');
+		}
+	}
+
+	onMount(() => {
+		const unlisten = listen<ImportProgressPayload>('import_progress', async (event) => {
+			const { payload } = event;
+			switch (payload.status) {
+				case 'Started':
+					await handleStarted(payload);
+					break;
+				case 'Progress':
+					handleProgress(payload);
+					break;
+				case 'Completed':
+					await handleCompleted(payload);
+					break;
+			}
+		});
+		importIgdbDumps().catch((e) => {
+			console.error(JSON.stringify(e));
+			importFailed = true;
+		});
+
+		return () => unlisten.then((f) => f());
 	});
 </script>
 
 <main class="flex flex-col gap-2 justify-center items-center h-full">
 	{#if !importFailed}
 		{#if !importing}
-			<h1 class="text-xl">Checking for new titles...</h1>
+			<h1 class="text-xl">Downloading data</h1>
 		{:else}
 			<h1 class="text-xl">Importing new titles...</h1>
 		{/if}
-		<LoaderCircle size={32} class="animate-spin w-16" />
+		<Progress value={progress} max={total} class="max-w-xl" />
 	{:else}
 		<h1 class="text-xl">Failed to import new titles</h1>
-		<button
-			class="btn"
-			on:click={() => {
-				$checkedForDumpUpdate = true;
-				goto('/');
-			}}>Go back</button
-		>
+		<button class="btn" on:click={() => goto('/')}>Go back</button>
 	{/if}
 </main>

@@ -1,6 +1,9 @@
 use std::{path::Path, str::FromStr};
 
-use sqlx::{migrate::MigrateDatabase, sqlite::SqliteConnectOptions, Sqlite, SqlitePool, sqlite::SqliteRow, Row};
+use sqlx::{
+    migrate::MigrateDatabase, sqlite::SqliteConnectOptions, sqlite::SqliteRow, Row, Sqlite,
+    SqlitePool,
+};
 
 use crate::{DatabasePools, Error};
 
@@ -15,7 +18,7 @@ pub struct Game {
     pub cover_id: Option<i32>,
     pub website_ids: Option<Vec<i32>>,
     pub similar_games: Option<Vec<i32>>,
-    pub category: i32,
+    pub game_type: i32,
     pub version_parent: Option<i32>,
     pub total_rating: Option<f32>,
     pub platform_ids: Option<Vec<i32>>,
@@ -51,7 +54,7 @@ pub struct GameInfo {
     pub websites: Option<Vec<String>>,
     #[sqlx(json)]
     pub similar_games: Option<Vec<i32>>,
-    pub category: i32,
+    pub game_type: i32,
     pub version_parent: Option<i32>,
     pub total_rating: Option<f32>,
 }
@@ -68,14 +71,15 @@ pub async fn init_igdb_db(dir: &Path) -> Result<IgdbDb, Error> {
     let db_path = Path::new("sqlite:").join(dir).join("igdb.db?mode=rwc");
     let db_url = match db_path.to_str() {
         Some(url) => url,
-        None => return Err(Error::from("Could not convert database path to string"))
+        None => return Err(Error::from("Could not convert database path to string")),
     };
     if !Sqlite::database_exists(db_url).await? {
         Sqlite::create_database(db_url).await?;
     }
     let pool = SqlitePool::connect_with(
         SqliteConnectOptions::from_str(db_url)?.journal_mode(sqlx::sqlite::SqliteJournalMode::Wal),
-    ).await?;
+    )
+    .await?;
 
     sqlx::migrate!("migrations/igdb").run(&pool).await?;
 
@@ -83,7 +87,7 @@ pub async fn init_igdb_db(dir: &Path) -> Result<IgdbDb, Error> {
 }
 
 fn game_info_columns() -> &'static str {
-    "g.id, g.name, c.image_id, GROUP_CONCAT(w.url, ',') websites, GROUP_CONCAT(sg.similar_game_id, ',') similar_game_ids, g.category, g.version_parent, total_rating FROM games g LEFT JOIN covers c ON g.cover_id = c.id LEFT JOIN game_websites gw ON g.id = gw.game_id LEFT JOIN websites w ON gw.website_id = w.id LEFT JOIN similar_games sg ON sg.game_id = g.id LEFT JOIN game_platforms gp ON g.id = gp.game_id LEFT JOIN platforms p ON p.id = gp.platform_id LEFT JOIN popularity_primitives pp ON g.id = pp.game_id"
+    "g.id, g.name, c.image_id, GROUP_CONCAT(w.url, ',') websites, GROUP_CONCAT(sg.similar_game_id, ',') similar_game_ids, g.game_type, g.version_parent, total_rating FROM games g LEFT JOIN covers c ON g.cover_id = c.id LEFT JOIN game_websites gw ON g.id = gw.game_id LEFT JOIN websites w ON gw.website_id = w.id LEFT JOIN similar_games sg ON sg.game_id = g.id LEFT JOIN game_platforms gp ON g.id = gp.game_id LEFT JOIN platforms p ON p.id = gp.platform_id LEFT JOIN popularity_primitives pp ON g.id = pp.game_id"
 }
 
 fn row_to_game_info(row: SqliteRow) -> GameInfo {
@@ -91,9 +95,13 @@ fn row_to_game_info(row: SqliteRow) -> GameInfo {
         id: row.get("id"),
         title: row.get("name"),
         cover_image_id: row.get("image_id"),
-        websites: row.get::<Option<String>, _>("websites").map(|s| s.split(',').map(String::from).collect()),
-        similar_games: row.get::<Option<String>, _>("similar_game_ids").map(|s| s.split(',').filter_map(|x| x.parse::<i32>().ok()).collect()),
-        category: row.get("category"),
+        websites: row
+            .get::<Option<String>, _>("websites")
+            .map(|s| s.split(',').map(String::from).collect()),
+        similar_games: row
+            .get::<Option<String>, _>("similar_game_ids")
+            .map(|s| s.split(',').filter_map(|x| x.parse::<i32>().ok()).collect()),
+        game_type: row.get("game_type"),
         version_parent: row.get("version_parent"),
         total_rating: row.get("total_rating"),
     }
@@ -108,14 +116,17 @@ pub async fn get_games_by_id(
         return Ok(vec![]);
     }
     let query = format!(
-        "SELECT {} WHERE g.id IN ({}) AND g.category IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;",
+        "SELECT {} WHERE g.id IN ({}) AND g.game_type IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;", 
         game_info_columns(), game_ids
             .iter()
             .map(|id| id.to_string())
             .collect::<Vec<String>>()
             .join(",")
     );
-    let games: Vec<GameInfo> = sqlx::query(&query).map(row_to_game_info).fetch_all(&state.igdb_pool).await?;
+    let games: Vec<GameInfo> = sqlx::query(&query)
+        .map(row_to_game_info)
+        .fetch_all(&state.igdb_pool)
+        .await?;
     Ok(games)
 }
 
@@ -124,7 +135,7 @@ pub async fn get_popular_games(
     state: State<'_, DatabasePools>,
     amount: i32,
 ) -> Result<Vec<GameInfo>, Error> {
-    let games: Vec<GameInfo> = sqlx::query(&format!("SELECT {} WHERE g.category IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id ORDER BY pp.value DESC LIMIT $1;", game_info_columns()).to_string()).bind(amount).map(row_to_game_info).fetch_all(&state.igdb_pool).await?;
+    let games: Vec<GameInfo> = sqlx::query(&format!("SELECT {} WHERE g.game_type IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id ORDER BY pp.value DESC LIMIT $1;", game_info_columns()).to_string()).bind(amount).map(row_to_game_info).fetch_all(&state.igdb_pool).await?;
     Ok(games)
 }
 
@@ -149,6 +160,6 @@ pub async fn get_games_from_links(
         .iter()
         .map(|l| format!("'{}'", l))
         .collect::<Vec<String>>();
-    let games: Vec<GameInfo> = sqlx::query(format!("SELECT {} WHERE w.url IN ({}) AND g.category IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;", game_info_columns(), formatted_links.join(",").as_str()).as_str()).map(row_to_game_info).fetch_all(&state.igdb_pool).await?;
+    let games: Vec<GameInfo> = sqlx::query(format!("SELECT {} WHERE w.url IN ({}) AND g.game_type IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;", game_info_columns(), formatted_links.join(",").as_str()).as_str()).map(row_to_game_info).fetch_all(&state.igdb_pool).await?;
     Ok(games)
 }

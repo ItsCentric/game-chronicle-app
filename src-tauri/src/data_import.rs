@@ -3,7 +3,7 @@ use std::{
     thread,
 };
 
-use crate::{db::logs::LogData, db::igdb::get_games_from_links, DatabasePools};
+use crate::{db::igdb::get_games_from_links, db::logs::LogData, DatabasePools};
 use chrono::{DateTime, Local};
 use reqwest::Client;
 use tauri::{Emitter, Manager, State};
