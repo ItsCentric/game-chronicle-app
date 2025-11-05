@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { importIgdbDumps } from '$lib/rust-bindings/dumps';
-	import { checkedForDumpUpdate } from '$lib/stores';
 	import { goto } from '$app/navigation';
 	import { listen } from '@tauri-apps/api/event';
 	import { Progress } from '$lib/components/ui/progress';
+	import { load } from '@tauri-apps/plugin-store';
 
 	let importFailed = false;
 	let importing = false;
@@ -18,7 +18,9 @@
 		total?: number;
 	};
 
-	function handleStarted(payload: ImportProgressPayload) {
+	async function handleStarted(payload: ImportProgressPayload) {
+		const store = await load('persistent.json');
+		store.set('lastDumpUpdate', Date.now());
 		if (payload.step === 'Import') importing = true;
 		progress = 0;
 		total = payload.total || 0;
@@ -35,7 +37,6 @@
 
 	async function handleCompleted(payload: ImportProgressPayload) {
 		if (payload.step === 'Import') {
-			$checkedForDumpUpdate = true;
 			await goto('/');
 		}
 	}
@@ -45,7 +46,7 @@
 			const { payload } = event;
 			switch (payload.status) {
 				case 'Started':
-					handleStarted(payload);
+					await handleStarted(payload);
 					break;
 				case 'Progress':
 					handleProgress(payload);
@@ -74,12 +75,6 @@
 		<Progress value={progress} max={total} class="max-w-xl" />
 	{:else}
 		<h1 class="text-xl">Failed to import new titles</h1>
-		<button
-			class="btn"
-			on:click={() => {
-				$checkedForDumpUpdate = true;
-				goto('/');
-			}}>Go back</button
-		>
+		<button class="btn" on:click={() => goto('/')}>Go back</button>
 	{/if}
 </main>

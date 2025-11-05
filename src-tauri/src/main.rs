@@ -101,6 +101,7 @@ fn main() {
     #[cfg(debug_assertions)]
     let devtools = tauri_plugin_devtools::init();
     let mut tauri_builder = tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_window_state::Builder::new().with_state_flags(StateFlags::all() & !StateFlags::VISIBLE).build())
         .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_fs::init())
