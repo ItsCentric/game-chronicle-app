@@ -36,10 +36,7 @@
 	let sortOrder: 'desc' | 'asc' = 'desc';
 	const queryClient = useQueryClient();
 	const deleteLogMutation = useMutation(deleteLog, {
-		onSuccess: (deletedLogId) => {
-			queryClient.invalidateQueries('logs');
-			$logsQuery.data = $logsQuery.data?.filter((log) => log.id !== deletedLogId) ?? [];
-		}
+		onSuccess: () => queryClient.invalidateQueries('logs')
 	});
 	const logsQuery = useQuery(
 		'logs',
