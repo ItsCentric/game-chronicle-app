@@ -890,11 +890,13 @@ pub async fn import_igdb_dumps(app_handle: AppHandle) -> Result<(), ImportError>
             "games",
             [
                 "id".as_field(),
-                "name".as_field(),
+                "name".aliased_as("title"),
+                "summary".aliased_as("description"),
                 "cover".aliased_as("cover_id"),
                 "game_type".as_field(),
                 "version_parent".as_field(),
                 "total_rating".as_field(),
+                "first_release_date".aliased_as("release_date"),
             ],
         )
         .add_dump(
@@ -902,6 +904,50 @@ pub async fn import_igdb_dumps(app_handle: AppHandle) -> Result<(), ImportError>
             ["id", "game_id", "popularity_type", "value"],
         )
         .add_dump("game_types", ["id", "type"])
+        .add_dump("companies", ["id", "name"])
+        .add_dump("genres", ["id", "name"])
+        .add_dump(
+            "involved_companies",
+            [
+                "id".as_field(),
+                "company".aliased_as("company_id"),
+                "developer".as_field(),
+                "publisher".as_field(),
+                "game".aliased_as("game_id"),
+            ],
+        )
+        .add_dump(
+            "game_time_to_beats",
+            [
+                "id",
+                "game_id",
+                "completely",
+                "normally",
+                "hastily",
+                "count",
+            ],
+        )
+        .add_dump(
+            "artworks",
+            [
+                "id".as_field(),
+                "game".aliased_as("game_id"),
+                "image_id".as_field(),
+            ],
+        )
+        .add_dump(
+            "screenshots",
+            [
+                "id".as_field(),
+                "game".aliased_as("game_id"),
+                "image_id".as_field(),
+            ],
+        )
+        .add_dump_config(DumpConfig::new("game_videos").table_name("videos").fields([
+            "id".as_field(),
+            "game".aliased_as("game_id"),
+            "video_id".as_field(),
+        ]))
         .add_embedded_relationship(
             "games",
             "id",
@@ -925,6 +971,14 @@ pub async fn import_igdb_dumps(app_handle: AppHandle) -> Result<(), ImportError>
             "similar_games",
             "game_id",
             "similar_game_id",
+        )
+        .add_embedded_relationship(
+            "games",
+            "id",
+            "genres",
+            "game_genres",
+            "game_id",
+            "genre_id",
         )
         .run(&app_handle)
         .await?;

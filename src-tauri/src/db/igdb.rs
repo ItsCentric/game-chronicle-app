@@ -12,19 +12,6 @@ use super::IgdbDb;
 use tauri::State;
 
 #[derive(serde::Serialize, Debug, serde::Deserialize)]
-pub struct Game {
-    pub id: i32,
-    pub name: String,
-    pub cover_id: Option<i32>,
-    pub website_ids: Option<Vec<i32>>,
-    pub similar_games: Option<Vec<i32>>,
-    pub game_type: i32,
-    pub version_parent: Option<i32>,
-    pub total_rating: Option<f32>,
-    pub platform_ids: Option<Vec<i32>>,
-}
-
-#[derive(serde::Serialize, Debug, serde::Deserialize)]
 pub struct Cover {
     pub id: i32,
     pub image_id: String,
@@ -44,10 +31,10 @@ pub struct Platform {
 }
 
 #[derive(serde::Serialize, Debug, serde::Deserialize, Clone, sqlx::FromRow)]
-pub struct GameInfo {
+pub struct Game {
     pub id: i32,
-    #[sqlx(rename = "name")]
     pub title: String,
+    pub description: Option<String>,
     #[sqlx(rename = "image_id")]
     pub cover_image_id: Option<String>,
     #[sqlx(json)]
@@ -57,6 +44,7 @@ pub struct GameInfo {
     pub game_type: i32,
     pub version_parent: Option<i32>,
     pub total_rating: Option<f32>,
+    pub release_date: Option<String>,
 }
 
 #[derive(serde::Serialize, Debug, serde::Deserialize, sqlx::FromRow)]
@@ -87,13 +75,14 @@ pub async fn init_igdb_db(dir: &Path) -> Result<IgdbDb, Error> {
 }
 
 fn game_info_columns() -> &'static str {
-    "g.id, g.name, c.image_id, GROUP_CONCAT(w.url, ',') websites, GROUP_CONCAT(sg.similar_game_id, ',') similar_game_ids, g.game_type, g.version_parent, total_rating FROM games g LEFT JOIN covers c ON g.cover_id = c.id LEFT JOIN game_websites gw ON g.id = gw.game_id LEFT JOIN websites w ON gw.website_id = w.id LEFT JOIN similar_games sg ON sg.game_id = g.id LEFT JOIN game_platforms gp ON g.id = gp.game_id LEFT JOIN platforms p ON p.id = gp.platform_id LEFT JOIN popularity_primitives pp ON g.id = pp.game_id"
+    "g.id, g.title, g.description, c.image_id, GROUP_CONCAT(w.url, ',') websites, GROUP_CONCAT(sg.similar_game_id, ',') similar_game_ids, g.game_type, g.version_parent, total_rating, g.release_date FROM games g LEFT JOIN covers c ON g.cover_id = c.id LEFT JOIN game_websites gw ON g.id = gw.game_id LEFT JOIN websites w ON gw.website_id = w.id LEFT JOIN similar_games sg ON sg.game_id = g.id LEFT JOIN game_platforms gp ON g.id = gp.game_id LEFT JOIN platforms p ON p.id = gp.platform_id LEFT JOIN popularity_primitives pp ON g.id = pp.game_id"
 }
 
-fn row_to_game_info(row: SqliteRow) -> GameInfo {
-    GameInfo {
+fn row_to_game(row: SqliteRow) -> Game {
+    Game {
         id: row.get("id"),
-        title: row.get("name"),
+        title: row.get("title"),
+        description: row.get("description"),
         cover_image_id: row.get("image_id"),
         websites: row
             .get::<Option<String>, _>("websites")
@@ -104,6 +93,7 @@ fn row_to_game_info(row: SqliteRow) -> GameInfo {
         game_type: row.get("game_type"),
         version_parent: row.get("version_parent"),
         total_rating: row.get("total_rating"),
+        release_date: row.get("release_date"),
     }
 }
 
@@ -111,7 +101,7 @@ fn row_to_game_info(row: SqliteRow) -> GameInfo {
 pub async fn get_games_by_id(
     state: State<'_, DatabasePools>,
     game_ids: Vec<i32>,
-) -> Result<Vec<GameInfo>, Error> {
+) -> Result<Vec<Game>, Error> {
     if game_ids.is_empty() {
         return Ok(vec![]);
     }
@@ -123,8 +113,8 @@ pub async fn get_games_by_id(
             .collect::<Vec<String>>()
             .join(",")
     );
-    let games: Vec<GameInfo> = sqlx::query(&query)
-        .map(row_to_game_info)
+    let games: Vec<Game> = sqlx::query(&query)
+        .map(row_to_game)
         .fetch_all(&state.igdb_pool)
         .await?;
     Ok(games)
@@ -134,8 +124,8 @@ pub async fn get_games_by_id(
 pub async fn get_popular_games(
     state: State<'_, DatabasePools>,
     amount: i32,
-) -> Result<Vec<GameInfo>, Error> {
-    let games: Vec<GameInfo> = sqlx::query(&format!("SELECT {} WHERE g.game_type IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id ORDER BY pp.value DESC LIMIT $1;", game_info_columns()).to_string()).bind(amount).map(row_to_game_info).fetch_all(&state.igdb_pool).await?;
+) -> Result<Vec<Game>, Error> {
+    let games: Vec<Game> = sqlx::query(&format!("SELECT {} WHERE g.game_type IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id ORDER BY pp.value DESC LIMIT $1;", game_info_columns()).to_string()).bind(amount).map(row_to_game).fetch_all(&state.igdb_pool).await?;
     Ok(games)
 }
 
@@ -143,11 +133,16 @@ pub async fn get_popular_games(
 pub async fn search_game(
     state: State<'_, DatabasePools>,
     search_query: String,
-) -> Result<Vec<GameInfo>, Error> {
-    let results: Vec<i32> = sqlx::query_scalar("SELECT rowid FROM games_fts WHERE name MATCH $1;")
+) -> Result<Vec<Game>, Error> {
+    let results: Vec<i32> = sqlx::query_scalar("SELECT rowid FROM games_fts WHERE title MATCH $1;")
         .bind(search_query.replace("'", " "))
         .fetch_all(&state.igdb_pool)
         .await?;
+    println!(
+        "Found {} results for search query: {}",
+        results.len(),
+        search_query
+    );
     let games = get_games_by_id(state, results).await?;
     Ok(games)
 }
@@ -155,11 +150,11 @@ pub async fn search_game(
 pub async fn get_games_from_links(
     state: State<'_, DatabasePools>,
     links: Vec<String>,
-) -> Result<Vec<GameInfo>, Error> {
+) -> Result<Vec<Game>, Error> {
     let formatted_links = links
         .iter()
         .map(|l| format!("'{}'", l))
         .collect::<Vec<String>>();
-    let games: Vec<GameInfo> = sqlx::query(format!("SELECT {} WHERE w.url IN ({}) AND g.game_type IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;", game_info_columns(), formatted_links.join(",").as_str()).as_str()).map(row_to_game_info).fetch_all(&state.igdb_pool).await?;
+    let games: Vec<Game> = sqlx::query(format!("SELECT {} WHERE w.url IN ({}) AND g.game_type IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;", game_info_columns(), formatted_links.join(",").as_str()).as_str()).map(row_to_game).fetch_all(&state.igdb_pool).await?;
     Ok(games)
 }

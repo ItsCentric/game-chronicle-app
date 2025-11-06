@@ -4,12 +4,23 @@ import { invoke } from '@tauri-apps/api/core';
 export const gameInfoSchema = z.object({
 	id: z.number(),
 	title: z.string(),
+	description: z.string().optional().nullable(),
 	cover_image_id: z.string().optional().nullable(),
 	websites: z.array(z.string()).optional().nullable(),
 	similar_games: z.array(z.number()).optional().nullable(),
 	game_type: z.number(),
 	version_parent: z.number().optional().nullable(),
-	total_rating: z.number().optional().nullable()
+	total_rating: z.number().optional().nullable(),
+	release_date: z.preprocess((val) => {
+		if (val === null || val === undefined) {
+			return null;
+		}
+		if (typeof val === 'string') {
+			return new Date(val);
+		}
+		return val;
+	}, z.date().optional().nullable()),
+	developer: z.string().optional().nullable()
 });
 
 export type GameInfo = z.infer<typeof gameInfoSchema>;
