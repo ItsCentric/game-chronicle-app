@@ -19,7 +19,13 @@
 	};
 
 	async function handleStarted(payload: ImportProgressPayload) {
-		const store = await load('persistent.json');
+		let path: string;
+		if (process.env.NODE_ENV === 'development') {
+			path = 'dev/persistent.json';
+		} else {
+			path = 'persistent.json';
+		}
+		const store = await load(path);
 		store.set('lastDumpUpdate', Date.now());
 		if (payload.step === 'Import') importing = true;
 		progress = 0;
@@ -43,6 +49,7 @@
 
 	onMount(() => {
 		const unlisten = listen<ImportProgressPayload>('import_progress', async (event) => {
+			console.log('Received event:', event);
 			const { payload } = event;
 			switch (payload.status) {
 				case 'Started':
