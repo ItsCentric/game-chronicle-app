@@ -3,7 +3,7 @@
 	import * as Form from '$lib/components/ui/form';
 	import { Input } from '$lib/components/ui/input';
 	import { gameSearchSchema } from '$lib/schemas';
-	import { ArrowLeft, Plus, Search, SearchX } from 'lucide-svelte';
+	import { ArrowLeft, Eye, Plus, Search, SearchX } from 'lucide-svelte';
 	import { defaults, superForm } from 'sveltekit-superforms';
 	import { zod, zodClient } from 'sveltekit-superforms/adapters';
 	import * as Pagination from '$lib/components/ui/pagination';
@@ -42,7 +42,7 @@
 	});
 	const { form: gameSearchFormData, enhance: gameSearchEnhance } = gameSearchForm;
 
-	$: games = $gameSearchQuery.data ? $gameSearchQuery.data : data.randomGames;
+	$: games = $gameSearchQuery.data ? $gameSearchQuery.data : data.popularGames;
 </script>
 
 <div class="min-h-full px-16 py-8 container flex flex-col">
@@ -118,7 +118,16 @@
 					cover={game.cover_image_id}
 					rating={(game.total_rating ?? 0) / 10 / 2}
 				>
+					<p slot="description" class="line-clamp-3">{game.description ?? ''}</p>
 					<svelte:fragment slot="actions">
+						<Tooltip.Root disableHoverableContent>
+							<Tooltip.Trigger>
+								<Button on:click={() => goto(`/game?id=${game.id}`)} variant="ghost" size="action">
+									<Eye size={16} />
+								</Button>
+							</Tooltip.Trigger>
+							<Tooltip.Content sideOffset={6}>View game</Tooltip.Content>
+						</Tooltip.Root>
 						<Tooltip.Root disableHoverableContent>
 							<Tooltip.Trigger>
 								<Button
