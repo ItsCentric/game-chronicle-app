@@ -5,12 +5,12 @@
 	import { toTitleCase } from '$lib';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { cn } from '$lib/utils';
-	import { parseAbsoluteToLocal, toCalendarDate } from '@internationalized/date';
+	import { parseDateTime, toCalendarDate } from '@internationalized/date';
 
 	export let data: PageData;
 	const { game, log } = data;
-	const parsedStartDate = toCalendarDate(parseAbsoluteToLocal(log.start_date));
-	const parsedEndDate = toCalendarDate(parseAbsoluteToLocal(log.end_date));
+	const parsedStartDate = toCalendarDate(parseDateTime(log.start_date.replace(' ', 'T')));
+	const parsedEndDate = toCalendarDate(parseDateTime(log.end_date.replace(' ', 'T')));
 </script>
 
 <main class="min-h-full container py-8 px-16 relative">
