@@ -3,7 +3,12 @@ import { appDataDir } from '@tauri-apps/api/path';
 import { z } from 'zod';
 
 const dataDir = await appDataDir();
-export const db = await Database.load(`sqlite:${dataDir}/igdb.db`);
+let path: string;
+
+if (process.env.NODE_ENV === 'development') path = dataDir.concat('/dev/igdb.db');
+else path = dataDir.concat('/igdb.db');
+
+export const db = await Database.load(`sqlite:${path}`);
 
 export const gameRowSchema = z.object({
 	id: z.number(),

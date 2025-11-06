@@ -52,7 +52,13 @@ export const load = async () => {
 			similarGames: []
 		};
 	}
-	const store = await loadStore('persistent.json');
+	let path: string;
+	if (process.env.NODE_ENV === 'development') {
+		path = 'dev/persistent.json';
+	} else {
+		path = 'persistent.json';
+	}
+	const store = await loadStore(path);
 	const DAY_IN_MS = 24 * 60 * 60 * 1000;
 	const lastDumpUpdate = (await store.get<number>('lastDumpUpdate')) ?? Date.now() - DAY_IN_MS;
 	if (Date.now() - lastDumpUpdate >= DAY_IN_MS) {
@@ -66,6 +72,7 @@ export const load = async () => {
 		(status) => status != 'wishlist' && status != 'backlog'
 	);
 	const recentLogs = await getRecentLogs(3, allButWishlistedOrBacklogged);
+	console.log('recentLogs', recentLogs);
 	let gameIds = recentLogs.map((log) => log.game_id);
 	let games = await getGamesById(gameIds);
 	const gameAndRecentLogs = recentLogs.map((log) => {
@@ -90,6 +97,7 @@ export const load = async () => {
 		new Date(startOfLastMonth.getFullYear(), startOfLastMonth.getMonth(), 0),
 		new Date(startOfNextMonth.getFullYear(), startOfNextMonth.getMonth() - 1, 1)
 	);
+	console.log('Loaded dashboard data');
 
 	return {
 		settings,

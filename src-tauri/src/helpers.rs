@@ -30,8 +30,15 @@ pub struct SchemaUpdate {
 
 #[tauri::command]
 pub fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, Error> {
-    let config_path = app_handle.path().config_dir().unwrap();
-    let mut file = fs::File::open(config_path.join("game-chronicle/settings.toml"))?;
+    let path = if tauri::is_dev() {
+        app_handle
+            .path()
+            .app_config_dir()?
+            .join("dev-settings.toml")
+    } else {
+        app_handle.path().app_config_dir()?.join("settings.toml")
+    };
+    let mut file = fs::File::open(path)?;
     let mut file_contents = String::new();
     file.read_to_string(&mut file_contents)?;
     let mut settings_map: HashMap<String, toml::Value> = toml::from_str(&file_contents)?;
@@ -81,12 +88,14 @@ pub fn save_user_settings(
     user_settings: UserSettings,
     app_handle: tauri::AppHandle,
 ) -> Result<UserSettings, Error> {
-    let config_path = app_handle.path().config_dir().unwrap();
+    let config_path = app_handle.path().app_config_dir().unwrap();
     let settings_str = toml::to_string(&user_settings)?;
-    fs::write(
-        config_path.join("game-chronicle/settings.toml"),
-        settings_str,
-    )?;
+    let path = if tauri::is_dev() {
+        config_path.join("dev-settings.toml")
+    } else {
+        config_path.join("settings.toml")
+    };
+    fs::write(path, settings_str)?;
     Ok(user_settings)
 }
 

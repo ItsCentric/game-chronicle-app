@@ -845,11 +845,15 @@ impl FieldExt for String {
 
 #[tauri::command]
 pub async fn import_igdb_dumps(app_handle: AppHandle) -> Result<(), ImportError> {
-    let db_path = app_handle
+    let db_path = if tauri::is_dev() { 
+        app_handle.path().app_data_dir().context("Could not get data directory")?.join("dev/igdb.db")
+    } else {
+        app_handle
         .path()
         .app_data_dir()
         .context("Could not get data directory")?
-        .join("igdb.db");
+        .join("igdb.db")
+    };
 
     let mut importer = IgdbImporter::new(
         match sqlx::SqlitePool::connect_with(

@@ -168,7 +168,7 @@ fn main() {
                         new: true,
                         beta: false,
                     };
-                    match helpers::create_dir_if_not_exists(app.path().config_dir()?.join("game-chronicle").as_path()) {
+                    match helpers::create_dir_if_not_exists(app.path().app_config_dir()?.as_path()) {
                         Ok(_) => {}
                         Err(e) => match e.kind() {
                             std::io::ErrorKind::PermissionDenied => {
@@ -191,7 +191,18 @@ fn main() {
             } else if !user_settings.autostart && autostart_manager.is_enabled().unwrap() {
                 autostart_manager.disable().unwrap();
             }
-            let app_data_dir = app.path().app_data_dir()?;
+
+            let app_data_dir = if tauri::is_dev() { 
+                let dev_path = app.path().app_data_dir()?.join("dev");
+                let data_path = app.path().app_data_dir()?;
+                helpers::create_dir_if_not_exists(dev_path.as_path())?;
+                if std::fs::exists(data_path.join("logs.db"))? {
+                    std::fs::copy(data_path.join("logs.db"), dev_path.join("logs.db"))?;
+                }
+                dev_path
+            } else {
+                app.path().app_data_dir()?
+            };
             let app_data_path = app_data_dir.as_path();
             let logs_pool = tauri::async_runtime::block_on(init_logs_db(app_data_path))?;
             let igdb_pool = tauri::async_runtime::block_on(init_igdb_db(app_data_path))?;
