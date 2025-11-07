@@ -1,6 +1,7 @@
 name: 'release'
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - v*
@@ -57,8 +58,25 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_UPDATE_SIGNING_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_UPDATE_SIGNING_PASSWORD }}
         with:
-          tagName: v__VERSION__
-          releaseName: 'v__VERSION__'
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          publish: false
+          #tagName: v__VERSION__
+          #releaseName: 'v__VERSION__'
+          #prerelease: ${{ contains(github.ref_name, '-') }}
           tauriScript: cargo tauri
           args: ${{ matrix.args }}
+          
+      - name: Rename Linux artifacts
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          cd src-tauri/target/*/release/bundle/deb
+          for f in *.deb; do
+            mv "$f" "${f%.deb}_linux.deb"
+          done
+          
+      - name: Rename macOS artifacts
+        if: matrix.platform == 'macos-latest'
+        run: |
+          cd src-tauri/target/*/release/bundle/deb || exit 0
+          for f in *.deb; do
+            mv "$f" "${f%.deb}_macos.deb"
+          done
