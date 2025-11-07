@@ -1,4 +1,4 @@
-name: 'release'
+name: 'generate bundles'
 
 on:
   workflow_dispatch:
@@ -61,6 +61,8 @@ jobs:
           publish: false
           #tagName: v__VERSION__
           #releaseName: 'v__VERSION__'
+          releaseName: 'test'
+          releaseDraft: true
           #prerelease: ${{ contains(github.ref_name, '-') }}
           tauriScript: cargo tauri
           args: ${{ matrix.args }}
