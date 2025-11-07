@@ -1,0 +1,60 @@
+name: Update AUR Package
+
+on:
+  workflow_run:
+    workflows: ["release"]
+    types: [completed]
+
+jobs:
+  aur:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'refs/tags/v') == false &&
+      startsWith(github.event.workflow_run.head_sha, '') == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract tag name
+        id: tag
+        run: |
+          TAG="${{ github.event.workflow_run.head_branch }}"
+          TAG="${TAG#refs/tags/}"
+
+          # skip beta/pre-release tags
+          if echo "$TAG" | grep -E "-"; then
+            echo "Pre-release tag detected: $TAG"
+            exit 1
+          fi
+
+          echo "VERSION=${TAG#v}" >> $GITHUB_OUTPUT
+
+      - name: Clone AUR repo
+      - run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+
+          echo "aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK25nXFz3vP/vjdGQZnIcXtNCmieYwgd0CQpZgdIPxBv" >> ~/.ssh/known_hosts
+
+          git clone ssh://aur@aur.archlinux.org/game-chronicle.git aur
+
+      - name: Update PKGBUILD version and URLs
+        working-directory: aur
+        run: |
+          sed -i "s/^pkgver=.*/pkgver=${{ steps.tag.outputs.VERSION }}/" PKGBUILD
+
+          sed -i "s|download/v.*Game.Chronicle_x64|download/v${{ steps.tag.outputs.VERSION }}/Game.Chronicle_x64|" PKGBUILD
+          sed -i "s|download/v.*Game.Chronicle_aarch64|download/v${{ steps.tag.outputs.VERSION }}/Game.Chronicle_aarch64|" PKGBUILD
+
+      - name: Update SRCINFO
+        working-directory: aur
+        run: makepkg --printsrcinfo > .SRCINFO
+
+      - name: Commit and push
+        working-directory: aur
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update to ${{ steps.tag.outputs.VERSION }}"
+          git push
