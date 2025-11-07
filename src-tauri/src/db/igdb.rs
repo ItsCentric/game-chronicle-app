@@ -75,7 +75,7 @@ pub async fn init_igdb_db(dir: &Path) -> Result<IgdbDb, Error> {
 }
 
 fn game_info_columns() -> &'static str {
-    "g.id, g.title, g.description, c.image_id, GROUP_CONCAT(w.url, ',') websites, GROUP_CONCAT(sg.similar_game_id, ',') similar_game_ids, g.game_type, g.version_parent, total_rating, g.release_date FROM games g LEFT JOIN covers c ON g.cover_id = c.id LEFT JOIN game_websites gw ON g.id = gw.game_id LEFT JOIN websites w ON gw.website_id = w.id LEFT JOIN similar_games sg ON sg.game_id = g.id LEFT JOIN game_platforms gp ON g.id = gp.game_id LEFT JOIN platforms p ON p.id = gp.platform_id LEFT JOIN popularity_primitives pp ON g.id = pp.game_id"
+    "g.id, g.title, g.description, c.image_id, (SELECT GROUP_CONCAT(w.url, ',') FROM game_websites gw JOIN websites w ON gw.website_id = w.id WHERE gw.game_id = g.id) websites, (SELECT GROUP_CONCAT(sg.similar_game_id, ',') FROM similar_games sg WHERE sg.game_id = g.id) similar_game_ids, g.game_type, g.version_parent, total_rating, g.release_date FROM games g LEFT JOIN covers c ON g.cover_id = c.id LEFT JOIN popularity_primitives pp ON g.id = pp.game_id"
 }
 
 fn row_to_game(row: SqliteRow) -> Game {
@@ -106,7 +106,7 @@ pub async fn get_games_by_id(
         return Ok(vec![]);
     }
     let query = format!(
-        "SELECT {} WHERE g.id IN ({}) AND g.game_type IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;", 
+        "SELECT {} WHERE g.id IN ({}) AND g.game_type IN (0, 4, 8, 9) AND EXISTS (SELECT 1 FROM game_platforms gp JOIN platforms p ON p.id = gp.platform_id WHERE gp.game_id = g.id AND p.name NOT IN ('Android', 'iOS')) AND g.version_parent IS NULL GROUP BY g.id;", 
         game_info_columns(), game_ids
             .iter()
             .map(|id| id.to_string())
@@ -125,7 +125,7 @@ pub async fn get_popular_games(
     state: State<'_, DatabasePools>,
     amount: i32,
 ) -> Result<Vec<Game>, Error> {
-    let games: Vec<Game> = sqlx::query(&format!("SELECT {} WHERE g.game_type IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id ORDER BY pp.value DESC LIMIT $1;", game_info_columns()).to_string()).bind(amount).map(row_to_game).fetch_all(&state.igdb_pool).await?;
+    let games: Vec<Game> = sqlx::query(&format!("SELECT {} WHERE g.game_type IN (0, 4, 8, 9) AND EXISTS (SELECT 1 FROM game_platforms gp JOIN platforms p ON p.id = gp.platform_id WHERE gp.game_id = g.id AND p.name NOT IN ('Android', 'iOS')) AND g.version_parent IS NULL GROUP BY g.id ORDER BY pp.value DESC LIMIT $1;", game_info_columns()).to_string()).bind(amount).map(row_to_game).fetch_all(&state.igdb_pool).await?;
     Ok(games)
 }
 
@@ -155,6 +155,6 @@ pub async fn get_games_from_links(
         .iter()
         .map(|l| format!("'{}'", l))
         .collect::<Vec<String>>();
-    let games: Vec<Game> = sqlx::query(format!("SELECT {} WHERE w.url IN ({}) AND g.game_type IN (0, 4, 8, 9) AND p.name NOT IN ('Android', 'iOS') AND g.version_parent IS NULL GROUP BY g.id;", game_info_columns(), formatted_links.join(",").as_str()).as_str()).map(row_to_game).fetch_all(&state.igdb_pool).await?;
+    let games: Vec<Game> = sqlx::query(format!("SELECT {} WHERE w.url IN ({}) AND g.game_type IN (0, 4, 8, 9) (SELECT 1 FROM game_platforms gp JOIN platforms p ON p.id = gp.platform_id WHERE gp.game_id = g.id AND p.name NOT IN ('Android', 'iOS')) AND g.version_parent IS NULL GROUP BY g.id;", game_info_columns(), formatted_links.join(",").as_str()).as_str()).map(row_to_game).fetch_all(&state.igdb_pool).await?;
     Ok(games)
 }
